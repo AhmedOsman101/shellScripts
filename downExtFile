@@ -1,2 +1,45 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2181
 
+# Function to handle errors
+error_handler() {
+  echo "An error occurred: $1" >&2
+  exit 1
+}
+
+if [ -f "extensions.json" ]; then
+  # Attempt to read JSON file contents
+  extensions=$(jq -r '.recommendations[]' extensions.json 2>/dev/null)
+  if [ $? -ne 0 ]; then
+    error_handler "Failed to parse 'extensions.json'"
+  fi
+
+  # Create extensions directory if it does not exist
+  if [ ! -d "extensions" ]; then
+    mkdir "extensions"
+  fi
+else
+  error_handler "File 'extensions.json' not found."
+fi
+
+for extension in $extensions; do
+  publisher=$(echo "$extension" | cut -d '.' -f 1)
+  extensionName=$(echo "$extension" | cut -d '.' -f 2)
+  url="https://$publisher.gallery.vsassets.io/_apis/public/gallery/publisher/$publisher/extension/$extensionName/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage"
+
+  # Construct the filename for the .vsix file
+  filename="$extensionName.vsix"
+
+  # Check if the file already exists in the directory
+  if [ -f "$PWD/extensions/$filename" ]; then
+    echo "Skipping $filename. File already exists."
+  else
+    # Download the .vsix file with only the progress bar shown
+    if ! wget -q --show-progress -O "$PWD/extensions/$filename" "$url"; then
+      error_handler "Failed to download $filename."
+    fi
+    echo "Downloaded $filename"
+  fi
+done
+
+echo "Done 🚀"
