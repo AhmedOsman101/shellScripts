@@ -1,0 +1,23 @@
+#!/bin/env/bash
+
+# Check if the correct number of arguments is passed
+if [ "$#" -ne 3 ]; then
+  echo "Usage: $0 <file> <search_text> <replace_text>"
+  exit 1
+fi
+
+# Assign arguments to variables for clarity
+file="$1"
+search_text="$2"
+replace_text="$3"
+
+# Check if the file exists
+if [ ! -f "$file" ]; then
+  echo "Error: File '$file' does not exist."
+  exit 1
+fi
+
+# Replace the text in the file
+sed -i "s/${search_text}/${replace_text}/g" "$file"
+
+echo "Replaced '$search_text' with '$replace_text' in file '$file'."
