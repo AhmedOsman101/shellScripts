@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 
 # Check if the correct number of arguments is passed
-if [ "$#" -ne 3 ]; then
-  echo "Usage: <file> <search_text> <replace_text>"
+if [ "$#" -ne 1 ]; then
+  echo "Usage: $0 <file>"
   exit 1
 fi
 
 # Assign arguments to variables for clarity
 file="$1"
-search_text="$2"
-replace_text="$3"
 
 # Check if the file exists
 if [ ! -f "$file" ]; then
@@ -17,7 +15,15 @@ if [ ! -f "$file" ]; then
   exit 1
 fi
 
-# Replace the text in the file
-sed -i "s/${search_text}/${replace_text}/g" "$file"
+# Initialize replacement counts
+count_1=$(grep -o '\\\[' "$file" | wc -l)
+count_2=$(grep -o '\\( ' "$file" | wc -l)
+count=$((count_1 + count_2))
 
-echo "Replaced '$search_text' with '$replace_text' in file '$file'."
+# Perform the replacements
+sed -i -e 's~\\\[~$$~g' \
+       -e 's~\\\]~$$~g' \
+       -e 's~\\( ~$~g' \
+       -e 's~ \\)~$~g' "$file"
+
+echo "$count Replacements made"
