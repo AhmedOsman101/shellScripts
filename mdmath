@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# shellcheck source=/dev/null
+source logs.sh
+
 # Check if the correct number of arguments is passed
 if [ "$#" -ne 1 ]; then
   echo "Usage: $0 <file>"
@@ -11,8 +14,7 @@ file="$1"
 
 # Check if the file exists
 if [ ! -f "$file" ]; then
-  echo "Error: File '$file' does not exist."
-  exit 1
+  log_error "Error: File '$file' does not exist."
 fi
 
 # Initialize replacement counts
@@ -22,8 +24,8 @@ count=$((count_1 + count_2))
 
 # Perform the replacements
 sed -i -e 's~\\\[~$$~g' \
-       -e 's~\\\]~$$~g' \
-       -e 's~\\( ~$~g' \
-       -e 's~ \\)~$~g' "$file"
+  -e 's~\\\]~$$~g' \
+  -e 's~\\( ~$~g' \
+  -e 's~ \\)~$~g' "$file"
 
-echo "$count Replacements made"
+log_info "$count Replacements made"

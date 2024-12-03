@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# shellcheck source=/dev/null
+source logs.sh
+
+# Change to the extensions directory
+cd extensions || {
+  log_error "Extensions directory not found!"
+  exit 1
+}
+
+# Loop through all .vsix files in the extensions directory
+for extension in *.vsix; do
+  if [ -f "$extension" ]; then
+    # Install the extension using VSCode CLI
+    if ! code --install-extension "$extension"; then
+      log_error "Error: Failed to install $extension."
+    fi
+  else
+    log_error "No .vsix files found in the extensions directory."
+  fi
+done
+
+log_info "All extensions installation complete."

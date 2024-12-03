@@ -1,17 +1,14 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2181
 
-# Function to handle errors
-error_handler() {
-  echo "An error occurred: $1" >&2
-  exit 1
-}
+# shellcheck source=/dev/null
+source logs.sh
 
 if [ -f "extensions.json" ]; then
   # Attempt to read JSON file contents
   extensions=$(jq -r '.[]' extensions.json 2>/dev/null)
   if [ $? -ne 0 ]; then
-    error_handler "Failed to parse 'extensions.json'"
+    log_error "Failed to parse 'extensions.json'"
   fi
 
   # Create extensions directory if it does not exist
@@ -19,7 +16,7 @@ if [ -f "extensions.json" ]; then
     mkdir "extensions"
   fi
 else
-  error_handler "File 'extensions.json' not found."
+  log_error "File 'extensions.json' not found."
 fi
 
 for extension in $extensions; do
@@ -32,14 +29,14 @@ for extension in $extensions; do
 
   # Check if the file already exists in the directory
   if [ -f "$PWD/extensions/$filename" ]; then
-    echo "Skipping $filename. File already exists."
+    log_warning "Skipping $filename. File already exists."
   else
     # Download the .vsix file with only the progress bar shown
     if ! wget -q --show-progress -O "$PWD/extensions/$filename" "$url"; then
-      error_handler "Failed to download $filename."
+      log_error "Failed to download $filename."
     fi
-    echo "Downloaded $filename"
+    log_info "Downloaded $filename"
   fi
 done
 
-echo "Done 🚀"
+log_info "Done 🚀"
