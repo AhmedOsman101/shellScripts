@@ -9,7 +9,7 @@ error_handler() {
 
 if [ -f "extensions.json" ]; then
   # Attempt to read JSON file contents
-  extensions=$(jq -r '.recommendations[]' extensions.json 2>/dev/null)
+  extensions=$(jq -r '.[]' extensions.json 2>/dev/null)
   if [ $? -ne 0 ]; then
     error_handler "Failed to parse 'extensions.json'"
   fi
