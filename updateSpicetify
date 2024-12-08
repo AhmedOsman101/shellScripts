@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+spicetify update
+
+spicetify restore backup apply
