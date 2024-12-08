@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+# shellcheck source=/dev/null
+source logs.sh
+
+if [[ ! -d "/usr/share/fonts/TTF" ]]; then
+	sudo mkdir /usr/share/fonts/TTF/
+fi
+
+if [[ ! -d "/usr/share/fonts/OTF" ]]; then
+	sudo mkdir /usr/share/fonts/OTF/
+fi
+
+sudo mv "${HOME}/fonts/*.ttf" /usr/share/fonts/TTF/ >/dev/null 2>&1 || log_warning "No .ttf fonts found!"
+sudo mv "${HOME}/fonts/*.otf" /usr/share/fonts/OTF/ >/dev/null 2>&1 || log_warning "No .otf fonts found!"
+
+log_info "Caching fonts..."
+
+sudo fc-cache -f && log_info "Fonts reloaded succefully!"
