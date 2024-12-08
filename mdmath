@@ -19,15 +19,15 @@ fi
 
 # Initialize replacement counts
 count_1=$(grep -o '\\\[' "$file" | wc -l)
-count_2=$(grep -o '\\( ' "$file" | wc -l)
+count_2=$(grep -o '\\(' "$file" | wc -l)
 count=$((count_1 + count_2))
 
 # Perform the replacements
 sed -i -e 's~\\\[~$$~g' \
   -e 's~\\\]~$$~g' \
-  -e 's~\\)~$~g' \
-  -e 's~\\(~$~g' \
+  -e 's~ \\)~$~g' \
   -e 's~\\( ~$~g' \
-  -e 's~ \\)~$~g' "$file"
+  -e 's~\\(~$~g' \
+  -e 's~\\)~$~g' "$file"
 
 log_info "$count Replacements made"

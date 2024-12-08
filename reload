@@ -1,0 +1,7 @@
+#!/usr/bin/zsh
+# shellcheck disable=SC1071
+# shellcheck disable=SC1090
+
+source ~/.zshrc
+clear
+neofetch

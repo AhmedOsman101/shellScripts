@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+git add "*"
+
+date=$(date +"%Y-%m-%d@%I:%M%p")
+
+git commit -am "Updated Files $date"
+
+git push origin main
