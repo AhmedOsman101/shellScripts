@@ -25,6 +25,8 @@ count=$((count_1 + count_2))
 # Perform the replacements
 sed -i -e 's~\\\[~$$~g' \
   -e 's~\\\]~$$~g' \
+  -e 's~\\)~$~g' \
+  -e 's~\\(~$~g' \
   -e 's~\\( ~$~g' \
   -e 's~ \\)~$~g' "$file"
 
