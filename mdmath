@@ -16,15 +16,9 @@ if [[ ! -f ${file} ]]; then
 	log_error "Error: File '${file}' does not exist."
 fi
 
-# Count occurrences of '\['
-count_1=$(grep -o '\\[' "${file}")
-count_1=$(wc -l "${count_1}")
-
-# Count occurrences of '\('
-count_2=$(grep -o '\\(' "${file}")
-count_2=$(wc -l "${count_2}")
-
-# Sum the counts
+# Initialize replacement counts
+count_1=$(grep -o '\\\[' "${file}" | wc -l)
+count_2=$(grep -o '\\(' "${file}" | wc -l)
 count=$((count_1 + count_2))
 
 # Perform the replacements
