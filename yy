@@ -5,7 +5,7 @@ tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
 yazi "$@" --cwd-file="${tmp}"
 
 if cwd="$(cat -- "${tmp}")" && [[ -n ${cwd} ]] && [[ ${cwd} != "${PWD}" ]]; then
-	builtin cd -- "${cwd}" || exit
+	builtin cd -- "${cwd}"
 fi
 
-rm -f "${tmp}"
+rm -f -- "${tmp}"
