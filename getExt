@@ -1,45 +1,41 @@
 #!/usr/bin/env bash
 
-# Function to handle errors
-error_handler() {
-  echo "An error occurred: $1" >&2
-  exit 1
-}
+source logs.sh
 
 getExtensions() {
-  # Get all VS Code extensions
-  extensions=$(code --list-extensions)
+	# Get all VS Code extensions
+	extensions=$(code --list-extensions)
 
-  # Format the extensions for the JSON file
-  readarray -t array <<<"$extensions"
+	# Format the extensions for the JSON file
+	readarray -t array <<<"${extensions}"
 
-  # Create the JSON content
-  printf '%s\n' "${array[@]}" | jq -R . | jq -s .
+	# Create the JSON content
+	printf '%s\n' "${array[@]}" | jq -R . | jq -s .
 }
 
 # Check if the file already exists
-if [ -f "extensions.json" ]; then
-  if [[ "$1" == "-o" ]]; then
-    eval getExtensions >extensions.json
-    echo "extensions.json has been overwritten."
-  elif [[ "$1" == "" ]]; then
-    overwrite='n'
-    echo "extensions.json exists do you want to overwrite it? (y/N): "
-    read -r overwrite
-    if [[ "$overwrite" == "y" || "$overwrite" == "Y" ]]; then
-      eval getExtensions >extensions.json
-      echo "extensions.json has been overwritten."
-    elif [[ "$overwrite" == "n" || "$overwrite" == "N" || "$overwrite" == "" ]]; then
-      echo "Original file was not overwritten."
-      exit 0
-    else
-      error_handler "Invalid option!"
-    fi
-  else
-    error_handler "Invalid option!"
-  fi
+if [[ -f "extensions.json" ]]; then
+	if [[ $1 == "-o" ]]; then
+		eval getExtensions >extensions.json
+		echo "extensions.json has been overwritten."
+	elif [[ $1 == "" ]]; then
+		overwrite='n'
+		echo "extensions.json exists do you want to overwrite it? (y/N): "
+		read -r overwrite
+		if [[ ${overwrite} == "y" || ${overwrite} == "Y" ]]; then
+			eval getExtensions >extensions.json
+			echo "extensions.json has been overwritten."
+		elif [[ ${overwrite} == "n" || ${overwrite} == "N" || ${overwrite} == "" ]]; then
+			echo "Original file was not overwritten."
+			exit 0
+		else
+			log_error "Invalid option!"
+		fi
+	else
+		log_error "Invalid option!"
+	fi
 else
-  touch "extensions.json"
-  eval getExtensions >extensions.json
-  echo "extensions.json has been created."
+	touch "extensions.json"
+	eval getExtensions >extensions.json
+	echo "extensions.json has been created."
 fi

@@ -1,42 +1,40 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2181
 
-# shellcheck source=/dev/null
 source logs.sh
 
-if [ -f "extensions.json" ]; then
-  # Attempt to read JSON file contents
-  extensions=$(jq -r '.[]' extensions.json 2>/dev/null)
-  if [ $? -ne 0 ]; then
-    log_error "Failed to parse 'extensions.json'"
-  fi
+if [[ -f "extensions.json" ]]; then
+	# Attempt to read JSON file contents
+	extensions=$(jq -r '.[]' extensions.json 2>/dev/null)
+	if [[ $? -ne 0 ]]; then
+		log_error "Failed to parse 'extensions.json'"
+	fi
 
-  # Create extensions directory if it does not exist
-  if [ ! -d "extensions" ]; then
-    mkdir "extensions"
-  fi
+	# Create extensions directory if it does not exist
+	if [[ ! -d "extensions" ]]; then
+		mkdir "extensions"
+	fi
 else
-  log_error "File 'extensions.json' not found."
+	log_error "File 'extensions.json' not found."
 fi
 
-for extension in $extensions; do
-  publisher=$(echo "$extension" | cut -d '.' -f 1)
-  extensionName=$(echo "$extension" | cut -d '.' -f 2)
-  url="https://$publisher.gallery.vsassets.io/_apis/public/gallery/publisher/$publisher/extension/$extensionName/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage"
+for extension in ${extensions}; do
+	publisher=$(echo "${extension}" | cut -d '.' -f 1)
+	extensionName=$(echo "${extension}" | cut -d '.' -f 2)
+	url="https://${publisher}.gallery.vsassets.io/_apis/public/gallery/publisher/${publisher}/extension/${extensionName}/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage"
 
-  # Construct the filename for the .vsix file
-  filename="$extensionName.vsix"
+	# Construct the filename for the .vsix file
+	filename="${extensionName}.vsix"
 
-  # Check if the file already exists in the directory
-  if [ -f "$PWD/extensions/$filename" ]; then
-    log_warning "Skipping $filename. File already exists."
-  else
-    # Download the .vsix file with only the progress bar shown
-    if ! wget -q --show-progress -O "$PWD/extensions/$filename" "$url"; then
-      log_error "Failed to download $filename."
-    fi
-    log_info "Downloaded $filename"
-  fi
+	# Check if the file already exists in the directory
+	if [[ -f "${PWD}/extensions/${filename}" ]]; then
+		log_warning "Skipping ${filename}. File already exists."
+	else
+		# Download the .vsix file with only the progress bar shown
+		if ! wget -q --show-progress -O "${PWD}/extensions/${filename}" "${url}"; then
+			log_error "Failed to download ${filename}."
+		fi
+		log_info "Downloaded ${filename}"
+	fi
 done
 
 log_info "Done 🚀"
