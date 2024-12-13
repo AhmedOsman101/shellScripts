@@ -3,10 +3,12 @@
 # shellcheck source=/dev/null
 source logs.sh
 
+directory=$1 || "extensions"
+
 # Change to the extensions directory
-cd extensions || {
-	log_error "Extensions directory not found!"
-	exit 1
+cd "${directory}" || {
+	log_error "${directory} was not found!"
+	# exit 1
 }
 
 # Loop through all .vsix files in the extensions directory
@@ -17,8 +19,8 @@ for extension in *.vsix; do
 			log_error "Error: Failed to install ${extension}."
 		fi
 	else
-		log_error "No .vsix files found in the extensions directory."
+		log_error "No .vsix files found in ${directory}."
 	fi
 done
 
-log_info "All extensions installation complete."
+log_info "Installation Done."
