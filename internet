@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+INTERFACE="$(ip route get 1.1.1.1 2>/dev/null | awk '{print $5;exit}')"
+
+if [[ -n "$INTERFACE" ]]; then
+  echo "$INTERFACE"
+else
+    INTERFACE="$(ip route get 8.8.8.8 2>/dev/null | awk '{print $5;exit}')"
+    if [[ -n "$INTERFACE" ]]; then
+        echo "$INTERFACE"
+    else
+        echo ""
+    fi
+fi

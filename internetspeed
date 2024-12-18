@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+INTERFACE="$(ip route get 1.1.1.1 | awk '{print $5;exit}')"
+
+RX_OLD="$(cat /sys/class/net/"$INTERFACE"/statistics/rx_bytes)"
+TX_OLD="$(cat /sys/class/net/"$INTERFACE"/statistics/tx_bytes)"
+
+while true; do
+    sleep 1
+
+    RX_NEW="$(cat /sys/class/net/"$INTERFACE"/statistics/rx_bytes)"
+    TX_NEW="$(cat /sys/class/net/"$INTERFACE"/statistics/tx_bytes)"
+
+    RX_DIFF=$((RX_NEW - RX_OLD))
+    TX_DIFF=$((TX_NEW - TX_OLD))
+
+    RX_SPEED=$((RX_DIFF * 8 / 1024)) # Kbps
+    TX_SPEED=$((TX_DIFF * 8 / 1024)) # Kbps
+
+    RX_OLD=$RX_NEW
+    TX_OLD=$TX_NEW
+
+    printf " %d Kbps  %d Kbps\n" "$RX_SPEED" "$TX_SPEED"
+done
