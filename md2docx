@@ -8,7 +8,7 @@ file="$1"
 if [[ -f "$file" ]]; then
   filename="$(echo "$file" | sed 's/\.[^.]*$//')"
 
-  pandoc "$file" -o "${filename}.docx" || log_error "an Error occured"
+  pandoc "$file" -o "${filename}.docx" --reference-doc="$MRT" || log_error "an Error occured"
 
   log_info "$file converted successfully!"
 
