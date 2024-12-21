@@ -7,10 +7,7 @@ git add "*"
 
 date=$(date +"%Y-%m-%d@%I:%M%p")
 
-git commit -am "Committed Changes Locally ${date}"
-
-log_info "Updated Files ${date}"
+git commit -am "Updated Files ${date}" && log_info "Committed Changes Locally ${date}"
 
 git push origin main && log_info "Changes pushed successfully!"
-
 
