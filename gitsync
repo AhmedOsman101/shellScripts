@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC1091
+source logs.sh
+
 git add "*"
 
 date=$(date +"%Y-%m-%d@%I:%M%p")
 
 git commit -am "Updated Files ${date}"
 
-git push origin main
+log_info "Updated Files ${date}"
+
+git push origin main && log_info "Changes pushed successfully!"
+
+
