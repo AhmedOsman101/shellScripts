@@ -6,3 +6,5 @@ fileNameWithoutExtension="$(echo "${fileName}" | cut -d'.' -f1)"
 g++ "${fileName}" -o "${fileNameWithoutExtension}.out"
 
 ./"${fileNameWithoutExtension}.out"
+
+rm ./"${fileNameWithoutExtension}.out"
