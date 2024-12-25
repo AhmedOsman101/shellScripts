@@ -7,7 +7,6 @@ git add "*"
 
 date=$(date +"%Y-%m-%d@%I:%M%p")
 
-git commit -am "Updated Files ${date}" && log_info "Committed Changes Locally ${date}"
+(git commit -am "Updated Files ${date}" >/dev/null 2> >(while IFS= read -r line; do log_error "$line"; done)) && log_info "Committed Changes Locally ${date}"
 
-git push origin main && log_info "Changes pushed successfully!"
-
+(git push origin main >/dev/null 2> >(while IFS= read -r line; do echo -e "\033[31m${line}" >&2""; done)) && log_info "Changes pushed successfully!"
