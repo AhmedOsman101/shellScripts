@@ -5,6 +5,7 @@ fileNameWithoutExtension="$(echo "${fileName}" | cut -d'.' -f1)"
 
 clang "${fileName}" -o "${fileNameWithoutExtension}.out"
 
-./"${fileNameWithoutExtension}.out"
-
-rm ./"${fileNameWithoutExtension}.out"
+if [[ -f "${fileNameWithoutExtension}.out" ]]; then
+  ./"${fileNameWithoutExtension}.out"
+  rm ./"${fileNameWithoutExtension}.out"
+fi
