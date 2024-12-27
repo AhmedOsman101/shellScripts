@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+ip="$(ip a | rg "$(internet)" | rg inet)"
+
+if [[ -n "${ip}" ]]; then
+  echo "${ip}" | awk '{print $2;exit}'
+else 
+  echo "No IP found"
+fi
