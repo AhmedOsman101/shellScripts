@@ -10,25 +10,25 @@ This repository is a curated collection of scripts that help us in:
 - Enhancing coding productivity
 - Providing solutions to common challenges in development and other domains
 
-## Available Scripts
-
-Below is a list of some useful scripts included in this repository:
-
-### 1. **Playlist Downloader**
-   - **File**: `playlist_downloader.py`
-   - **Purpose**: Downloads YouTube playlists or individual videos using `pytubefix`.
-   - **Features**:
-     - Automatically organizes playlist videos into folders.
-     - Reads URLs from `downloadUrls.txt` for batch processing.
-     - Plays a notification sound when downloads are complete.
-
-   #### Usage:
-   1. Add your URLs (one per line) to `downloadUrls.txt`.
-   2. Run the script:
-      ```bash
-      python playlist_downloader.py
-      ```
-   3. Ensure you have a `.wav` file named `done.wav` in the same directory to hear the notification sound.
+<!-- ## Available Scripts -->
+<!--  -->
+<!-- Below is a list of some useful scripts included in this repository: -->
+<!--  -->
+<!-- ### 1. **Playlist Downloader** -->
+<!--    - **File**: `playlist_downloader.py` -->
+<!--    - **Purpose**: Downloads YouTube playlists or individual videos using `pytubefix`. -->
+<!--    - **Features**: -->
+<!--      - Automatically organizes playlist videos into folders. -->
+<!--      - Reads URLs from `downloadUrls.txt` for batch processing. -->
+<!--      - Plays a notification sound when downloads are complete. -->
+<!--  -->
+<!--    #### Usage: -->
+<!--    1. Add your URLs (one per line) to `downloadUrls.txt`. -->
+<!--    2. Run the script: -->
+<!--       ```bash -->
+<!--       python playlist_downloader.py -->
+<!--       ``` -->
+<!--    3. Ensure you have a `.wav` file named `done.wav` in the same directory to hear the notification sound. -->
 
 
 
@@ -42,18 +42,7 @@ We welcome contributions! If you have scripts you'd like to share or improvement
 
 ---
 
-## License
-
-This repository is licensed under the MIT License. See `LICENSE` for details.
-
----
-
 ## Feedback
 
 We'd love to hear from you! If you have suggestions, feedback, or feature requests, feel free to open an issue or reach out to the maintainers.
 
----
-
-### Contact
-
-For any inquiries, reach out to [Ahmed Osman](https://github.com/AhmedOsman101).
