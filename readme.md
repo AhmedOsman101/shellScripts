@@ -30,17 +30,7 @@ Below is a list of some useful scripts included in this repository:
       ```
    3. Ensure you have a `.wav` file named `done.wav` in the same directory to hear the notification sound.
 
----
 
-### 2. **Your Script Name**
-   - **File**: `your_script_name.extension`
-   - **Purpose**: [Description of the script]
-   - **Usage**:
-     ```bash
-     [Example command to execute the script]
-     ```
-
----
 
 ## How to Contribute
 
