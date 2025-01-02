@@ -3,7 +3,9 @@ from os import makedirs
 from pathlib import Path
 from plyer import notification
 from pytubefix import Playlist, YouTube
-from time import sleep
+from tqdm import tqdm
+import time
+
 
 HELP_TEXT = """
 YouTube Downloader Script
@@ -57,20 +59,26 @@ def notify(title: str, msg: str = ""):
       timeout=5
   )
 
+def handleOnProgress(stream, chunk, bytes_remaining):
+    total_size = stream.filesize
+    bytes_downloaded = total_size - bytes_remaining
+    percent_completed = int((bytes_downloaded / total_size) * 100)
+    tqdm.write(f"Progress: {percent_completed}%")
 
 def downloadVideo(url: str, playlist_folder: str = ""):
   """
   Purpose: Extracting the logic for downloading videos
   """
-  video = YouTube(url.strip())
+  video = YouTube(url.strip(),on_progress_callback=handleOnProgress)
   notify("Downloading...")
   print(f"Downloading video: {video.title}")
-
-  if (playlist_folder):
-    video.streams.get_highest_resolution().download(output_path=playlist_folder)
-  else:
-    video.streams.get_highest_resolution().download()
-
+  fileSize = video.streams.get_highest_resolution().filesize
+  with tqdm(total=fileSize,unit="B",unit_scale=True,desc=video.title) as progressBar:
+    if (playlist_folder):
+      video.streams.get_highest_resolution().download(output_path=playlist_folder)
+    else:
+      video.streams.get_highest_resolution().download()
+    progressBar.update(fileSize)
   if video:
     notify("Download Finished!", f"{video.title} Downloaded successfully")
     print("Video downloaded successfully.")
