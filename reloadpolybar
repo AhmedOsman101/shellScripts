@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+killall polybar
+
+~/.config/openbox/themes/launch-bar.sh
