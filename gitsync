@@ -28,7 +28,7 @@ if [ $# -eq 0 ]; then
 fi
 
 # Use getopts to parse options
-while getopts "hb" opt; do
+while getopts "hb" opt 2>/dev/null; do
   case $opt in
   h)
     display_help
@@ -38,7 +38,7 @@ while getopts "hb" opt; do
     branch="$OPTARG"
     ;;
   \?)
-    echo "Invalid option: $OPTARG" >&2
+    log_error "Invalid option $OPTARG"
     ;;
   esac
 done
