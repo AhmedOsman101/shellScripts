@@ -35,7 +35,11 @@ while getopts "hb" opt 2>/dev/null; do
     exit 0
     ;;
   b)
-    branch="$OPTARG"
+    if [[ -z "$2" ]]; then
+      log_error "You must pass a branch when using -b option."
+    else
+      branch="$2"
+    fi
     ;;
   \?)
     log_error "Invalid option $OPTARG"
