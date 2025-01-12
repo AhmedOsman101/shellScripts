@@ -12,7 +12,7 @@ while true; do
         break
     fi
 
-    clear
     log-info "Retrying '$cmd' in 5s..."
     sleep 5s
+    clear
 done
