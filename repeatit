@@ -2,4 +2,4 @@
 
 cmd="$1"
 
-$cmd || until !!; do :; done
+$cmd || cmd=!!; until $cmd; do :; done
