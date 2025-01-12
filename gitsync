@@ -5,7 +5,7 @@ source logs.sh
 
 git add "*"
 
-date=$(date +"%Y-%m-%d@%I:%M%p")
+date="$(date +"%Y-%m-%d@%I:%M%p")"
 
 git commit -am "Updated Files ${date}" && log_info "Committed Changes Locally ${date}"
 
