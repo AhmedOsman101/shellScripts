@@ -3,6 +3,11 @@
 # shellcheck disable=SC1091
 source logs.sh
 
+# Check if no options are passed
+if [ $# -eq 0 ]; then
+  echo "No options"
+fi
+
 git add "*"
 
 date="$(date +"%Y-%m-%d@%I:%M%p")"
