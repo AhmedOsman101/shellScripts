@@ -3,16 +3,50 @@
 # shellcheck disable=SC1091
 source logs.sh
 
+branch=""
+timestamp="$(date +"%Y-%m-%d@%I:%M%p")"
+
+display_help() {
+  cat <<HELP
+This script automates the process of adding changes, committing them with a timestamp, and pushing the changes to the remote repository.
+
+Options:
+  -h, --help          Show this help message and exit.
+  -b <branch>         Specify the branch to work on. If not provided, defaults to 'main'.
+
+Description:
+  1. If no options are passed, the script defaults to working on the 'main' branch.
+  2. Uses the current timestamp to create a meaningful commit message.
+  3. Logs the status of commit and push operations.
+HELP
+
+}
+
 # Check if no options are passed
 if [ $# -eq 0 ]; then
-  echo "No options"
+  branch="main"
 fi
+
+# Use getopts to parse options
+while getopts "hb" opt; do
+  case $opt in
+  h)
+    display_help
+    exit 0
+    ;;
+  b)
+    branch="$OPTARG"
+    ;;
+  \?)
+    echo "Invalid option: $OPTARG" >&2
+    ;;
+  esac
+done
+
+git checkout "$branch"
 
 git add "*"
 
-date="$(date +"%Y-%m-%d@%I:%M%p")"
+git commit -am "Updated Files ${timestamp}" && log_info "Committed Changes Locally ${timestamp}"
 
-git commit -am "Updated Files ${date}" && log_info "Committed Changes Locally ${date}"
-
-git push origin main && log_info "Changes pushed successfully!"
-# (git push origin main >/dev/null 2> >(while IFS= read -r line; do echo -e "\033[31m${line}" >&2""; done)) && log_info "Changes pushed successfully!"
+git push origin "$branch" && log_info "Changes pushed to $branch successfully!"
