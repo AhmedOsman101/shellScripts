@@ -7,13 +7,12 @@ cmd="$1"
 
 # Infinite loop: repeat the command until it exits successfully
 while true; do
-    
+
     if $cmd; then
         break
     fi
-    
-    log-info "Retrying in 5s..."
+
+    log-info "Retrying '$cmd' in 5s..."
     sleep 5s
     clear
-    echo "$cmd"
 done
