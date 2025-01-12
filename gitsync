@@ -3,7 +3,12 @@
 # shellcheck disable=SC1091
 source logs.sh
 
-branch=""
+isGitRepo="$(ls -a | rg '.git')"
+
+if [[ -z "$isGitRepo" ]]; then
+  log_error "$PWD is not a git repository."
+fi
+
 timestamp="$(date +"%Y-%m-%d@%I:%M%p")"
 
 display_help() {
@@ -24,7 +29,7 @@ HELP
 
 # Check if no options are passed
 if [ $# -eq 0 ]; then
-  branch="main"
+  branch="$(git rev-parse --abbrev-ref HEAD)"
 fi
 
 # Use getopts to parse options
@@ -38,6 +43,9 @@ while getopts "hb" opt 2>/dev/null; do
     if [[ -z "$2" ]]; then
       log_error "You must pass a branch when using -b option."
     else
+      if [[ "$branch" != "$2" ]]; then
+        git checkout "$branch"
+      fi
       branch="$2"
     fi
     ;;
@@ -47,10 +55,12 @@ while getopts "hb" opt 2>/dev/null; do
   esac
 done
 
-git checkout "$branch"
+main() {
+  git add "*"
 
-git add "*"
+  git commit -am "Updated Files ${timestamp}" && log_info "Committed Changes Locally ${timestamp}"
 
-git commit -am "Updated Files ${timestamp}" && log_info "Committed Changes Locally ${timestamp}"
+  git push origin "$branch" && log_info "Changes pushed to $branch successfully!"
+}
 
-git push origin "$branch" && log_info "Changes pushed to $branch successfully!"
+main
