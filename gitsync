@@ -3,9 +3,10 @@
 # shellcheck disable=SC1091
 source logs.sh
 
-isGitRepo="$(ls -a | rg '.git')"
+# returns true if it's a git repo and false otherwise
+isGitRepo="$(git rev-parse --is-inside-work-tree)"
 
-if [[ -z "$isGitRepo" ]]; then
+if [[ ! $isGitRepo ]]; then
   log_error "$PWD is not a git repository."
 fi
 
@@ -24,11 +25,19 @@ Description:
   2. Uses the current timestamp to create a meaningful commit message.
   3. Logs the status of commit and push operations.
 HELP
+}
 
+main() {
+  git add "*"
+
+  git commit -am "Updated Files ${timestamp}" && log_info "Committed Changes Locally ${timestamp}"
+
+  git push origin "$branch" && log_info "Changes pushed to $branch successfully!"
 }
 
 # Check if no options are passed
 if [ $# -eq 0 ]; then
+  # returns the current working branch
   branch="$(git rev-parse --abbrev-ref HEAD)"
 fi
 
@@ -55,12 +64,5 @@ while getopts "hb" opt 2>/dev/null; do
   esac
 done
 
-main() {
-  git add "*"
-
-  git commit -am "Updated Files ${timestamp}" && log_info "Committed Changes Locally ${timestamp}"
-
-  git push origin "$branch" && log_info "Changes pushed to $branch successfully!"
-}
-
+# run the main function if no errors occured
 main
