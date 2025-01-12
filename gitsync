@@ -7,7 +7,7 @@ source logs.sh
 isGitRepo="$(git rev-parse --is-inside-work-tree)"
 
 if [[ ! $isGitRepo ]]; then
-  log_error "$PWD is not a git repository."
+  log-error "$PWD is not a git repository."
 fi
 
 timestamp="$(date +"%Y-%m-%d@%I:%M%p")"
@@ -30,9 +30,9 @@ HELP
 main() {
   git add "*"
 
-  git commit -am "Updated Files ${timestamp}" && log_info "Committed Changes Locally ${timestamp}"
+  git commit -am "Updated Files ${timestamp}" && log-info "Committed Changes Locally ${timestamp}"
 
-  git push origin "$branch" && log_info "Changes pushed to $branch successfully!"
+  git push origin "$branch" && log-info "Changes pushed to $branch successfully!"
 }
 
 # Check if no options are passed
@@ -50,7 +50,7 @@ while getopts "hb" opt 2>/dev/null; do
     ;;
   b)
     if [[ -z "$2" ]]; then
-      log_error "You must pass a branch when using -b option."
+      log-error "You must pass a branch when using -b option."
     else
       if [[ "$branch" != "$2" ]]; then
         git checkout "$branch"
@@ -59,7 +59,7 @@ while getopts "hb" opt 2>/dev/null; do
     fi
     ;;
   \?)
-    log_error "Invalid option $OPTARG"
+    log-error "Invalid option $OPTARG"
     ;;
   esac
 done

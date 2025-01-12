@@ -11,9 +11,9 @@ if [[ ! -d "/usr/share/fonts/OTF" ]]; then
 	sudo mkdir /usr/share/fonts/OTF/
 fi
 
-sudo mv ~/fonts/*.ttf /usr/share/fonts/TTF/ >/dev/null 2>&1 || log_warning "No .ttf fonts found!"
-sudo mv ~/fonts/*.otf /usr/share/fonts/OTF/ >/dev/null 2>&1 || log_warning "No .otf fonts found!"
+sudo mv ~/fonts/*.ttf /usr/share/fonts/TTF/ >/dev/null 2>&1 || log-warning "No .ttf fonts found!"
+sudo mv ~/fonts/*.otf /usr/share/fonts/OTF/ >/dev/null 2>&1 || log-warning "No .otf fonts found!"
 
-log_info "Caching fonts..."
+log-info "Caching fonts..."
 
-sudo fc-cache -f && log_info "Fonts reloaded succefully!"
+sudo fc-cache -f && log-success "Fonts reloaded succefully!"

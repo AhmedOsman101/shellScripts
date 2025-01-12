@@ -14,15 +14,15 @@ Before running this project, ensure the following requirements are met:
 #### Linux
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 #### Windows
 
-```cmd
-python -m venv venv
-venv\Scripts\activate
+```shell
+python -m venv .venv
+.venv\Scripts\activate
 ```
 
 ### Step 3: Install Dependencies

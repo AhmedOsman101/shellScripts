@@ -6,14 +6,13 @@ source logs.sh
 file="$1"
 
 if [[ -f "$file" ]]; then
+  # shellcheck disable=SC2001
   filename="$(echo "$file" | sed 's/\.[^.]*$//')"
 
-  pandoc "$file" -o "${filename}.docx" --reference-doc="$MRT" || log_error "an Error occured"
+  pandoc "$file" -o "${filename}.docx" --reference-doc="$MRT" || log-error "an Error occured"
 
-  log_info "$file converted successfully!"
+  log-success "$file converted successfully!"
 
-else 
-  log_error "File $file does not exist!"
+else
+  log-error "File $file does not exist!"
 fi
-
-

@@ -5,16 +5,15 @@ source logs.sh
 
 cmd="$1"
 
-# until $cmd; 
-# do 
-#   $cmd
-# done
-
 # Infinite loop: repeat the command until it exits successfully
 while true; do
-    if [ "$cmd" ]; then
+    
+    if $cmd; then
         break
     fi
-
     
+    log-info "Retrying in 5s..."
+    sleep 5s
+    clear
+    echo "$cmd"
 done

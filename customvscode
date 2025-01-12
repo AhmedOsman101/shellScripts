@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=SC2230
 sudo chown -R "$(whoami)" "$(which code)"
 
 sudo chown -R "$(whoami)" /opt/visual-studio-code

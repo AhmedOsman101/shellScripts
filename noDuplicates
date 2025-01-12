@@ -7,11 +7,10 @@ file="$1"
 
 if [[ -f $file ]]; then
   tmpfile="$(mktemp)"
-  awk '!x[$0]++' "$file" > "$tmpfile"
-  cat "$tmpfile" > "$file"
+  awk '!x[$0]++' "$file" >"$tmpfile"
+  cat "$tmpfile" >"$file"
   rm -f "$tmpfile"
-  log_info "Duplicates removed!"
+  log-info "Duplicates removed!"
 else
-  log_error "$file was not found!"
+  log-error "$file was not found!"
 fi
-

@@ -13,7 +13,7 @@ file="$1"
 
 # Check if the file exists
 if [[ ! -f ${file} ]]; then
-	log_error "Error: File '${file}' does not exist."
+	log-error "Error: File '${file}' does not exist."
 fi
 
 # Initialize replacement counts
@@ -29,4 +29,4 @@ sed -i -e 's~\\\[~$$~g' \
 	-e 's~\\(~$~g' \
 	-e 's~\\)~$~g' "${file}"
 
-log_info "${count} Replacements made"
+log-info "${count} Replacements made"

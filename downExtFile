@@ -4,9 +4,10 @@ source logs.sh
 
 if [[ -f "extensions.json" ]]; then
 	# Attempt to read JSON file contents
-	extensions=$(jq -r '.[]' extensions.json 2>/dev/null)
+	extensions="$(jq -r '.[]' extensions.json 2>/dev/null)"
+	# shellcheck disable=SC2181
 	if [[ $? -ne 0 ]]; then
-		log_error "Failed to parse 'extensions.json'"
+		log-error "Failed to parse 'extensions.json'"
 	fi
 
 	# Create extensions directory if it does not exist
@@ -14,7 +15,7 @@ if [[ -f "extensions.json" ]]; then
 		mkdir "extensions"
 	fi
 else
-	log_error "File 'extensions.json' not found."
+	log-error "File 'extensions.json' not found."
 fi
 
 for extension in ${extensions}; do
@@ -27,14 +28,14 @@ for extension in ${extensions}; do
 
 	# Check if the file already exists in the directory
 	if [[ -f "${PWD}/extensions/${filename}" ]]; then
-		log_warning "Skipping ${filename}. File already exists."
+		log-warning "Skipping ${filename}. File already exists."
 	else
 		# Download the .vsix file with only the progress bar shown
 		if ! wget -q --show-progress -O "${PWD}/extensions/${filename}" "${url}"; then
-			log_error "Failed to download ${filename}."
+			log-error "Failed to download ${filename}."
 		fi
-		log_info "Downloaded ${filename}"
+		log-info "Downloaded ${filename}"
 	fi
 done
 
-log_info "Done 🚀"
+log-success "Done 🚀"
