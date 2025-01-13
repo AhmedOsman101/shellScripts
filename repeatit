@@ -4,15 +4,20 @@
 source logs.sh
 
 cmd="$1"
+counter=1;
 
 # Infinite loop: repeat the command until it exits successfully
 while true; do
 
     if $cmd; then
+        if [ ! $counter -eq 1 ]; then
+          log-success "Done after $counter retries 🚀"
+        fi
         break
     fi
 
     log-info "Retrying '$cmd' in 5s..."
     sleep 5s
     clear
+    counter=$((counter+1))
 done
