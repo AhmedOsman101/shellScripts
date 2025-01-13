@@ -11,7 +11,7 @@ while true; do
 
     if $cmd; then
         if [ ! $counter -eq 1 ]; then
-          log-success "Done after $counter retries 🚀"
+          log-success "Done after $counter retries 🚀!"
         fi
         break
     fi
