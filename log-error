@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+echo -e "\033[31m[ERROR]: $1\033[0m" >&2
+exit 1

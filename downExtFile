@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-source logs.sh
-
 if [[ -f "extensions.json" ]]; then
 	# Attempt to read JSON file contents
 	extensions="$(jq -r '.[]' extensions.json 2>/dev/null)"

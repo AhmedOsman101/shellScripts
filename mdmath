@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-source logs.sh
-
 # Check if the correct number of arguments is passed
 if [[ $# -ne 1 ]]; then
 	echo "Usage: $0 <file>"

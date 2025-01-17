@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=SC1091
-source logs.sh
-
 # returns true if it's a git repo and false otherwise
 isGitRepo="$(git rev-parse --is-inside-work-tree)"
 
@@ -32,7 +29,7 @@ main() {
 
   git commit -am "Updated Files ${timestamp}" && log-info "Committed Changes Locally ${timestamp}"
 
-  git push origin "$branch" && log-info "Changes pushed to $branch successfully!"
+  git push origin "$branch" && log-success "Changes pushed to $branch successfully!"
 }
 
 # Check if no options are passed

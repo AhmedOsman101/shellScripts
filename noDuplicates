@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=SC1091
-source logs.sh
-
 file="$1"
 
 if [[ -f $file ]]; then

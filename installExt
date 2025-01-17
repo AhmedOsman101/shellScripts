@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 # shellcheck source=/dev/null
-source logs.sh
 
 directory="$1" || "extensions"
 
@@ -20,4 +19,4 @@ for extension in *.vsix; do
 	fi
 done
 
-log-success "Installation Done."
+log-success "Installation Done 🚀"

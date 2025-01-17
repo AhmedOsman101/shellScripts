@@ -3,9 +3,12 @@
 fileName="$1"
 fileNameWithoutExtension="$(echo "${fileName}" | cut -d'.' -f1)"
 
-g++ "${fileName}" -o "${fileNameWithoutExtension}.out"
+outfile=$(mktemp -t "${fileNameWithoutExtension}"-XXXXXX.out)
+# Delete the temp file on `EXIT` signal (i.e. when the script ends)
+trap 'rm -f $outfile' EXIT
 
-if [[ -f "${fileNameWithoutExtension}.out" ]]; then
-  ./"${fileNameWithoutExtension}.out"
-  rm ./"${fileNameWithoutExtension}.out"
+g++ "${fileName}" -o "${outfile}" || exit
+
+if [[ -f "${outfile}" ]]; then
+  "$outfile"
 fi

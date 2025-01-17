@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=SC1091
-source logs.sh
-
 getExtensions() {
 	# Get all VS Code extensions
 	extensions="$(code --list-extensions)"
