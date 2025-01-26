@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
 fileName="$1"
-fileNameWithoutExtension="$(echo "${fileName}" | cut -d'.' -f1)"
 
-outfile=$(mktemp -t "${fileNameWithoutExtension}"-XXXXXX.out)
+outfile=$(mktemp -t "$(basename "$0")"-XXXXXX.out)
 # Delete the temp file on `EXIT` signal (i.e. when the script ends)
 trap 'rm -f $outfile' EXIT
 
