@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+file="$1"
+
+if [[ -f $file ]]; then
+  tmpfile="$(mktemp)"
+  trap 'rm -f $tmpfile' EXIT
+
+  # Count occurrences and keep order
+  awk '
+    {
+      count[$0]++
+      lines[NR] = $0
+    }
+    END {
+      for (i = 1; i <= NR; i++) {
+        if (count[lines[i]] == 1) print lines[i]
+      }
+    }
+  ' "$file" > "$tmpfile"
+
+  # Overwrite original file
+  cat "$tmpfile" > "$file"
+
+  log-info "Removed all non-unique entries"
+else
+  log-error "Error: $file not found!"
+fi
