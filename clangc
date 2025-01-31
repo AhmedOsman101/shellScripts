@@ -9,5 +9,5 @@ trap 'rm -f $outfile' EXIT
 clang "${fileName}" -o "${outfile}" || exit
 
 if [[ -f "${outfile}" ]]; then
-  "$outfile"
+  "${outfile}"
 fi

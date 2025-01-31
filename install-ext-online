@@ -5,7 +5,7 @@ origin="$1"
 file=$(mktemp -t "XXXXXX.json")
 trap 'rm -f $file' EXIT
 
-getExt "${file}" -o &>/dev/null
+get-ext "${file}" -o &>/dev/null
 
 if [[ ! -s "${origin}" ]]; then
   origin="[]"
@@ -28,7 +28,7 @@ for extension in ${extensions}; do
   extensionName=$(echo "${extension}" | cut -d '.' -f 2)
 
   log-info "installing ${extensionName}"
-  repeatit "code --install-extension ${extension} --force &>/dev/null"
+  repeat-it "code --install-extension ${extension} --force &>/dev/null"
 done
 
 log-success "Installation Done 🚀"
