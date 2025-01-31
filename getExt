@@ -11,7 +11,11 @@ getExtensions() {
 	printf '%s\n' "${array[@]}" | jq -R . | jq -s .
 }
 
-file="$1" || "extensions.json"
+if [[ -n $1 ]]; then
+	file=$1
+else
+	file="extensions.json"
+fi
 
 # Check if the file already exists
 if [[ -f "${file}" ]]; then
