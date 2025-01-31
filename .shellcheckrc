@@ -2,6 +2,7 @@ enable=all
 source-path=SCRIPTDIR
 source=/dev/null
 disable=SC2001
+disable=SC2002
 disable=SC2154
 disable=SC2181
 disable=SC2230
