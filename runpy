@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
 dir="$(dirname "$(which "$1")")/python"
-venv="$dir/.venv/bin/activate"
+venv="${dir}/.venv/bin/activate"
 
-source "$venv" || exit
+source "${venv}" || exit
 
-file="$dir/$1.py"
+file="${dir}/$1.py"
 
-python3 "$file" || (deactivate && exit)
+python3 "${file}" || (deactivate && exit)
 
 deactivate

@@ -6,15 +6,15 @@ counter=1
 # Infinite loop: repeat the command until it exits successfully
 while true; do
 
-  if $cmd; then
-    if [ ! $counter -eq 1 ]; then
+  if ${cmd}; then
+    if [[ ! ${counter} -eq 1 ]]; then
       echo ""
-      log-success "Done after $counter retries 🚀!"
+      log-success "Done after ${counter} retries 🚀!"
     fi
     break
   fi
 
-  log-info "Retrying '$cmd' in 5s..."
+  log-info "Retrying '${cmd}' in 5s..."
   sleep 5s
   clear
   counter=$((counter + 1))

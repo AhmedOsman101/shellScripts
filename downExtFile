@@ -3,7 +3,7 @@
 if [[ -f "extensions.json" ]]; then
 	# Attempt to read JSON file contents
 	extensions="$(jq -r '.[]' extensions.json 2>/dev/null)"
-	# shellcheck disable=SC2181
+
 	if [[ $? -ne 0 ]]; then
 		log-error "Failed to parse 'extensions.json'"
 	fi
