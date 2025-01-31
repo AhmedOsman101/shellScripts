@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
 
 file="$1"
+tmpfile="$(mktemp)"
+trap 'rm -f $tmpfile' EXIT
 
-if [[ -f $file ]]; then
-  tmpfile="$(mktemp)"
-  trap 'rm -f $tmpfile' EXIT
-  
-  awk '!x[$0]++' "$file" >"$tmpfile"
-
-  cat "$tmpfile" >"$file"
-
-  log-info "Duplicates removed!"
+if [[ -z ${file} || ${file} == "-" ]]; then
+  # Read from stdin
+  awk '!x[$0]++' > "${tmpfile}"
+  cat "${tmpfile}"
 else
-  log-error "$file was not found!"
+  # Read from {file}
+  if [[ -f ${file} ]]; then
+    awk '!x[$0]++' "${file}" > "${tmpfile}"
+    cat "${tmpfile}" > "${file}"
+    log-info "Duplicates removed!"
+  else
+    log-error "${file} was not found!"
+    exit 1
+  fi
 fi
+
+

@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 
 file="$1"
+tmpfile="$(mktemp)"
+trap 'rm -f $tmpfile' EXIT
 
-if [[ -f $file ]]; then
-  tmpfile="$(mktemp)"
-  trap 'rm -f $tmpfile' EXIT
-
-  # Count occurrences and keep order
+if [[ -z ${file} || ${file} == "-" ]]; then
+  # Read from stdin
   awk '
     {
       count[$0]++
@@ -17,12 +16,28 @@ if [[ -f $file ]]; then
         if (count[lines[i]] == 1) print lines[i]
       }
     }
-  ' "$file" > "$tmpfile"
-
-  # Overwrite original file
-  cat "$tmpfile" > "$file"
-
-  log-info "Removed all non-unique entries"
+  ' >"${tmpfile}"
+  # print the output to the stdout
+  cat "${tmpfile}"
 else
-  log-error "Error: $file not found!"
+  # Read from {file}
+  if [[ -f ${file} ]]; then
+    awk '
+      {
+        count[$0]++
+        lines[NR] = $0
+      }
+      END {
+        for (i = 1; i <= NR; i++) {
+          if (count[lines[i]] == 1) print lines[i]
+        }
+      }
+    ' "${file}" >"${tmpfile}"
+    # override the input file
+    cat "${tmpfile}" >"${file}"
+    log-info "Removed all non-unique entries!"
+  else
+    log-error "${file} was not found!"
+    exit 1
+  fi
 fi
