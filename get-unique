@@ -43,7 +43,7 @@ else
   if [[ -f ${file} ]]; then
     if [[ ${backup} -eq 1 ]]; then
       cp "${file}" "${file}.bak"
-      log-info "A backup .bak file has been created"
+      log-info "Backup created as ${file}.bak"
     fi
     awk '
       {
