@@ -15,7 +15,7 @@ fi
 
 if [[ -s "${file}" ]]; then
   # Combine JSON files with only unique enteries as an array
-  extensions="$(jq -s 'flatten' "${origin}" "${file}" | getUnique | sed 's/, *]/]/' | jq -r '.[]')"
+  extensions="$(jq -s 'flatten' "${origin}" "${file}" | get-unique | sed 's/, *]/]/' | jq -r '.[]')"
 
   if [[ $? -ne 0 ]]; then
     log-error "Failed to parse '${file}'" || exit 1

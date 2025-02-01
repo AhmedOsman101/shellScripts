@@ -6,7 +6,7 @@ outfile=$(mktemp -t "$(basename "$0")"-XXXXXX.out)
 # Delete the temp file on `EXIT` signal (i.e. when the script ends)
 trap 'rm -f $outfile' EXIT
 
-g++ "${fileName}" -o "${outfile}" || exit
+clang++ "${fileName}" -o "${outfile}" || exit
 
 if [[ -f "${outfile}" ]]; then
   "${outfile}"
