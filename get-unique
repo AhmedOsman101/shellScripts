@@ -1,5 +1,24 @@
 #!/usr/bin/env bash
 
+backup=0
+
+while getopts "b" opt; do
+  case ${opt} in
+  b)
+    backup=1
+    ;;
+  \?)
+    echo "Invalid option: -${OPTARG}" >&2
+    exit 1
+    ;;
+  *)
+    echo "Invalid option: -${OPTARG}" >&2
+    exit 1
+    ;;
+  esac
+done
+shift $((OPTIND - 1))
+
 file="$1"
 tmpfile="$(mktemp)"
 trap 'rm -f $tmpfile' EXIT
@@ -20,8 +39,12 @@ if [[ -z ${file} || ${file} == "-" ]]; then
   # print the output to the stdout
   cat "${tmpfile}"
 else
-  # Read from {file}
+  # Read from file
   if [[ -f ${file} ]]; then
+    if [[ ${backup} -eq 1 ]]; then
+      cp "${file}" "${file}.bak"
+      log-info "A backup .bak file has been created"
+    fi
     awk '
       {
         count[$0]++
@@ -37,7 +60,7 @@ else
     cat "${tmpfile}" >"${file}"
     log-info "Removed all non-unique entries!"
   else
-    log-error "${file} was not found!"
+    log-error "Error: ${file} was not found!" >&2
     exit 1
   fi
 fi
