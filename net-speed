@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 
-INTERFACE="$(ip route get 1.1.1.1 | awk '{print $5;exit}')"
+INTERFACE="$(net-interface)"
 
-RX_OLD="$(cat /sys/class/net/"${INTERFACE}"/statistics/rx_bytes)"
-TX_OLD="$(cat /sys/class/net/"${INTERFACE}"/statistics/tx_bytes)"
+DOWN_OLD="$(cat /sys/class/net/"${INTERFACE}"/statistics/rx_bytes)"
+UP_OLD="$(cat /sys/class/net/"${INTERFACE}"/statistics/tx_bytes)"
 
 while true; do
   sleep 1
 
-  RX_NEW="$(cat /sys/class/net/"${INTERFACE}"/statistics/rx_bytes)"
-  TX_NEW="$(cat /sys/class/net/"${INTERFACE}"/statistics/tx_bytes)"
+  DOWN_NEW="$(cat /sys/class/net/"${INTERFACE}"/statistics/rx_bytes)"
+  UP_NEW="$(cat /sys/class/net/"${INTERFACE}"/statistics/tx_bytes)"
 
-  RX_DIFF=$((RX_NEW - RX_OLD))
-  TX_DIFF=$((TX_NEW - TX_OLD))
+  DOWN_DIFF=$((DOWN_NEW - DOWN_OLD))
+  UP_DIFF=$((UP_NEW - UP_OLD))
 
-  RX_SPEED=$((RX_DIFF * 8 / 1024)) # Kbps
-  TX_SPEED=$((TX_DIFF * 8 / 1024)) # Kbps
+  DOWN_SPEED=$((DOWN_DIFF * 8 / 1024)) # Kbps
+  UP_SPEED=$((UP_DIFF * 8 / 1024))     # Kbps
 
-  RX_OLD=${RX_NEW}
-  TX_OLD=${TX_NEW}
+  DOWN_OLD=${DOWN_NEW}
+  UP_OLD=${UP_NEW}
 
-  printf " %d Kbps  %d Kbps\n" "${RX_SPEED}" "${TX_SPEED}"
+  printf " %d Kbps  %d Kbps\n" "${DOWN_SPEED}" "${UP_SPEED}"
 done
