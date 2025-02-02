@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 
-# shellcheck source=/dev/null
-
 file="$1"
 
 if [[ -f "${file}" ]]; then
   filename="$(echo "${file}" | sed 's/\.[^.]*$//')"
 
-  pandoc "${file}" -o "${filename}.docx" --reference-doc="${MRT}" || log-error "an Error occured"
+  if [[ -z "${MRT}" ]]; then
+    pandoc "${file}" -o "${filename}.docx" || log-error "an Error occured"
+  else
+    pandoc "${file}" -o "${filename}.docx" --reference-doc="${MRT}" || log-error "an Error occured"
+  fi
 
   log-success "${file} converted successfully!"
 

@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# shellcheck source=/dev/null
-
 if [[ ! -d "/usr/share/fonts/TTF" ]]; then
 	sudo mkdir /usr/share/fonts/TTF/
 fi

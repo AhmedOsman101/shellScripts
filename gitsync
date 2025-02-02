@@ -4,7 +4,7 @@
 isGitRepo="$(git rev-parse --is-inside-work-tree 2>/dev/null)"
 
 if [[ -z ${isGitRepo} ]]; then
-  log-error "${PWD} is not a git repository." || exit
+  log-error "${PWD} is not a git repository." || exit 1
 fi
 
 timestamp="$(date +"%Y-%m-%d@%I:%M%p")"
