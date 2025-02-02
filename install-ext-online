@@ -8,9 +8,7 @@ trap 'rm -f $file' EXIT
 get-ext "${file}" -o &>/dev/null
 
 if [[ ! -s "${origin}" ]]; then
-  origin="[]"
-  log-error "No entries found in ${origin}"
-  exit 0
+  log-warning "No entries found in ${origin}" || exit 0
 fi
 
 if [[ -s "${file}" ]]; then
@@ -21,13 +19,13 @@ if [[ -s "${file}" ]]; then
     log-error "Failed to parse '${file}'" || exit 1
   fi
 else
-  log-error "No new entries found in ${file}" || exit 0
+  log-warning "No new entries found in ${file}" || exit 0
 fi
 
 for extension in ${extensions}; do
   extensionName=$(echo "${extension}" | cut -d '.' -f 2)
 
-  log-info "installing ${extensionName}"
+  log-info "installing ${extensionName}..."
   repeat-it "code --install-extension ${extension} --force &>/dev/null"
 done
 

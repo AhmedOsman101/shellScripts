@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+backup=0
+
+while getopts "b" opt; do
+  case ${opt} in
+  b)
+    backup=1
+    ;;
+  \?)
+    echo "Invalid option: -${OPTARG}" >&2
+    exit 1
+    ;;
+  *)
+    echo "Invalid option: -${OPTARG}" >&2
+    exit 1
+    ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+file="$1"
+tmpfile="$(mktemp)"
+trap 'rm -f $tmpfile' EXIT
+
+if [[ -z ${file} || ${file} == "-" ]]; then
+  # Read from stdin
+  awk '!a[$0]++' | tee "${tmpfile}" >/dev/null
+  cat "${tmpfile}"
+else
+  # Read from file
+  if [[ -f ${file} ]]; then
+    if [[ ${backup} -eq 1 ]]; then
+      cp "${file}" "${file}.bak"
+      log-info "Backup created as ${file}.bak"
+    fi
+    awk '!a[$0]++' "${file}" >"${tmpfile}"
+    mv "${tmpfile}" "${file}"
+    log-info "Duplicates removed from '${file}'!"
+  else
+    log-error "'${file}' was not found!"
+    exit 1
+  fi
+fi
