@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-for compiler in clang++ g++ c++; do
+for compiler in g++ clang++ c++; do
   if command -v "${compiler}" &> /dev/null; then
     version="$("${compiler}" --version | head -n1)"
     break
