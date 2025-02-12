@@ -54,12 +54,13 @@ Rapid C code compiler/executor with automatic cleanup.
 #### Usage:
 
 ```bash
-clangc <filename>
+clangc <filename> <args>
 ```
 
 #### Parameters:
 
 - `<filename>`: (Required) C source file to compile and execute
+- `<args>`: (Optional) Compiler arguments
 
 #### Dependencies:
 
@@ -94,12 +95,13 @@ C++ equivalent compiler/executor using g++.
 #### Usage:
 
 ```bash
-cppc filename.cpp
+cppc <filename> <args>
 ```
 
 #### Parameters:
 
 - `filename.cpp`: (Required) C++ source file to process
+- `<args>`: (Optional) Compiler arguments
 
 #### Dependencies:
 
