@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 
 fileName="$1"
+shift # Remove the filename from the arguments list
 
 outfile=$(mktemp -t "$(basename "$0")"-XXXXXX.out)
 # Delete the temp file on `EXIT` signal (i.e. when the script ends)
 trap 'rm -f $outfile' EXIT
 
-clang "${fileName}" -o "${outfile}" || exit
+if [[ -n "$*" ]]; then
+  clang "${fileName}" -o "${outfile}" "$@" || exit
+else
+  clang "${fileName}" -o "${outfile}" || exit
+fi
 
 if [[ -f "${outfile}" ]]; then
   "${outfile}"
