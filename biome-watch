@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Function to display help text
+print_help() {
+  cat <<EOF
+Usage: $(basename "$0") [MODE]
+
+Modes:
+  react   : Use React extensions (js, mjs, cjs, ts, mts, cts, json, jsonc, jsx, tsx)
+  vue     : Use Vue extensions (js, mjs, cjs, ts, mts, cts, json, jsonc, vue)
+  std     : Use standard extensions (js, mjs, cjs, ts, mts, cts, json, jsonc) [default]
+
+Options:
+  -h, --help   Display this help message.
+EOF
+}
+
+# Check if help flag is passed
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  print_help
+  exit 0
+fi
+
+if [[ $# -gt 1 ]]; then
+  log-error "Unexpected arguments"
+  print_help
+  exit 1
+fi
+
+# Check if 'watchexec' is installed
+if ! command -v watchexec &>/dev/null; then
+  log-error "'watchexec' is not installed. Please install it to proceed."
+  exit 1
+fi
+
+mode="${1:-std}"
+
+case "${mode}" in
+'react')
+  extensionsArray=(js mjs cjs ts mts cts json jsonc jsx tsx)
+  ;;
+'vue')
+  extensionsArray=(js mjs cjs ts mts cts json jsonc vue)
+  ;;
+std | *)
+  extensionsArray=(js mjs cjs ts mts cts json jsonc)
+  ;;
+esac
+
+# Build a comma-separated string of extensions
+extensions=$(
+  IFS=,
+  echo "${extensionsArray[*]}"
+)
+
+watchexec -c --timings \
+  --delay-run 1s \
+  --debounce 5s \
+  --exts "${extensions}" \
+  biome check --fix --reporter=summary . &&
+  exit 0 || exit $?
