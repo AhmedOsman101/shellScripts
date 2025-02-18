@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ $# -gt 0 ]]; then # Check for arguments
+  copyq copy "$*"
+elif [[ -p /dev/stdin ]]; then
+  read -r str || log-error "Failed to read from stdin"
+  copyq copy "${str}"
+else
+  log-error "No valid input was given"
+fi
