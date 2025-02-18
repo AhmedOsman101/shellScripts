@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 getExtensions() {
 	# Get all VS Code extensions
 	extensions="$(code --list-extensions)"

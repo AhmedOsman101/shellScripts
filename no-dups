@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 backup=0
 
 while getopts "b" opt; do
@@ -39,6 +41,5 @@ else
     log-info "Duplicates removed from '${file}'!"
   else
     log-error "'${file}' was not found!"
-    exit 1
   fi
 fi

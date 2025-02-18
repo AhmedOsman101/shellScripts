@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 backup=0
 
 while getopts "b" opt; do
@@ -60,7 +62,6 @@ else
     cat "${tmpfile}" >"${file}"
     log-info "Removed all non-unique entries!"
   else
-    log-error "Error: ${file} was not found!" >&2
-    exit 1
+    log-error "Error: ${file} was not found!"
   fi
 fi

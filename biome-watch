@@ -24,15 +24,13 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
 fi
 
 if [[ $# -gt 1 ]]; then
-  log-error "Unexpected arguments"
-  print_help
+  log-error "Unexpected arguments" || print_help
   exit 1
 fi
 
 # Check if 'watchexec' is installed
 if ! command -v watchexec &>/dev/null; then
   log-error "'watchexec' is not installed. Please install it to proceed."
-  exit 1
 fi
 
 mode="${1:-std}"

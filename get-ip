@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 ip="$(ip a | rg "$(net-interface)" | rg inet)"
 
 if [[ -n "${ip}" ]]; then

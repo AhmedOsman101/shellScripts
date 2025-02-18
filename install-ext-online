@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 origin="$1"
 
 file=$(mktemp -t "XXXXXX.json")
@@ -16,7 +18,7 @@ if [[ -s "${file}" ]]; then
   extensions="$(jq -s 'flatten' "${origin}" "${file}" | get-unique | sed 's/, *]/]/' | jq -r '.[]')"
 
   if [[ $? -ne 0 ]]; then
-    log-error "Failed to parse '${file}'" || exit 1
+    log-error "Failed to parse '${file}'"
   fi
 else
   log-warning "No new entries found in ${file}" || exit 0

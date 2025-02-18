@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # returns true if it's a git repo and false otherwise
 isGitRepo="$(git rev-parse --is-inside-work-tree 2>/dev/null)"
 
 if [[ -z ${isGitRepo} ]]; then
-  log-error "${PWD} is not a git repository." || exit 1
+  log-error "${PWD} is not a git repository."
 fi
 
 timestamp="$(date +"%Y-%m-%d@%I:%M%p")"
