@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 
-str=$1
+set -euo pipefail
 
-if [[ -z ${str} || ${str} == "-" ]]; then
-  read -re str
-  copyq copy "${str}" &>/dev/null
-elif [[ $# -gt 0 ]]; then # Check for arguments
-  copyq copy "$*" &>/dev/null
+if [[ $# -eq 0 || $1 == "-"  ]]; then
+  str=$(cat)
 else
+  str="$*"
+fi
+
+if [[ -z ${str} ]]; then
   log-error "No valid input was given"
 fi
+
+copyq copy "${str}" &>/dev/null
