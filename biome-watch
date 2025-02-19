@@ -5,9 +5,9 @@ set -euo pipefail
 # Function to display help text
 print_help() {
   cat <<EOF
-Usage: $(basename "$0") [MODE]
+Usage: $(basename "$0") [PRESET]
 
-Modes:
+Presets:
   react   : Use React extensions (js, mjs, cjs, ts, mts, cts, json, jsonc, jsx, tsx)
   vue     : Use Vue extensions (js, mjs, cjs, ts, mts, cts, json, jsonc, vue)
   std     : Use standard extensions (js, mjs, cjs, ts, mts, cts, json, jsonc) [default]
@@ -33,16 +33,18 @@ if ! command -v watchexec &>/dev/null; then
   log-error "'watchexec' is not installed. Please install it to proceed."
 fi
 
-mode="${1:-std}"
+presets=('std' 'vue' 'react')
 
-case "${mode}" in
+preset="$(gum choose --header "Choose a preset: " "${presets[@]}")"
+
+case "${preset}" in
 'react')
   extensionsArray=(js mjs cjs ts mts cts json jsonc jsx tsx)
   ;;
 'vue')
   extensionsArray=(js mjs cjs ts mts cts json jsonc vue)
   ;;
-std | *)
+'std' | *)
   extensionsArray=(js mjs cjs ts mts cts json jsonc)
   ;;
 esac
