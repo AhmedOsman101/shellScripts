@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+file="$1"
+
+[[ -f "${file}" ]] || log-error "file '${file}' was not found!"
+
+output="$(mktemp -t XXXXXXX)"
+
+# Delete the temp file on `EXIT` signal (i.e. when the script ends)
+trap 'rm -f $output' EXIT
+
+tesseract "${file}" "${output}" 2 &>/dev/null || log-error "Tesseract failed on '${file}'."
+
+text=$(cat "${output}.txt")
+
+if [[ -z "${text}" ]]; then
+  log-warning "Tesseract produced no output for '${file}'."
+else
+  echo "${text}" | clipcopy || log-error "Copy to clipboard failed."
+  log-success "Text from '${file}' copied to clipboard."
+fi

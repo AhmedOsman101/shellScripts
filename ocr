@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+file="$1"
+shift
+
+[[ -f "${file}" ]] || log-error "file '${file}' was not found!"
+
+output="$(mktemp "${file}-XXX.txt")"
+
+if (("$#" == 0)); then
+  tesseract "${file}" "${output}" 2 &>/dev/null ||
+    log-error "Tesseract failed on '${file}'." ||
+    exit 1
+  # Delete the temp file on `EXIT` signal (i.e. when the script ends)
+  trap 'rm -f $output' EXIT
+  cat "${output}.txt"
+fi
+
+while (($# > 0)); do
+  case "${1}" in
+  -f | --file)
+    # only save as a file
+    shift
+    tesseract "${file}" "${output}" 2 &>/dev/null ||
+      log-error "Tesseract failed on '${file}'." ||
+      exit 1
+
+    log-success "Output file: '${output}' was created successfully!"
+    ;;
+  *)
+    # unknown flag/switch
+    log-error "Unknown flag '${1}'!"
+    shift
+    ;;
+  esac
+done
