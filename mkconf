@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+app=$(gum input --placeholder "Enter app's name e.g. vim")
+
+target="${TUCKR_DIR}/${app}/.config/${app}"
+
+source="${XDG_CONFIG_HOME:-"${HOME}/.config"}/${app}"
+
+if [[ ! -d "${source}" ]]; then
+
+  if [[ ! -d "${target}" ]]; then # if !from && !to: mkdir to
+    log-warning "Source directory doesn't exist!"
+    createDist=$(gum confirm "Do you want to create the target directory?") || createDist=1
+
+    if [[ ${createDist} -eq 0 ]]; then # 0 means yes
+      mkdir -p "${target}"
+    else
+      log-info "No changes were made!"
+      exit 0
+    fi
+  else # if !from && to: do nothing
+    log-info "Directory '${target}' already exists!"
+    exit 0
+  fi
+else
+  if [[ ! -d "${target}" ]]; then # if from && !to: mkdir to
+    mkdir -p "${target}"
+    log-info "'${target}' directory created!"
+  else # if from && to: ask to move `from` `to`
+    log-warning "Directory '$(dirname ${target})' already exists!"
+    moveSource=$(gum confirm "Do you want to move exsiting files to the target directory?") || (log-info "No changes were made!" && exit 0)
+    if [[ ${moveSource} -eq 0 ]]; then # 0 means yes
+      gum spin --spinner dot --title "Moving ${app}'s config from '$(dirname ${source})' to '$(dirname ${target})'" -- mv -iv "${source}" "$(dirname ${target})"
+    fi
+  fi
+fi
+
+log-success "Created config directory for ${app}!"
