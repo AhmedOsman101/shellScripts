@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-if [[ $# -eq 0 || $1 == "-"  ]]; then
+if [[ $# -eq 0 || $1 == "-" ]]; then
   str=$(cat)
 else
   str="$*"
