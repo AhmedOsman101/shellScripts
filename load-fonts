@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 if [[ ! -d "/usr/share/fonts/TTF" ]]; then
-	sudo mkdir /usr/share/fonts/TTF/
+	mkdir -p /usr/share/fonts/TTF
 fi
 
 if [[ ! -d "/usr/share/fonts/OTF" ]]; then
-	sudo mkdir /usr/share/fonts/OTF/
+	mkdir -p /usr/share/fonts/TTF
 fi
 
-sudo mv ~/fonts/*.ttf /usr/share/fonts/TTF/ >/dev/null 2>&1 || log-warning "No .ttf fonts found!"
-sudo mv ~/fonts/*.otf /usr/share/fonts/OTF/ >/dev/null 2>&1 || log-warning "No .otf fonts found!"
+sudo mv -i ~/fonts/*.ttf /usr/share/fonts/TTF/ >/dev/null 2>&1 || log-info "No .ttf fonts found!"
+sudo mv -i ~/fonts/*.otf /usr/share/fonts/OTF/ >/dev/null 2>&1 || log-info "No .otf fonts found!"
 
-log-info "Caching fonts..."
+gum spin --title "Caching fonts..." --spinner "dot" -- sudo fc-cache -f
 
-sudo fc-cache -f && log-success "Fonts reloaded succefully!"
+log-success "Fonts reloaded succefully!"
