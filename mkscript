@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+name=$(gum input --placeholder "Enter Script's name: ")
+
+[[ -f ${name} ]] && log-error "The scripts ${name} already exists at $(whereis ${name})!"
+
+file="${SCRIPTS_DIR}/${name}"
+
+touch "${file}" || log-error "Failed to create file '${file}'"
+
+text=$(
+  cat <<EOF
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+EOF
+)
+
+echo "${text}" >"${file}"
+
+chmod u+x "${file}" || log-error "Failed to make file '${file}' executable"
+
+"${EDITOR}" "${file}"
+
+log-success "Script '${name}' created succefully!"
