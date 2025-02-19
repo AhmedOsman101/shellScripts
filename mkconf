@@ -28,12 +28,16 @@ else
   if [[ ! -d "${target}" ]]; then # if from && !to: mkdir to
     mkdir -p "${target}"
     log-info "'${target}' directory created!"
-  else # if from && to: ask to move `from` `to`
-    log-warning "Directory '$(dirname ${target})' already exists!"
-    moveSource=$(gum confirm "Do you want to move exsiting files to the target directory?") || (log-info "No changes were made!" && exit 0)
-    if [[ ${moveSource} -eq 0 ]]; then # 0 means yes
-      gum spin --spinner dot --title "Moving ${app}'s config from '$(dirname ${source})' to '$(dirname ${target})'" -- mv -iv "${source}" "$(dirname ${target})"
-    fi
+  fi
+  moveSource=$(gum confirm "Do you want to move exsiting files to the target directory?") || {
+    log-info "No changes were made!"
+    exit 0
+  }
+  if [[ ${moveSource} -eq 0 ]]; then # 0 means yes
+    gum spin \
+      --spinner dot \
+      --title "Moving ${app}'s config from '$(dirname ${source})' to '$(dirname ${target})'" \
+      -- mv -v "${source}" "${target}"
   fi
 fi
 
