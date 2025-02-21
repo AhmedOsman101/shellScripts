@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+#
+# Script name: dm-man
+# Description: Search for a tldr page or get a random one.
+# Dependencies: dmenu, fzf, rofi, kitty, tldr
+# GitLab: https://www.gitlab.com/dwt1/dmscripts
+# License: https://www.gitlab.com/dwt1/dmscripts/LICENSE
+# Contributors: Derek Taylor
+#               Simon Ingelsson
+
+# Set with the flags "-e", "-u","-o pipefail" cause the script to fail
+# if certain things happen, which is a good thing.  Otherwise, we can
+# get hidden bugs that are hard to discover.
+set -euo pipefail
+
+# shellcheck disable=SC1091
+source ./_dm-helper.sh 2>/dev/null || source _dm-helper.sh 2>/dev/null
+
+source_dmscripts_configs
+
+if configs_are_different; then
+  echo "$(date): configs are different" >>"${DM_CONFIG_DIFF_LOGFILE}"
+  sleep 1
+fi
+
+run_tldr() {
+  eval "${DMTERM} tldr \"$1\""
+}
+export -f run_tldr
+
+main() {
+  # An array of options to choose.
+  local _options=("Search tldr Pages" "Random tldr Page" "Quit")
+  # Piping the above array into dmenu.
+  # We use "printf '%s\n'" to format the array one item to a line.
+  choice=$(printf '%s\n' "${_options[@]}" | ${MENU} 'tldr pages:')
+
+  # What to do when/if we choose one of the options.
+  case "${choice}" in
+  'Search tldr Pages')
+    tldr --list-all |
+      ${MENU} 'Search for:' |
+      xargs -I {} bash -c "${DMTERM} bash -c 'tldr \"{}\"; echo Press Enter to exit...; read'"
+    ;;
+  'Random tldr Page')
+    tldr --list-all |
+      shuf -n 1 |
+      ${MENU} 'Random TL;DR Page:' |
+      xargs -I {} bash -c "${DMTERM} bash -c 'tldr \"{}\"; echo Press Enter to exit...; read'"
+    ;;
+  'Quit')
+    echo "Program terminated." && exit 0
+    ;;
+  *)
+    exit 0
+    ;;
+  esac
+
+}
+
+MENU="$(get_menu_program "$@")"
+[[ "${BASH_SOURCE[0]}" == "${0}" ]] && main
