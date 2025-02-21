@@ -4,7 +4,7 @@ set -euo pipefail
 
 if [[ $# -eq 0 ]]; then
   directory=$(
-    eza "${TUCKR_DIR}" \
+    (eza "${TUCKR_DIR}" \
       --color=always \
       --only-dirs \
       --icons=always \
@@ -13,11 +13,15 @@ if [[ $# -eq 0 ]]; then
       --no-user \
       --sort name \
       --no-permissions \
-      --no-filesize | gum filter \
-      --placeholder="Search..." \
-      --header="Choose a config directory" \
-      --fuzzy | cut -d " " -f 2-
+      --no-filesize |
+      gum filter \
+        --indicator.background="" \
+        --placeholder="Search..." \
+        --header="Choose a config directory" \
+        --fuzzy |
+      cut -d " " -f 2-) || echo "${PWD}"
   )
+
 else
   directory=$1
 fi
