@@ -3,10 +3,20 @@
 cmd="$1"
 counter=1
 
+if [[ $# -eq 0 ]]; then
+  cmd=$(gum write --placeholder 'enter a command to repeat...')
+  # evaluate the command in the subshell to parse variables
+  cmd=$(eval echo "${cmd}")
+fi
+
+# Check if the command is empty after expansion
+if [[ -z "${cmd}" ]]; then
+  log-error "No command entered."
+fi
+
 # Infinite loop: repeat the command until it exits successfully
 while true; do
-
-  if ${cmd}; then
+  if eval "${cmd}"; then
     if [[ ! ${counter} -eq 1 ]]; then
       echo ""
       log-success "Done after ${counter} retries 🚀!"
