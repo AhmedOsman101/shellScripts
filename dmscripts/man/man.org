@@ -21,7 +21,7 @@ The hub script, allows easy access to other scripts.
 ** dm-colpick
 Find the hex value of a color you are searching for.
 ** dm-dictionary
- Uses the translate package as a dictionary.
+Uses the translate package as a dictionary.
 ** dm-documents
 Search for PDFs to open.
 ** dm-ip
