@@ -42,4 +42,6 @@ else
   fi
 fi
 
-log-success "Created config directory for ${app}!"
+log-success "Created config directory for ${app}!i"
+
+tuckr a "${app}" # Populate the config after making it
