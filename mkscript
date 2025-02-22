@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+trap 'exit 1' SIGUSR1
+
 name=$(gum input --placeholder "Enter Script's name: ")
 
 [[ -f ${name} ]] && log-error "The scripts ${name} already exists at $(whereis ${name})!"

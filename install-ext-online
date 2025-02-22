@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+trap 'exit 1' SIGUSR1
+
 origin="$1"
 
 file=$(mktemp -t "XXXXXX.json")

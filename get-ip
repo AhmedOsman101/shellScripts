@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+trap 'exit 1' SIGUSR1
+
 ip="$(ip a | rg "$(net-interface)" | rg inet)"
 
 if [[ -n "${ip}" ]]; then

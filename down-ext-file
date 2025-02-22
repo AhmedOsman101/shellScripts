@@ -2,42 +2,44 @@
 
 set -euo pipefail
 
+trap 'exit 1' SIGUSR1
+
 file="${1:-'extensions.json'}"
 
 if [[ -f "${file}" ]]; then
-	# Attempt to read JSON file contents
-	extensions="$(jq -r '.[]' "${file}" 2>/dev/null)"
+  # Attempt to read JSON file contents
+  extensions="$(jq -r '.[]' "${file}" 2>/dev/null)"
 
-	if [[ $? -ne 0 ]]; then
-		log-error "Failed to parse '${file}'"
-	fi
+  if [[ $? -ne 0 ]]; then
+    log-error "Failed to parse '${file}'"
+  fi
 
-	# Create extensions directory if it does not exist
-	if [[ ! -d "extensions" ]]; then
-		mkdir "extensions"
-	fi
+  # Create extensions directory if it does not exist
+  if [[ ! -d "extensions" ]]; then
+    mkdir "extensions"
+  fi
 else
-	log-error "File '${file}' not found."
+  log-error "File '${file}' not found."
 fi
 
 for extension in ${extensions}; do
-	publisher=$(echo "${extension}" | cut -d '.' -f 1)
-	extensionName=$(echo "${extension}" | cut -d '.' -f 2)
-	url="https://${publisher}.gallery.vsassets.io/_apis/public/gallery/publisher/${publisher}/extension/${extensionName}/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage"
+  publisher=$(echo "${extension}" | cut -d '.' -f 1)
+  extensionName=$(echo "${extension}" | cut -d '.' -f 2)
+  url="https://${publisher}.gallery.vsassets.io/_apis/public/gallery/publisher/${publisher}/extension/${extensionName}/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage"
 
-	# Construct the filename for the .vsix file
-	filename="${extensionName}.vsix"
+  # Construct the filename for the .vsix file
+  filename="${extensionName}.vsix"
 
-	# Check if the file already exists in the directory
-	if [[ -f "${PWD}/extensions/${filename}" ]]; then
-		log-warning "Skipping ${filename}. File already exists."
-	else
-		# Download the .vsix file with only the progress bar shown
-		if ! wget -q --show-progress -O "${PWD}/extensions/${filename}" "${url}"; then
-			log-error "Failed to download ${filename}."
-		fi
-		log-info "Downloaded ${filename}"
-	fi
+  # Check if the file already exists in the directory
+  if [[ -f "${PWD}/extensions/${filename}" ]]; then
+    log-warning "Skipping ${filename}. File already exists."
+  else
+    # Download the .vsix file with only the progress bar shown
+    if ! wget -q --show-progress -O "${PWD}/extensions/${filename}" "${url}"; then
+      log-error "Failed to download ${filename}."
+    fi
+    log-info "Downloaded ${filename}"
+  fi
 done
 
 log-success "Done 🚀"

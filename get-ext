@@ -2,42 +2,44 @@
 
 set -euo pipefail
 
+trap 'exit 1' SIGUSR1
+
 getExtensions() {
-	# Get all VS Code extensions
-	extensions="$(code --list-extensions)"
+  # Get all VS Code extensions
+  extensions="$(code --list-extensions)"
 
-	# Format the extensions for the JSON file
-	readarray -t array <<<"${extensions}"
+  # Format the extensions for the JSON file
+  readarray -t array <<<"${extensions}"
 
-	# Create the JSON content
-	printf '%s\n' "${array[@]}" | jq -R . | jq -s .
+  # Create the JSON content
+  printf '%s\n' "${array[@]}" | jq -R . | jq -s .
 }
 
 file="${1:-'extensions.json'}"
 
 # Check if the file already exists
 if [[ -f "${file}" ]]; then
-	if [[ $1 == "-o" || $2 == "-o" ]]; then
-		eval getExtensions >"${file}"
-		log-info "${file} has been overwritten."
-	elif [[ $1 == "" || $2 == "" ]]; then
-		overwrite='n'
-		log-warning "${file} exists do you want to overwrite it? (y/N): "
-		read -r overwrite
-		if [[ ${overwrite} == "y" || ${overwrite} == "Y" ]]; then
-			eval getExtensions >"${file}"
-			log-info "${file} has been overwritten."
-		elif [[ ${overwrite} == "n" || ${overwrite} == "N" || ${overwrite} == "" ]]; then
-			log-info "Original file was not overwritten."
-			exit 0
-		else
-			log-error "Invalid option!"
-		fi
-	else
-		log-error "Invalid option!"
-	fi
+  if [[ $1 == "-o" || $2 == "-o" ]]; then
+    eval getExtensions >"${file}"
+    log-info "${file} has been overwritten."
+  elif [[ $1 == "" || $2 == "" ]]; then
+    overwrite='n'
+    log-warning "${file} exists do you want to overwrite it? (y/N): "
+    read -r overwrite
+    if [[ ${overwrite} == "y" || ${overwrite} == "Y" ]]; then
+      eval getExtensions >"${file}"
+      log-info "${file} has been overwritten."
+    elif [[ ${overwrite} == "n" || ${overwrite} == "N" || ${overwrite} == "" ]]; then
+      log-info "Original file was not overwritten."
+      exit 0
+    else
+      log-error "Invalid option!"
+    fi
+  else
+    log-error "Invalid option!"
+  fi
 else
-	touch "${file}"
-	eval getExtensions >"${file}"
-	log-info "${file} has been created."
+  touch "${file}"
+  eval getExtensions >"${file}"
+  log-info "${file} has been created."
 fi

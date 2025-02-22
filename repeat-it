@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+trap 'exit 1' SIGUSR1
+
 cmd="$1"
 counter=1
 

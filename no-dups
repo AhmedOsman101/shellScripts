@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+trap 'exit 1' SIGUSR1
+
 backup=0
 
 while getopts "b" opt; do

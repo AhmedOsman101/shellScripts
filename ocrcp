@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+trap 'exit 1' SIGUSR1
+
 file="$1"
 
 [[ -f "${file}" ]] || log-error "file '${file}' was not found!"

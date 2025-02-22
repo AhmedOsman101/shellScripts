@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+trap 'exit 1' SIGUSR1
+
 directory="${1:-extensions}"
 
 # Change to the extensions directory
@@ -9,14 +11,14 @@ cd "${directory}" || log-error "${directory} was not found!"
 
 # Loop through all .vsix files in the extensions directory
 for extension in *.vsix; do
-	if [[ -f ${extension} ]]; then
-		# Install the extension using VSCode CLI
-		if ! code --install-extension "${extension}"; then
-			log-error "Error: Failed to install ${extension}."
-		fi
-	else
-		log-error "No .vsix files found in ${directory}."
-	fi
+  if [[ -f ${extension} ]]; then
+    # Install the extension using VSCode CLI
+    if ! code --install-extension "${extension}"; then
+      log-error "Error: Failed to install ${extension}."
+    fi
+  else
+    log-error "No .vsix files found in ${directory}."
+  fi
 done
 
 log-success "Installation Done 🚀"
