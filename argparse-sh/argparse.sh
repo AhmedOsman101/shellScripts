@@ -45,8 +45,8 @@ define_arg() {
   if [[ "$2" == "$_NULL_VALUE_" ]]; then
     ARG_PROPERTIES["$arg_name,default"]="" # Default value (for compatibility with 'argparse3.sh')
   fi
-  ARG_PROPERTIES["$arg_name,help"]=${3:-""}  # Help text
-  ARG_PROPERTIES["$arg_name,type"]=${4:-"string"} # Type [ "string" | "bool" ], default is "string".
+  ARG_PROPERTIES["$arg_name,help"]=${3:-""}             # Help text
+  ARG_PROPERTIES["$arg_name,type"]=${4:-"string"}       # Type [ "string" | "bool" ], default is "string".
   ARG_PROPERTIES["$arg_name,required"]=${5:-"optional"} # Required flag ["required" | "optional"], default is "optional"
 }
 
@@ -104,6 +104,9 @@ show_help() {
 # Usage: check_for_help "$@"
 check_for_help() {
   for arg in "$@"; do
-    [[ $arg == "-h" || $arg == "--help" ]] && { show_help; exit 0; }
+    [[ $arg == "-h" || $arg == "--help" ]] && {
+      show_help
+      exit 0
+    }
   done
 }
