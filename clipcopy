@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+trap 'exit 1' SIGUSR1
+
 if [[ $# -eq 0 || $1 == "-" ]]; then
   str=$(cat)
 else
@@ -12,4 +14,5 @@ if [[ -z ${str} ]]; then
   log-error "No valid input was given"
 fi
 
+copyq add "${str}" &>/dev/null
 copyq copy "${str}" &>/dev/null
