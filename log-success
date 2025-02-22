@@ -1,3 +1,10 @@
 #!/usr/bin/env bash
 
-echo -e "\033[32m[SUCCESS]: $1\033[0m"
+# 0: black, 1: red, 2: green, 3: yellow,
+# 4: blue, 5: magenta, 6: cyan, 7: white
+
+tput setaf 2
+
+echo -e "[SUCCESS]: $*"
+
+tput sgr0
