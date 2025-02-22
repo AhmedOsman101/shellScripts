@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-# 0: black, 1: red, 2: green, 3: yellow,
-# 4: blue, 5: magenta, 6: cyan, 7: white
+# black: 0, red: 1, green: 2, yellow: 3,
+# blue: 4, magenta: 5, cyan: 6, white: 7
+
 tput setaf 4
 
 echo -e "[INFO]: $*"

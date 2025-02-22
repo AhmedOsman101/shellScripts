@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+tput setaf 5
+
+echo -e "[DEBUG]: $*"
+
+tput sgr0
