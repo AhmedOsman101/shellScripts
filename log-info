@@ -4,6 +4,6 @@
 # 4: blue, 5: magenta, 6: cyan, 7: white
 tput setaf 4
 
-echo -e "[INFO]: ${err}"
+echo -e "[INFO]: $*"
 
 tput sgr0
