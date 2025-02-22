@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+choices=(
+  "feat: Introduce a new feature."
+  "fix: Patching a bug."
+  "revert: Reverting a previous commit."
+  "docs: Updates to documentation."
+  "style: Changes not affecting the code, e.g. formatting."
+  "refactor: Code changes, neither fix a bug nor add a feature."
+  "perf: Improveing performance."
+  "test: Adding/Correcting tests."
+  "build: Changes affecting the build system or external dependencies."
+  "chore: Updates to build configuration, auxiliary tools, and libraries."
+)
+
+type=$(
+  gum filter \
+    --placeholder "Commit type..." "${choices[@]}" |
+    cut -d ':' -f 1
+) || {
+  log-info "Program terminated!"
+  exit 0
+}
+
+summary=$(
+  gum input \
+    --value "(${type}): " \
+    --placeholder "Summary of this change"
+)
+details=$(gum write --placeholder "Details of this change") || {
+  log-info "Program terminated!"
+  exit 0
+}
+
+gum confirm "Commit changes?" || {
+  log-info "Program terminated!"
+  exit 0
+}
+
+git commit -m "${summary}" -m "${details}"
