@@ -24,32 +24,10 @@ if configs_are_different; then
 fi
 
 main() {
-  # An array of options to choose.
-  local _options=("Search manpages" "Random manpage" "Quit")
-  # Piping the above array into dmenu.
-  # We use "printf '%s\n'" to format the array one item to a line.
-  choice=$(printf '%s\n' "${_options[@]}" | ${MENU} 'Manpages:')
-
-  # What to do when/if we choose one of the options.
-  case "${choice}" in
-  'Search manpages')
-    # shellcheck disable=SC2086
-    man -k . | awk '{$3="-"; print $0}' |
-      ${MENU} 'Search for: ' |
-      awk '{print $2, $1}' | tr -d '()' | xargs ${DMTERM} man
-    ;;
-  'Random manpage')
-    # shellcheck disable=SC2086
-    man -k . | cut -d' ' -f1 | shuf -n 1 |
-      ${MENU} 'Random manpage: ' | xargs ${DMTERM} man
-    ;;
-  'Quit')
-    echo "Program terminated." && exit 0
-    ;;
-  *)
-    exit 0
-    ;;
-  esac
+  # shellcheck disable=SC2086
+  man -k . | awk '{$3="-"; print $0}' |
+    ${MENU} 'Search for: ' |
+    awk '{print $2, $1}' | tr -d '()' | xargs ${DMTERM} man
 
 }
 
