@@ -8,15 +8,15 @@ dmscripts - a collection of various dmenu scripts
 dmscripts are a collection of dmenu scripts written in bash.  Each script is written and contributed by DT or viewers.
 
 * USAGE
-** bash dm-hub
-Runs the dm-hub program which allows for easy access to the scripts.
+** bash dm
+Runs the dm program which allows for easy access to the scripts.
 ** bash path/to/script
-Runs the script specified without using dm-hub.
+Runs the script specified without using dm.
 ** ./path/to/script
 Same as bash path/to/script.
 
 * SCRIPTS
-** dm-hub
+** dm
 The hub script, allows easy access to other scripts.
 ** dm-colpick
 Find the hex value of a color you are searching for.

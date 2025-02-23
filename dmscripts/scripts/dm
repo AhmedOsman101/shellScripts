@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Script name: dm-hub
+# Script name: dm
 # Description: A hub allowing you to execute all the other dmscripts.
 # Dependencies: dmenu, fzf, rofi
 # GitLab: https://www.gitlab.com/dwt1/dmscripts
@@ -114,6 +114,6 @@ while getopts "dfrh" arg 2>/dev/null; do
 done
 
 # If script is run with NO argument, it will use 'dmenu'
-[[ "${no_opt}" = 1 ]] && [[ "${BASH_SOURCE[0]}" == "${0}" ]] && mainrofi "$@"
+[[ "${no_opt}" = 1 ]] && [[ "${BASH_SOURCE[0]}" == "${0}" ]] && mainfzf "$@"
 
 # TODO: for some reason dm-template is broken with this script, needs investigating

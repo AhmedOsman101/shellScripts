@@ -24,7 +24,7 @@ The scripts included in this repo are:
 - dm-colpick - Copy a color's hex value to your clipboard
 - dm-dictionary - Simple dictionary script
 - dm-documents - Searches for pdf files and opens them with the pdf viewer
-- dm-hub - A hub from where you can run all the scripts from.
+- dm - A hub from where you can run all the scripts from.
 - dm-ip - Get IP of interface or external IP
 - dm-kill - Search for a process to kill.
 - dm-lights - A tool to manage your backlights.
@@ -120,7 +120,7 @@ NOTE: Some distributions require the Haskell programming language to be installe
 
 ## Non-installation
 
-If you wish to try the scripts without installing, you can use dm-hub:
+If you wish to try the scripts without installing, you can use dm:
 for the scripts to work you need to have the config-file in one of three locations:
 
 - /etc/dmscripts/config
@@ -128,7 +128,7 @@ for the scripts to work you need to have the config-file in one of three locatio
 - ~/.config/dmscripts/config
 
 ```bash
-bash /path/to/dm-hub
+bash /path/to/dm
 ```
 
 To run a script without using the hub:
