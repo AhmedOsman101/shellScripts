@@ -90,7 +90,7 @@ parse_args() {
 show_help() {
   [[ -n "$SCRIPT_DESCRIPTION" ]] && echo -e "$SCRIPT_DESCRIPTION\n"
 
-  echo "usage: $0 [options...]"
+  echo "usage: $(basename $0) [options...]"
   echo "options:"
   for arg in "${!ARG_PROPERTIES[@]}"; do
     arg_name="${arg%%,*}" # Extract argument name
