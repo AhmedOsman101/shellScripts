@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -uo pipefail
 
-# Function to display help text
+trap 'exit 1' SIGUSR1 # Terminate script on SIGUSR1
 print_help() {
   cat <<EOF
 Usage: $(basename "$0") [PRESET]
