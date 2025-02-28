@@ -158,6 +158,9 @@ function cmdarg_usage {
   # cmdarg_usage
   #
   # Prints a very helpful usage message about the current program.
+  if [[ -n "${AUTHOR}" && -n "${AUTHOR_EMAIL}" ]]; then
+    CMDARG_INFO["author"]="${AUTHOR} <${AUTHOR_EMAIL}>"
+  fi
   echo "$(basename $0) ${CMDARG_INFO['copyright']}: ${CMDARG_INFO['author']}"
   echo
   echo "${CMDARG_INFO['header']}"
