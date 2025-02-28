@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+trap 'exit 1' SIGUSR1
+
+source cmdarg.sh
+
+# ----  Main script logic ---- #
+cmdarg_info "header" "Creates a colorful framed banner in the terminal."
+cmdarg_info "author" "${AUTHOR} <${AUTHOR_EMAIL}>"
+
+cmdarg "f?" "frame" "Symbol to use for the banner frame" ":"
+cmdarg "c?" "color" "Color of the banner (black, red, green, yellow, blue, magenta, cyan, white)" "white"
+
+cmdarg_parse "$@"
+
+color=${cmdarg_cfg['color']}
+frame=${cmdarg_cfg['frame']}
+
+msg=${cmdarg_argv[0]}
+
+[[ -z ${msg} ]] && log-error "Message is required"
+
+# Convert color name to ANSI code
+case ${color} in
+black) code=0 ;;
+red) code=1 ;;
+green) code=2 ;;
+yellow) code=3 ;;
+blue) code=4 ;;
+magenta) code=5 ;;
+cyan) code=6 ;;
+white) code=7 ;;
+*) log-error "Invalid color '${color}'" ;;
+esac
+
+# Build the banner
+text="${frame}${frame}${frame}${frame} ${msg} ${frame}${frame}${frame}${frame}"
+edge="${text//?/${frame}}"
+
+# Print with color
+tput setaf "${code}"
+printf "%s\n%s\n%s\n" "${edge}" "${text}" "${edge}"
+tput sgr0
