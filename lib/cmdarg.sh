@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if ((BASH_VERSINFO[0] < 4)); then
-  echo "cmdarg is incompatible with bash versions < 4, please upgrade bash" >&2
+  log-error "cmdarg is incompatible with bash versions < 4, please upgrade bash" >&2
   exit 1
 fi
 
@@ -32,13 +32,13 @@ function cmdarg {
   local shortopt=${1:0:1}
   local key="$2"
   if [[ "${shortopt}" == "h" ]]; then
-    echo "-h is reserved for cmdarg usage" >&2
+    log-error "-h is reserved for cmdarg usage" >&2
     ${CMDARG_ERROR_BEHAVIOR} 1
   fi
   if [[ "$(type -t cmdarg_${key})" != "" ]] ||
     [[ "${CMDARG_FLAGS[${shortopt}]}" != "" ]] ||
     [[ "${CMDARG_TYPES[${key}]}" != "" ]]; then
-    echo "command line key '${shortopt} (${key})' is reserved by cmdarg or defined twice" >&2
+    log-error "command line key '${shortopt} (${key})' is reserved by cmdarg or defined twice" >&2
     ${CMDARG_ERROR_BEHAVIOR} 1
   fi
 
@@ -47,21 +47,21 @@ function cmdarg {
   argtypemap['?']=${CMDARG_FLAG_OPTARG}
   local argtype=${1:1:1}
   if [[ "${argtype}" =~ ^[\[{]$ ]]; then
-    echo "Flags required [:?] when specifying Hash or Array arguments (${argtype})" >&2
+    log-error "Flags required [:?] when specifying Hash or Array arguments (${argtype})" >&2
     ${CMDARG_ERROR_BEHAVIOR} 1
   elif [[ "${argtype}" != "" ]]; then
     CMDARG_FLAGS[${shortopt}]=${argtypemap["${argtype}"]}
     if [[ "${1:2:4}" == "[]" ]]; then
       declare -p ${key} >/dev/null 2>&1
       if [[ $? -ne 0 ]]; then
-        echo 'Array variable '"${key}"' does not exist. Array variables MUST be declared by the user!' >&2
+        log-error 'Array variable '"${key}"' does not exist. Array variables MUST be declared by the user!' >&2
         ${CMDARG_ERROR_BEHAVIOR} 1
       fi
       CMDARG_TYPES[${key}]=${CMDARG_TYPE_ARRAY}
     elif [[ "${1:2:4}" == "{}" ]]; then
       declare -p ${key} >/dev/null 2>&1
       if [[ $? -ne 0 ]]; then
-        echo 'Hash variable '"${key}"' does not exist. Hash variables MUST be declared by the user!' >&2
+        log-error 'Hash variable '"${key}"' does not exist. Hash variables MUST be declared by the user!' >&2
         ${CMDARG_ERROR_BEHAVIOR} 1
       fi
       CMDARG_TYPES[${key}]=${CMDARG_TYPE_HASH}
@@ -87,7 +87,7 @@ function cmdarg {
   local validatorfunc
   validatorfunc=${5:-}
   if [[ "${validatorfunc}" != "" ]] && [[ "$(declare -F ${validatorfunc})" == "" ]]; then
-    echo "Validators must be bash functions accepting 1 argument (not '${validatorfunc}')" >&2
+    log-error "Validators must be bash functions accepting 1 argument (not '${validatorfunc}')" >&2
     ${CMDARG_ERROR_BEHAVIOR} 1
   fi
   CMDARG_VALIDATORS["${shortopt}"]="${validatorfunc}"
@@ -101,8 +101,7 @@ function cmdarg_info {
   #
   local flags="header|copyright|footer|author"
   if [[ ! "$1" =~ ${flags} ]]; then
-    echo "cmdarg_info <flag> <value>" >&2
-    echo "Where <flag> is one of ${flags}" >&2
+    log-error "cmdarg_info <flag> <value> \nWhere <flag> is one of ${flags}" >&2
     ${CMDARG_ERROR_BEHAVIOR} 1
   fi
   CMDARG_INFO["$1"]=$2
@@ -148,7 +147,7 @@ function cmdarg_describe_default {
     echo "-${opt},--${longopt} k=v{, ..} : Hash. ${description}. Pass this argument multiple times for multiple key/value pairs. ${default}"
     ;;
   *)
-    echo "Unable to return string description for ${opt}; unknown type ${argtype}" >&2
+    log-error "Unable to return string description for ${opt}; unknown type ${argtype}" >&2
     ${CMDARG_ERROR_BEHAVIOR} 1
     ;;
   esac
@@ -159,7 +158,7 @@ function cmdarg_usage {
   # cmdarg_usage
   #
   # Prints a very helpful usage message about the current program.
-  echo "$(basename $0) ${CMDARG_INFO['copyright']} : ${CMDARG_INFO['author']}"
+  echo "$(basename $0) ${CMDARG_INFO['copyright']}: ${CMDARG_INFO['author']}"
   echo
   echo "${CMDARG_INFO['header']}"
   echo
@@ -192,7 +191,7 @@ function cmdarg_validate {
   if [[ "${CMDARG_VALIDATORS[${shortopt}]}" != "" ]]; then
     (${CMDARG_VALIDATORS[${shortopt}]} "${value}" "${hashkey}")
     if [[ $? -ne 0 ]]; then
-      echo "Invalid value for -${shortopt} : ${value}" >&2
+      log-error "Invalid value for -${shortopt} : ${value}" >&2
       ${CMDARG_ERROR_BEHAVIOR} 1
     fi
   fi
@@ -225,14 +224,14 @@ function cmdarg_set_opt {
     local k=${arg%%=*}
     local v=${arg#*=}
     if [[ "${k}" == "${arg}" ]] && [[ "${v}" == "${arg}" ]] && [[ "${k}" == "${v}" ]]; then
-      echo "Malformed hash argument: ${arg}" >&2
+      log-error "Malformed hash argument: ${arg}" >&2
       ${CMDARG_ERROR_BEHAVIOR} 1
     fi
     eval "${key}[\$k]=\$v"
     cmdarg_validate "${key}" "${v}" "${k}" || ${CMDARG_ERROR_BEHAVIOR} 1
     ;;
   *)
-    echo "Unable to return string description for ${key}; unknown type ${CMDARG_TYPES[${key}]}" >&2
+    log-error "Unable to return string description for ${key}; unknown type ${CMDARG_TYPES[${key}]}" >&2
     ${CMDARG_ERROR_BEHAVIOR} 1
     ;;
   esac
@@ -304,32 +303,31 @@ function cmdarg_parse {
       cmdarg_argv+=("${fullopt}")
       continue
     else
-      echo "Malformed argument: ${fullopt}" >&2
-      echo "While parsing: $@" >&2
       ${cmdarg_helpers['usage']} >&2
+      log-error "Malformed argument: ${fullopt} \nWhile parsing: $@"
       ${CMDARG_ERROR_BEHAVIOR} 1
     fi
 
     if [[ "${opt}" == "h" ]] || [[ "${longopt}" == "help" ]]; then
-      ${cmdarg_helpers['usage']} >&2
-      ${CMDARG_ERROR_BEHAVIOR} 1
+      ${cmdarg_helpers['usage']}
+      ${CMDARG_ERROR_BEHAVIOR} 0
     fi
 
     if [[ ${is_equals_arg} -eq 1 ]]; then
-      if [[ ${CMDARG_FLAGS[${opt}]} -eq ${CMDARG_FLAG_REQARG} ]] ||
-        [[ ${CMDARG_FLAGS[${opt}]} -eq ${CMDARG_FLAG_OPTARG} ]]; then
+      if [[ ${CMDARG_FLAGS[${opt}]} -eq ${CMDARG_FLAG_REQARG} ]] 2>/dev/null ||
+        [[ ${CMDARG_FLAGS[${opt}]} -eq ${CMDARG_FLAG_OPTARG} ]] 2>/dev/null; then
         optarg=$1
         shift
       fi
     fi
 
-    if [[ -n ${CMDARG["${opt}"]+abc} ]]; then
+    if [[ -n ${CMDARG["${opt}"]+abc} ]] 2>/dev/null; then
       cmdarg_set_opt "${CMDARG[${opt}]}" "${optarg}"
       local rc=$?
-      failed=$((failed + ${rc}))
+      failed=$((failed + rc))
     else
-      echo "Unknown argument or invalid value : -${opt} | --${longopt}" >&2
       ${cmdarg_helpers['usage']} >&2
+      log-error "Unknown argument or invalid value : -${opt} | --${longopt}" >&2
       ${CMDARG_ERROR_BEHAVIOR} 1
     fi
   done
@@ -345,12 +343,12 @@ function cmdarg_parse {
     fi
   done
 
-  if [[ "$failed" -gt 0 ]]; then
-    if [[ "${missing}" != "" ]]; then
-      echo "Missing arguments : ${missing}" >&2
-    fi
-    echo >&2
+  if [[ "${failed}" -gt 0 ]]; then
     ${cmdarg_helpers['usage']} >&2
+    echo >&2
+    if [[ "${missing}" != "" ]]; then
+      log-error "Missing arguments : ${missing}" >&2
+    fi
     ${CMDARG_ERROR_BEHAVIOR} 1
   fi
 }
@@ -365,8 +363,8 @@ function cmdarg_traceback {
     # Grab the source code of the line
     sed -n "${BASH_LINENO[i]}{s/^/    /;p}" "${BASH_SOURCE[i + 1]}" >&2
   done
-  echo "  Error: ${LASTERR}"
   unset FRAMES
+  log-error "  Error: ${LASTERR}"
 }
 
 function cmdarg_dump {
