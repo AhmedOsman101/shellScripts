@@ -313,7 +313,7 @@ function cmdarg_parse {
 
     if [[ "${opt}" == "h" ]] || [[ "${longopt}" == "help" ]]; then
       ${cmdarg_helpers['usage']}
-      ${CMDARG_ERROR_BEHAVIOR} 0
+      exit 0
     fi
 
     if [[ ${is_equals_arg} -eq 1 ]]; then
