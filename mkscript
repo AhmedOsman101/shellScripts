@@ -1,54 +1,50 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
+source cmdarg.sh
+
+# ----  Main script logic ---- #
+cmdarg_info "header" "A script for creating bash scripts automatically"
+
+cmdarg "t" "temp" "Creates the script at /tmp and copies its name to clipboard"
+cmdarg "f" "file" "Creates the script in the current working directory"
+
+cmdarg_parse "$@"
+
+isTemp=${cmdarg_cfg['temp']}
+isFile=${cmdarg_cfg['file']}
 # Store option values
-temp_flag=0
-file_flag=0
-no_flags=0
+no_flags=false
+file=""
 
-# Parse options
-while getopts "ft" opt; do
-  case "${opt}" in
-  f)
-    file_flag=1
-    ;;
-  t)
-    temp_flag=1
-    ;;
-  ?)
-    no_flags=1
-    ;;
-  *)
-    log-error "Invalid option: -${OPTARG}"
-    ;;
-  esac
-done
+[[ $# -eq 0 ]] && no_flags=true
 
-# # Shift past the options to handle remaining arguments
-# shift $((OPTIND - 1))
-
-if [[ "${temp_flag}" -eq 1 ]]; then
+if [[ "${isTemp}" == true ]]; then
   file=$(mktemp -t XXXXX-script.sh)
-  name="$(basename "${file}")"
-  trap 'rm -f $file' EXIT
+  name="${file}"
+  clipcopy "${file}"
+  log-info "The script name was copied to clipboard"
 
-elif [[ "${file_flag}" -eq 1 ]]; then
+elif [[ "${isFile}" == true ]]; then
   name=$(gum input --placeholder "Enter Script's name: ")
   file="${PWD}/${name}"
+  mkdir -p "$(dirname ${file})" 2>/dev/null
+  name="$(basename ${file})"
 
   if [[ "${name}" != *.sh ]]; then
     gum confirm "Do you want to add .sh extension to your script?" && file="${PWD}/${name}.sh"
   fi
 
-elif [[ "${no_flags}" -eq 1 ]]; then
+elif [[ "${no_flags}" == true ]]; then
   name=$(gum input --placeholder "Enter Script's name: ")
   file="${SCRIPTS_DIR}/${name}"
+  name="$(basename ${file})"
 fi
 
-[[ -f "${file}" && "${temp_flag}" -eq 0 ]] && log-error "The script '${name}' already exists at '${file}'!"
+[[ -f "${file}" && "${isTemp}" == false ]] && log-error "The script '${name}' already exists at '${file}'!"
 
 touch "${file}" || log-error "Failed to create file '${file}'"
 
@@ -63,8 +59,8 @@ EOF
 
 echo "${text}" >"${file}"
 
-chmod u+x "${file}" || log-error "Failed to make '${name}' executable"
+chmod u+x "${file}" || log-error "Failed to make '$(basename ${file})' executable"
 
 "${EDITOR}" "${file}"
 
-log-success "Script '${name}' created succefully!"
+log-success "Script '$(basename ${file})' created succefully!"
