@@ -6,7 +6,6 @@ source cmdarg.sh
 
 # ----  Main script logic ---- #
 cmdarg_info "header" "Creates a colorful framed banner in the terminal."
-cmdarg_info "author" "${AUTHOR} <${AUTHOR_EMAIL}>"
 
 cmdarg "f?" "frame" "Symbol to use for the banner frame" ":"
 cmdarg "c?" "color" "Color of the banner (black, red, green, yellow, blue, magenta, cyan, white)" "white"
