@@ -13,6 +13,4 @@ else
   clang "${fileName}" -o "${outfile}" || exit
 fi
 
-if [[ -f "${outfile}" ]]; then
-  "${outfile}"
-fi
+[[ -f "${outfile}" ]] && "${outfile}"

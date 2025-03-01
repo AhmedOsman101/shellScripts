@@ -2,13 +2,9 @@
 
 set -euo pipefail
 
-if [[ ! -d "/usr/share/fonts/TTF" ]]; then
-	mkdir -p /usr/share/fonts/TTF
-fi
+[[ ! -d "/usr/share/fonts/TTF" ]] && mkdir -p /usr/share/fonts/TTF
 
-if [[ ! -d "/usr/share/fonts/OTF" ]]; then
-	mkdir -p /usr/share/fonts/TTF
-fi
+[[ ! -d "/usr/share/fonts/OTF" ]] && mkdir -p /usr/share/fonts/TTF
 
 sudo mv -i ~/fonts/*.ttf /usr/share/fonts/TTF/ >/dev/null 2>&1 || log-info "No .ttf fonts found!"
 sudo mv -i ~/fonts/*.otf /usr/share/fonts/OTF/ >/dev/null 2>&1 || log-info "No .otf fonts found!"

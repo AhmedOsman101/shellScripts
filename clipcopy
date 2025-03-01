@@ -10,9 +10,7 @@ else
   str="$*"
 fi
 
-if [[ -z ${str} ]]; then
-  log-error "No valid input was given"
-fi
+[[ -z ${str} ]] && log-error "No valid input was given"
 
 copyq add "${str}" &>/dev/null
 copyq copy "${str}" &>/dev/null

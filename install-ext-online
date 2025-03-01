@@ -11,17 +11,16 @@ trap 'rm -f $file' EXIT
 
 get-ext "${file}" -o &>/dev/null
 
-if [[ ! -s "${origin}" ]]; then
+[[ ! -s "${origin}" ]] && {
   log-warning "No entries found in ${origin}" || exit 0
-fi
+}
 
 if [[ -s "${file}" ]]; then
   # Combine JSON files with only unique enteries as an array
   extensions="$(jq -s 'flatten' "${origin}" "${file}" | get-unique | sed 's/, *]/]/' | jq -r '.[]')"
 
-  if [[ $? -ne 0 ]]; then
-    log-error "Failed to parse '${file}'"
-  fi
+  [[ $? -ne 0 ]] && log-error "Failed to parse '${file}'"
+
 else
   log-warning "No new entries found in ${file}" || exit 0
 fi

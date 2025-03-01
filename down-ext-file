@@ -10,14 +10,10 @@ if [[ -f "${file}" ]]; then
   # Attempt to read JSON file contents
   extensions="$(jq -r '.[]' "${file}" 2>/dev/null)"
 
-  if [[ $? -ne 0 ]]; then
-    log-error "Failed to parse '${file}'"
-  fi
+  [[ $? -ne 0 ]] && log-error "Failed to parse '${file}'"
 
   # Create extensions directory if it does not exist
-  if [[ ! -d "extensions" ]]; then
-    mkdir "extensions"
-  fi
+  [[ ! -d "extensions" ]] && mkdir "extensions"
 else
   log-error "File '${file}' not found."
 fi
