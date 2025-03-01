@@ -17,12 +17,10 @@ if [[ ! -d "${source}" ]]; then
     if [[ ${createDist} -eq 0 ]]; then # 0 means yes
       mkdir -p "${target}"
     else
-      log-info "No changes were made!"
-      exit 0
+      log-info "No changes were made!" && exit 0
     fi
   else # if !from && to: do nothing
-    log-info "Directory '${target}' already exists!"
-    exit 0
+    log-info "Directory '${target}' already exists!" && exit 0
   fi
 else
   if [[ ! -d "${target}" ]]; then # if from && !to: mkdir to

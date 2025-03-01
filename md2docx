@@ -9,7 +9,7 @@ file="$1"
 if [[ -f "${file}" ]]; then
   filename="$(echo "${file}" | sed 's/\.[^.]*$//')"
 
-  if [[ -z "${MRT}" ]]; then
+  if [[ -z "${MRT}" && -f ${MRT} ]]; then
     pandoc "${file}" -o "${filename}.docx" || log-error "an Error occured"
   else
     pandoc "${file}" -o "${filename}.docx" --reference-doc="${MRT}" || log-error "an Error occured"

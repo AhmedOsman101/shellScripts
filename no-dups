@@ -8,17 +8,8 @@ backup=0
 
 while getopts "b" opt; do
   case ${opt} in
-  b)
-    backup=1
-    ;;
-  \?)
-    echo "Invalid option: -${OPTARG}" >&2
-    exit 1
-    ;;
-  *)
-    echo "Invalid option: -${OPTARG}" >&2
-    exit 1
-    ;;
+  b) backup=1 ;;
+  ? | *) log-error "Invalid option: -${OPTARG}" ;;
   esac
 done
 shift $((OPTIND - 1))

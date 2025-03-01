@@ -3,4 +3,3 @@
 set -euo pipefail
 
 mkdir -p "$(dirname "$2")" && mv -i "$1" "$2"
-

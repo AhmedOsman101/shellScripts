@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-INTERFACE="$(ip route get 1.1.1.1 2>/dev/null | awk '{print $5;exit}')"
+interface="$(ip route get 1.1.1.1 2>/dev/null | awk '{print $5;exit}')"
 
-if [[ -n "${INTERFACE}" ]]; then
-  echo "${INTERFACE}"
+if [[ -n "${interface}" ]]; then
+  echo "${interface}"
 else
-  INTERFACE="$(ip route get 8.8.8.8 2>/dev/null | awk '{print $5;exit}')"
-  if [[ -n "${INTERFACE}" ]]; then
-    echo "${INTERFACE}"
+  interface="$(ip route get 8.8.8.8 2>/dev/null | awk '{print $5;exit}')"
+  if [[ -n "${interface}" ]]; then
+    echo "${interface}"
   else
     echo ""
   fi

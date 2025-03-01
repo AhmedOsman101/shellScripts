@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 
-INTERFACE="$(net-interface)"
+interface="$(net-interface)"
 
-DOWN_OLD="$(cat /sys/class/net/"${INTERFACE}"/statistics/rx_bytes)"
-UP_OLD="$(cat /sys/class/net/"${INTERFACE}"/statistics/tx_bytes)"
+downOld="$(cat /sys/class/net/"${interface}"/statistics/rx_bytes)"
+upOld="$(cat /sys/class/net/"${interface}"/statistics/tx_bytes)"
 
 while true; do
   sleep 1
 
-  DOWN_NEW="$(cat /sys/class/net/"${INTERFACE}"/statistics/rx_bytes)"
-  UP_NEW="$(cat /sys/class/net/"${INTERFACE}"/statistics/tx_bytes)"
+  downNew="$(cat /sys/class/net/"${interface}"/statistics/rx_bytes)"
+  upNew="$(cat /sys/class/net/"${interface}"/statistics/tx_bytes)"
 
-  DOWN_DIFF=$((DOWN_NEW - DOWN_OLD))
-  UP_DIFF=$((UP_NEW - UP_OLD))
+  downDiff=$((downNew - downOld))
+  upDiff=$((upNew - upOld))
 
-  DOWN_SPEED=$((DOWN_DIFF * 8 / 1024)) # Kbps
-  UP_SPEED=$((UP_DIFF * 8 / 1024))     # Kbps
+  downSpeed=$((downDiff * 8 / 1024)) # Kbps
+  upSpeed=$((upDiff * 8 / 1024))     # Kbps
 
-  DOWN_OLD=${DOWN_NEW}
-  UP_OLD=${UP_NEW}
+  downOld=${downNew}
+  upOld=${upNew}
 
-  printf " %d Kbps  %d Kbps\n" "${DOWN_SPEED}" "${UP_SPEED}"
+  printf " %d Kbps  %d Kbps\n" "${downSpeed}" "${upSpeed}"
 done
