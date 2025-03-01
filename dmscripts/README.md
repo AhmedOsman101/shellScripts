@@ -21,7 +21,7 @@ dmscripts originally began life as a collection of scripts designed to use dmenu
 
 The scripts included in this repo are:
 
-- dm-colpick - Copy a color's hex value to your clipboard
+- dm-color - Copy a color's hex value to your clipboard
 - dm-dictionary - Simple dictionary script
 - dm-documents - Searches for pdf files and opens them with the pdf viewer
 - dm - A hub from where you can run all the scripts from.
