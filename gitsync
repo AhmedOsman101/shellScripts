@@ -25,9 +25,7 @@ hasMsg=${cmdarg_cfg['message']}
 
 currentBranch="$(git branch --show-current 2>/dev/null)"
 
-if [[ -z "${currentBranch}" ]]; then
-  log-error "Unable to determine current branch."
-fi
+[[ -z "${currentBranch}" ]] && log-error "Unable to determine current branch."
 
 # Check if the branch argument is an empty string
 if [[ "${branch}" == "no branch" || -z "${branch}" ]]; then
@@ -39,7 +37,8 @@ elif [[ "${branch}" != "${currentBranch}" ]]; then
 fi
 
 main() {
-  local timestamp="$(date +"%Y-%m-%d@%I:%M%p")"
+  local timestamp
+  timestamp="$(date +"%Y-%m-%d@%I:%M%p")"
 
   git add --all
 
