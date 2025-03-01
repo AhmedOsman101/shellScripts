@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Script name: dm-colpick
+# Script name: dm-color
 # Description: Copy a color to your clipboard; colors listed in dmscripts config.
 # Dependencies: dmenu, fzf, rofi, copyq
 # GitLab: https://www.gitlab.com/dwt1/dmscripts
@@ -27,8 +27,8 @@ fi
 
 main() {
   if [[ -z "${!colpick_list[*]}" ]]; then
-    notify-send "dm-colpick: BREAKING CHANGES" "Due to breaking changes you must edit all declare statements in your config to include the g option. declare -A -> declare -Ag, declare -a -> declare -ag"
-    echo "$(date): dm-colpick: BREAKING CHANGES: Due to breaking changes you must edit all declare statements in your config to include the g option.
+    notify-send "dm-color: BREAKING CHANGES" "Due to breaking changes you must edit all declare statements in your config to include the g option. declare -A -> declare -Ag, declare -a -> declare -ag"
+    echo "$(date): dm-color: BREAKING CHANGES: Due to breaking changes you must edit all declare statements in your config to include the g option.
 declare -A -> declare -Ag
 declare -a -> declare -ag" >>"${DM_CONFIG_DIFF_LOGFILE}"
     sleep 2
