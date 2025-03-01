@@ -140,18 +140,18 @@ websearch[sourceforge]="https://sourceforge.net/directory/?q="
 websearch[stackoverflow]="https://stackoverflow.com/search?q="
 # Etc
 
-# dm-colpick config
+# dm-color config
 declare -Ag colpick_list
-colpick_list[black]="#282a36"
-colpick_list[red]="#ff5555"
-colpick_list[green]="#5af78e"
-colpick_list[yellow]="#f1fa8c"
-colpick_list[blue]="#57c7ff"
-colpick_list[magenta]="#ff6ac1"
-colpick_list[cyan]="#8be9fd"
-colpick_list[white]="#f1f1f0"
-colpick_list[orange]="#ffb86c"
-colpick_list[purple]="#bd9cf9"
+colpick_list[black]="#14141e"   # color0
+colpick_list[red]="#f7768e"     # color1
+colpick_list[green]="#35BF88"   # color2
+colpick_list[yellow]="#dbac66"  # color3
+colpick_list[blue]="#4ca6e8"    # color4
+colpick_list[magenta]="#bb9af7" # color5
+colpick_list[cyan]="#7dcfff"    # color6
+colpick_list[white]="#e6e6e8"   # color7
+colpick_list[orange]="#EFCA84"  # color11 (using brighter yellow as orange)
+colpick_list[purple]="#7aa2f7"  # color12 (using brighter blue as purple)
 
 # dm-weather config
 
