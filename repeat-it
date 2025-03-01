@@ -7,27 +7,29 @@ counter=1
 
 if [[ $# -eq 0 ]]; then
   cmd=$(gum write --placeholder 'enter a command to repeat...')
-  # evaluate the command in the subshell to parse variables
+  # Evaluate the command to parse variables
   cmd=$(eval echo "${cmd}")
 fi
 
-# Check if the command is empty after expansion
-if [[ -z "${cmd}" ]]; then
-  log-error "No command entered."
-fi
+# Check if the command is empty
+[[ -z "${cmd}" ]] && log-error "No command entered."
 
-# Infinite loop: repeat the command until it exits successfully
+# Infinite loop: repeat until success or interruption
 while true; do
   if eval "${cmd}"; then
-    if [[ ! ${counter} -eq 1 ]]; then
-      echo ""
-      log-success "Done after ${counter} retries 🚀!"
-    fi
+    [[ ! ${counter} -eq 1 ]] && log-success "\nDone after ${counter} retries 🚀!"
     break
   fi
 
-  log-info "Retrying '${cmd}' in 5s..."
-  sleep 5s
+  # Run gum spin, and check its exit status
+  if ! gum spin --spinner dot \
+    --title "Retrying '${cmd}' in 5s..." \
+    --title.foreground="#4ca6e8" \
+    -- sleep 5; then
+    # If gum spin fails (e.g., due to Ctrl+C), exit
+    exit 0
+  fi
+
   clear
   counter=$((counter + 1))
 done
