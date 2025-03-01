@@ -1,41 +1,38 @@
 #!/usr/bin/env bash
 
-set -uo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1 # Terminate script on SIGUSR1
+
+source cmdarg.sh
+
+cmdarg_info "header" "Script for formatting on code changes uisng biome.js"
+
+cmdarg "p?" "preset" "The files preset to watch" "std"
+
+cmdarg_parse "$@"
+
+preset=${cmdarg_cfg['preset']}
+
+# Function to display help text
 print_help() {
   cat <<EOF
-Usage: $(basename "$0") [PRESET]
-
 Presets:
+  std     : Use standard extensions (js, mjs, cjs, ts, mts, cts, json, jsonc) [default]
   react   : Use React extensions (js, mjs, cjs, ts, mts, cts, json, jsonc, jsx, tsx)
   vue     : Use Vue extensions (js, mjs, cjs, ts, mts, cts, json, jsonc, vue)
-  std     : Use standard extensions (js, mjs, cjs, ts, mts, cts, json, jsonc) [default]
-
-Options:
-  -h, --help   Display this help message.
 EOF
 }
-
-# Check if help flag is passed
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-  print_help
-  exit 0
-fi
-
-if [[ $# -gt 1 ]]; then
-  log-error "Unexpected arguments" || print_help
-  exit 1
-fi
 
 # Check if 'watchexec' is installed
 if ! command -v watchexec &>/dev/null; then
   log-error "'watchexec' is not installed. Please install it to proceed."
 fi
 
-presets=('std' 'vue' 'react')
-
-preset="$(gum choose --header "Choose a preset: " "${presets[@]}")"
+if [[ -z "${preset}" ]]; then
+  presets=('std' 'vue' 'react')
+  preset="$(gum choose --header "Choose a preset: " "${presets[@]}")"
+fi
 
 case "${preset}" in
 'react')
@@ -44,8 +41,12 @@ case "${preset}" in
 'vue')
   extensionsArray=(js mjs cjs ts mts cts json jsonc vue)
   ;;
-'std' | *)
+'std')
   extensionsArray=(js mjs cjs ts mts cts json jsonc)
+  ;;
+*)
+  print_help
+  log-error "Invalid preset: ${preset}"
   ;;
 esac
 
