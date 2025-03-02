@@ -15,7 +15,6 @@ if [[ $# -eq 0 ]]; then
       --no-permissions \
       --no-filesize |
       gum filter \
-        --indicator.background="" \
         --placeholder="Search..." \
         --header="Choose a config directory" \
         --fuzzy |

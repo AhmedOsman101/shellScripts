@@ -6,7 +6,7 @@ cmd="$1"
 counter=1
 
 if [[ $# -eq 0 ]]; then
-  cmd=$(gum write --placeholder 'enter a command to repeat...')
+  cmd=$(gum write --placeholder "enter a command to repeat...")
   # Evaluate the command to parse variables
   cmd=$(eval echo "${cmd}")
 fi
