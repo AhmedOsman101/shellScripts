@@ -142,16 +142,16 @@ websearch[stackoverflow]="https://stackoverflow.com/search?q="
 
 # dm-color config
 declare -Ag colpick_list
-colpick_list[black]="#14141e"   # color0
-colpick_list[red]="#f7768e"     # color1
-colpick_list[green]="#35BF88"   # color2
-colpick_list[yellow]="#dbac66"  # color3
-colpick_list[blue]="#4ca6e8"    # color4
-colpick_list[magenta]="#bb9af7" # color5
-colpick_list[cyan]="#7dcfff"    # color6
-colpick_list[white]="#e6e6e8"   # color7
-colpick_list[orange]="#EFCA84"  # color11 (using brighter yellow as orange)
-colpick_list[purple]="#7aa2f7"  # color12 (using brighter blue as purple)
+colpick_list[black]="${BLACK:-#14141E}"     # color0
+colpick_list[red]="${RED:-#F7768E}"         # color1
+colpick_list[green]="${GREEN:-#35BF88}"     # color2
+colpick_list[yellow]="${YELLOW:-#DBAC66}"   # color3
+colpick_list[blue]="${BLUE:-#4CA6E8}"       # color4
+colpick_list[magenta]="${MAGENTA:-#BB9AF7}" # color5
+colpick_list[cyan]="${CYAN:-#7DCFFF}"       # color6
+colpick_list[white]="${WHITE:-#E6E6E8}"     # color7
+colpick_list[orange]="${ORANGE:-#EFCA84}"   # color11 (using brighter yellow as orange)
+colpick_list[purple]="${PURPLE:-#7AA2F7}"   # color12 (using brighter blue as purple)
 
 # dm-weather config
 
