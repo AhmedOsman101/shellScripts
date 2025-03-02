@@ -1,16 +1,56 @@
 #!/usr/bin/env bash
 
-fileName="$1"
-shift # Remove the filename from the arguments list
+source cmdarg.sh
 
-outfile=$(mktemp -t "$(basename "$0")"-XXXXXX.out)
-# Delete the temp file on `EXIT` signal (i.e. when the script ends)
-trap 'rm -f $outfile' EXIT
+trap 'exit 1' SIGUSR1
 
-if [[ -n "$*" ]]; then
-  clang "${fileName}" -o "${outfile}" "$@" || exit
-else
-  clang "${fileName}" -o "${outfile}" || exit
+# ----  Main script logic ---- #
+cmdarg_info "header" "Compile and optionally run a C file"
+
+cmdarg "c" "compile" "Compile the script in the current working directory and don't run it"
+cmdarg "v" "verbose" "Show success message after compilation (works with compile mode only)"
+
+cmdarg_parse "$@"
+
+compile=${cmdarg_cfg['compile']}
+verbose=${cmdarg_cfg['verbose']}
+
+[[ ${#cmdarg_argv[@]} -lt 1 ]] && log-error "Error: No filename provided."
+
+filename=${cmdarg_argv[0]}
+
+if [[ -z "${filename}" || ! -r "${filename}" ]]; then
+  log-error "Error: Please provide a valid, readable C source file."
 fi
 
-[[ -f "${outfile}" ]] && "${outfile}"
+# Basic filename validation (no spaces or special chars for simplicity)
+if [[ ! "${filename}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+  log-error "Error: Invalid filename."
+fi
+
+if [[ ${compile} == true ]]; then
+  outfile="$(echo "${filename}" | cut -d "." -f1).out"
+else
+  outfile=$(mktemp -t "$(basename "$0")"-XXXXXX.out)
+  # Delete the temp file on `EXIT` signal (i.e. when the script ends)
+  trap 'rm -f $outfile' EXIT
+fi
+
+length=$((${#cmdarg_argv[@]} - 1))
+
+if ! clang "${filename}" -o "${outfile}" "${cmdarg_argv[@]:1}"; then
+  log-error "Error: Compilation failed."
+fi
+
+# Compile-only mode: just compile and exit successfully
+# Compile-and-run mode: run the program and propagate its exit status
+if [[ ${compile} != true && -f "${outfile}" ]]; then
+  "${outfile}"
+  exit $? # Propagate the program's exit status
+fi
+
+if [[ ${compile} == true && ${verbose} == true ]]; then
+  log-success "file ${filename} compiled successfully as ${outfile}"
+fi
+
+exit 0 # Success if compile-only or no execution
