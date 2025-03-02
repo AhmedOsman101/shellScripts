@@ -5,41 +5,54 @@ source cmdarg.sh
 trap 'exit 1' SIGUSR1
 
 # ----  Main script logic ---- #
-cmdarg_info "header" "Compile and optionally run a C file"
+cmdarg_info "header" "Compile and optionally run C files"
 
-cmdarg "c" "compile" "Compile the script in the current working directory and don't run it"
+cmdarg "c" "compile" "Compile the files in the current working directory"
 cmdarg "v" "verbose" "Show success message after compilation (works with compile mode only)"
+cmdarg "a?" "compiler-args" "Compiler arguments" ""
 
 cmdarg_parse "$@"
 
 compile=${cmdarg_cfg['compile']}
 verbose=${cmdarg_cfg['verbose']}
+compilerArgs=${cmdarg_cfg['compiler-args']}
 
 [[ ${#cmdarg_argv[@]} -lt 1 ]] && log-error "Error: No filename provided."
 
 filename=${cmdarg_argv[0]}
 
-if [[ -z "${filename}" || ! -r "${filename}" ]]; then
-  log-error "Error: Please provide a valid, readable C source file."
+if [[ ${#cmdarg_argv[@]} -lt 1 ]]; then
+  log-error "Error: No input files was provided."
 fi
 
-# Basic filename validation (no spaces or special chars for simplicity)
-if [[ ! "${filename}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
-  log-error "Error: Invalid filename."
-fi
+for file in "${cmdarg_argv[@]}"; do
+  if [[ ! -r "${file}" ]]; then
+    log-error "Error: File '${file}' is not readable."
+  fi
+  # Basic filename validation (no spaces or special chars for simplicity)
+  if [[ ! "${file}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    log-error "Error: Invalid filename '${file}'."
+  fi
+done
 
 if [[ ${compile} == true ]]; then
-  outfile="$(echo "${filename}" | cut -d "." -f1).out"
+  first_file=${cmdarg_argv[0]}
+  outfile="$(echo "${first_file}" | cut -d "." -f1).out"
 else
   outfile=$(mktemp -t "$(basename "$0")"-XXXXXX.out)
-  # Delete the temp file on `EXIT` signal (i.e. when the script ends)
   trap 'rm -f $outfile' EXIT
 fi
 
-length=$((${#cmdarg_argv[@]} - 1))
-
-if ! clang "${filename}" -o "${outfile}" "${cmdarg_argv[@]:1}"; then
-  log-error "Error: Compilation failed."
+# Splitting the args into an array instead of a single string
+read -r -a compilerArgsArray <<<"${compilerArgs}"
+if [[ -n "${compilerArgs}" ]]; then
+  if ! clang "${cmdarg_argv[@]}" -o "${outfile}" "${compilerArgsArray[@]}"; then
+    log-error "Error: Compilation failed."
+  fi
+else
+  if ! clang "${cmdarg_argv[@]}" -o "${outfile}"; then
+    log-error "Error: Compilation failed."
+  fi
 fi
 
 # Compile-only mode: just compile and exit successfully
@@ -50,7 +63,7 @@ if [[ ${compile} != true && -f "${outfile}" ]]; then
 fi
 
 if [[ ${compile} == true && ${verbose} == true ]]; then
-  log-success "file ${filename} compiled successfully as ${outfile}"
+  log-success "Compilation successful: ${outfile}"
 fi
 
 exit 0 # Success if compile-only or no execution
