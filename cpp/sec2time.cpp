@@ -72,6 +72,6 @@ int main(int argc, char* argv[]) {
     if (i <= len - 2) time += ", ";
   }
 
-  cout << time;
+  cout << time << endl;
   return 0;
 }
