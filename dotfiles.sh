@@ -3,7 +3,7 @@
 set -euo pipefail
 
 if [[ $# -eq 0 ]]; then
-  directory=$(
+  app=$(
     (eza "${TUCKR_DIR}" \
       --color=always \
       --only-dirs \
@@ -22,7 +22,11 @@ if [[ $# -eq 0 ]]; then
   )
 
 else
-  directory=$1
+  app=$1
 fi
 
-echo "${TUCKR_DIR}/${directory}/.config"
+fullpath="${TUCKR_DIR}/${app}/.config"
+
+[[ -d "${fullpath}/${app}" ]] && fullpath="${fullpath}/${app}"
+
+echo ${fullpath}
