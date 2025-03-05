@@ -142,16 +142,16 @@ websearch[stackoverflow]="https://stackoverflow.com/search?q="
 
 # dm-color config
 declare -Ag colpick_list
-colpick_list[black]="${BLACK:-#14141E}"     # color0
-colpick_list[red]="${RED:-#F7768E}"         # color1
-colpick_list[green]="${GREEN:-#35BF88}"     # color2
-colpick_list[yellow]="${YELLOW:-#DBAC66}"   # color3
-colpick_list[blue]="${BLUE:-#4CA6E8}"       # color4
-colpick_list[magenta]="${MAGENTA:-#BB9AF7}" # color5
-colpick_list[cyan]="${CYAN:-#7DCFFF}"       # color6
-colpick_list[white]="${WHITE:-#E6E6E8}"     # color7
-colpick_list[orange]="${ORANGE:-#EFCA84}"   # color11 (using brighter yellow as orange)
-colpick_list[purple]="${PURPLE:-#7AA2F7}"   # color12 (using brighter blue as purple)
+colpick_list[black]="${U_BLACK:-#14141E}"     # color0
+colpick_list[red]="${U_RED:-#F7768E}"         # color1
+colpick_list[green]="${U_GREEN:-#35BF88}"     # color2
+colpick_list[yellow]="${U_YELLOW:-#DBAC66}"   # color3
+colpick_list[blue]="${U_BLUE:-#4CA6E8}"       # color4
+colpick_list[magenta]="${U_MAGENTA:-#BB9AF7}" # color5
+colpick_list[cyan]="${U_CYAN:-#7DCFFF}"       # color6
+colpick_list[white]="${U_WHITE:-#E6E6E8}"     # color7
+colpick_list[orange]="${U_ORANGE:-#EFCA84}"   # color11 (using brighter yellow as orange)
+colpick_list[purple]="${U_PURPLE:-#7AA2F7}"   # color12 (using brighter blue as purple)
 
 # dm-weather config
 
