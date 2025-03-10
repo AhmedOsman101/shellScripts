@@ -24,7 +24,8 @@ while true; do
   # Run gum spin, and check its exit status
   if ! gum spin --spinner dot \
     --title "Retrying '${cmd}' in 5s..." \
-    --title.foreground="#4ca6e8" \
+    --title.foreground="${U_GREEN}" \
+    --spinner.foreground="${U_GREEN}" \
     -- sleep 5; then
     # If gum spin fails (e.g., due to Ctrl+C), exit
     exit 0
