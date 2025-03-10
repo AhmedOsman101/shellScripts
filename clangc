@@ -15,7 +15,7 @@ cmdarg_parse "$@"
 
 compile=${cmdarg_cfg['compile']}
 verbose=${cmdarg_cfg['verbose']}
-compilerArgs=${cmdarg_cfg['compiler-args']}
+compiler_args=${cmdarg_cfg['compiler-args']}
 
 [[ ${#cmdarg_argv[@]} -lt 1 ]] && log-error "Error: No filename provided."
 
@@ -44,13 +44,13 @@ else
 fi
 
 # Splitting the args into an array instead of a single string
-read -r -a compilerArgsArray <<<"${compilerArgs}"
-if [[ -n "${compilerArgs}" ]]; then
-  if ! clang "${cmdarg_argv[@]}" -o "${outfile}" "${compilerArgsArray[@]}"; then
+read -r -a compilerArgs <<<"${compiler_args}"
+if [[ -n "${compiler_args}" ]]; then
+  if ! clang -Wall -Wextra -Werror "${cmdarg_argv[@]}" -o "${outfile}" "${compilerArgs[@]}"; then
     log-error "Error: Compilation failed."
   fi
 else
-  if ! clang "${cmdarg_argv[@]}" -o "${outfile}"; then
+  if ! clang -Wall -Wextra -Werror "${cmdarg_argv[@]}" -o "${outfile}"; then
     log-error "Error: Compilation failed."
   fi
 fi
