@@ -60,5 +60,7 @@ watchexec -c --timings \
   --delay-run 1s \
   --debounce 5s \
   --exts "${extensions}" \
-  biome check --fix --reporter=summary . &&
+  biome check --fix \
+  --reporter=summary \
+  --config-path="${BIOME_CONFIG_PATH}" . &&
   exit 0 || exit $?
