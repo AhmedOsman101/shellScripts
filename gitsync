@@ -12,18 +12,15 @@ cmdarg_info "header" "This script automates adding changes, committing them with
 cmdarg "b?" "branch" "Specify the branch to work on. Defaults to current branch." "no branch"
 cmdarg "m" "message" "Opens an interactive model for adding a custom commit message"
 
-# returns true if it's a git repo and false otherwise
-isGitRepo=$(git rev-parse --is-inside-work-tree 2>/dev/null) || log-error "${PWD} is not a git repository."
-
-# check if the user is inside .git directory
-[[ ${isGitRepo} != true ]] && log-error "Not in a work tree."
+# check if in a git repo and if the user is inside .git directory
+is-git-repo
 
 cmdarg_parse "$@"
 
 branch=${cmdarg_cfg['branch']}
 hasMsg=${cmdarg_cfg['message']}
 
-currentBranch="$(git branch --show-current 2>/dev/null)"
+currentBranch="$(git_current_branch)"
 
 [[ -z "${currentBranch}" ]] && log-error "Unable to determine current branch."
 
@@ -38,7 +35,7 @@ fi
 
 main() {
   local timestamp
-  timestamp="$(date +"%Y-%m-%d@%I:%M%p")"
+  timestamp="$(now)"
 
   git add --all
 
@@ -66,7 +63,6 @@ main() {
 
   # Push if remote exists
   if [[ -n "$(git remote -v)" ]]; then
-    # git push origin "${branch}" && log-success "Changes pushed to ${branch} successfully!"
     if git push origin "${branch}"; then
       log-success "Changes pushed to ${branch} successfully!"
     else
