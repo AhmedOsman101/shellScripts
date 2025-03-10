@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+is-git-repo
+
+git rm -r --cached .
+
+git add .
+
+git commit -am "remove ignored files $(now)"
