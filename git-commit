@@ -15,28 +15,35 @@ choices=(
   "chore: Updates to build configuration, auxiliary tools, and libraries."
 )
 
+terminate() {
+  log-info "Program terminated!"
+  exit 0
+}
+
 type=$(
   gum filter \
     --placeholder "Commit type..." "${choices[@]}" |
     cut -d ':' -f 1
-) || {
-  log-info "Program terminated!"
-  exit 0
-}
+) || terminate
 
 summary=$(
   gum input \
     --value "(${type}): " \
     --placeholder "Summary of this change"
 )
-details=$(gum write --placeholder "Details of this change") || {
-  log-info "Program terminated!"
-  exit 0
-}
+details=$(gum write --placeholder "Details of this change") || terminate
 
-gum confirm "Commit changes?" || {
-  log-info "Program terminated!"
-  exit 0
-}
+gum confirm "Commit changes?" || terminate
 
 git commit -m "${summary}" -m "${details}"
+
+if [[ -n "$(git remote -v)" ]]; then
+  gum confirm "Push changes?" || terminate
+
+  branch="$(git_current_branch)"
+  if git push origin "${branch}"; then
+    log-success "Changes pushed to ${branch} successfully!"
+  else
+    log-error "Failed to push to ${branch}."
+  fi
+fi
