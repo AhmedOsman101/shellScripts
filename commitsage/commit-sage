@@ -7,3 +7,15 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
+is-git-repo
+
+if [[ -z ${COMMIT_SAGE_CONFIG_PATH} ]]; then
+  configFile="$(dirname $0)/config.yml"
+  # log-debug "no config found"
+  # log-debug "using default config: '${configFile}'"
+else
+  configFile="${COMMIT_SAGE_CONFIG_PATH}"
+fi
+
+onlyStaged=$(yq -r ".onlyStaged" ${configFile})
+
