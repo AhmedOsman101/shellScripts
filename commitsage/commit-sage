@@ -205,3 +205,49 @@ processUntracked() {
   fi
 }
 
+processDeleted() {
+  local output deletedFiles=() deletedDiff=()
+
+  # Get deleted files
+  output=$(git ls-files --deleted)
+  [[ $? -ne 0 ]] && log-error "Error: Git command failed"
+
+  # Split output into array and filter non-empty lines
+  mapfile -t lines <<<"${output}"
+  for line in "${lines[@]}"; do
+    trimmed=$(trim "${line}")
+    if [[ -n "${trimmed}" ]]; then
+      deletedFiles+=("${trimmed}")
+    fi
+  done
+
+  # Generate diff for each deleted file
+  for file in "${deletedFiles[@]}"; do
+    local diffContent=""
+    if oldContent=$(git show HEAD:${file}); then
+      diffContent=$(echo -e "diff --git a/${file} b/${file}\ndeleted file mode 100644\n--- a/${file}\n+++ /dev/null\n@@ -1 +0,0 @@\n-$(trim ${oldContent})\n")
+    else
+      diffContent=""
+      log-error "Error reading new file ${file}"
+    fi
+
+    # Add to untrackedDiff array
+    deletedDiff+=("${diffContent}")
+  done
+
+  # Filter valid diffs and add to diffs array if non-empty
+  local validDeletedDiffs=()
+  for diff in "${deletedDiff[@]}"; do
+    trimmed=$(trim "${diff}")
+    if [[ -n "${trimmed}" ]]; then
+      validDeletedDiffs+=("${trimmed}")
+    fi
+  done
+
+  if [[ ${#validDeletedDiffs[@]} -gt 0 ]]; then
+    local temp=$'# Deleted files:\n'"$(printf '%s\n' "${validDeletedDiffs[@]}")"
+    # log-debug "${temp}"
+    diffs+=("${temp}") # Append as a single element
+  fi
+
+}
