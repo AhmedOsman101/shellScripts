@@ -60,3 +60,11 @@ calculateFileHash() {
   echo -n "${content}" | base64 | head -c 7
 }
 
+isSubModule() {
+  if git ls-files --stage -- $1 | rg -q "160000"; then
+    return 0
+  else
+    return 1
+  fi
+}
+
