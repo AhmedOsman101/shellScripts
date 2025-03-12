@@ -68,3 +68,58 @@ isSubModule() {
   fi
 }
 
+processStagedOnly() {
+  local output stagedFiles=()
+  # Get staged files
+  output=$(git diff --cached --name-only)
+
+  # Check if git command succeeded
+  [[ $? -ne 0 ]] && log-error "Error: Git command failed"
+
+  mapfile -t lines <<<"${output}"
+  for line in "${lines[@]}"; do
+    trimmed=$(trim "${line}")
+    if [[ -n "${trimmed}" ]]; then
+      stagedFiles+=("${trimmed}")
+    fi
+  done
+
+  for file in "${stagedFiles[@]}"; do
+    if ! isSubModule "file"; then
+      local fileDiff=$(git diff --cached -- ${file})
+      trimmed=$(trim "${fileDiff}")
+      if [[ -n "${trimmed}" ]]; then
+        diffs+=("${trimmed}")
+      fi
+    fi
+  done
+}
+
+processStaged() {
+  local output stagedFiles=()
+  # Get staged files
+  output=$(git diff --cached --name-only)
+
+  # Check if git command succeeded
+  [[ $? -ne 0 ]] && log-error "Error: Git command failed"
+
+  mapfile -t lines <<<"${output}"
+  for line in "${lines[@]}"; do
+    trimmed=$(trim "${line}")
+    if [[ -n "${trimmed}" ]]; then
+      stagedFiles+=("${trimmed}")
+    fi
+  done
+
+  # Generate diff for each staged file
+  for file in "${stagedFiles[@]}"; do
+    if ! isSubModule "file"; then
+      local fileDiff=$(git diff --cached -- ${file})
+      trimmed=$(trim "${fileDiff}")
+      if [[ -n "${trimmed}" ]]; then
+        diffs+=($'# Staged changes:\n'"${trimmed}")
+      fi
+    fi
+  done
+}
+
