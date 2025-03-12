@@ -49,3 +49,14 @@ hasChanges() {
   [[ ${#output} -gt 0 ]] && return 0 || return 1
 }
 
+hasHead() {
+  git rev-parse HEAD >/dev/null 2>&1 && return 0 || return 1
+}
+
+# Simple hash function mimicking TypeScript's calculateFileHash
+calculateFileHash() {
+  local content="$1"
+  # Convert content to base64 and take first 7 characters
+  echo -n "${content}" | base64 | head -c 7
+}
+
