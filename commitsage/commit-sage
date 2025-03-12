@@ -398,3 +398,16 @@ getChangedFiles() {
   printf '%s\n' "${finalOutput[@]}"
 }
 
+normalizePath() {
+  local filePath
+  filePath=$1
+  filePath=$(echo ${filePath} | sed -E 's/^\/+//')
+  normalizedPath=$(realpath -m ${filePath})
+}
+
+resolvePath() {
+  local filePath
+  filePath=$1
+  realpath -m "$(pwd)/${filePath}"
+}
+
