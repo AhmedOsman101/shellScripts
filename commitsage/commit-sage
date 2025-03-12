@@ -507,3 +507,25 @@ parseBlameOutput() {
 
 }
 
+getGitBlame() {
+  local filePath
+  filePath=$1
+  absoluteFilePath=$(resolvePath ${filePath})
+
+  [[ ! -f "${absoluteFilePath}" ]] && log-error "File not found: ${absoluteFilePath}"
+
+  if ! hasHead; then
+    log-error "Repository has no commits yet"
+  fi
+
+  if isNewFile "${filePath}"; then
+    log-error "File has not been committed yet"
+  fi
+
+  blameOutput=$(executeGitBlame "${filePath}")
+
+  # log-debug "\n\n${blameOutput}"
+
+  parseBlameOutput "${blameOutput}"
+}
+
