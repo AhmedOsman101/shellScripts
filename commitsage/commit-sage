@@ -19,3 +19,33 @@ fi
 
 onlyStaged=$(yq -r ".onlyStaged" ${configFile})
 
+cd "$(git-root)" || log-error "unable to change directory to the git repo root directory"
+
+hasChanges() {
+  local type
+  type=${1:-unstaged}
+
+  case "${type}" in
+  staged)
+    output=$(git diff --cached --name-only)
+    ;;
+  untracked)
+    output=$(git ls-files --others --exclude-standard)
+    ;;
+  deleted)
+    output=$(git ls-files --deleted)
+    ;;
+  unstaged)
+    output=$(git diff --name-only)
+    ;;
+  ? | *)
+    log-error "Invalid change type: ${type}"
+    ;;
+  esac
+  # output.length > 0
+  output=$(trim "${output}")
+
+  # True (0) if output is non-empty
+  [[ ${#output} -gt 0 ]] && return 0 || return 1
+}
+
