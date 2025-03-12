@@ -439,3 +439,58 @@ executeGitBlame() {
   git blame --line-porcelain "${filePath}"
 }
 
+parseBlameOutput() {
+  local input
+  local -A currentBlame=()
+  input="$1"
+  mapfile -t lines <<<"${input}"
+  for line in "${lines[@]}"; do
+    if echo "${line}" | rg "^author " -q; then
+      currentBlame[author]="${line:7}"
+    elif echo "${line}" | rg "^author-mail " -q; then
+      currentBlame[email]=$(echo "${line:12}" | tr -d '<>')
+    elif echo "${line}" | rg "^author-time " -q; then
+      currentBlame[timestamp]="${line:11}"
+      currentBlame[date]=$(date -d "@${currentBlame[timestamp]}" --iso-8601=seconds --utc)
+    elif echo "${line}" | rg "^\t" -q; then
+      currentBlame[line]="${line:1}"
+
+      if [[
+        -n ${currentBlame[author]} &&
+        -n ${currentBlame[email]} &&
+        -n ${currentBlame[timestamp]} &&
+        -n ${currentBlame[date]} &&
+        -n ${currentBlame[line]} ]]; then
+        # Create a new associative array for this blame info
+        local index=${#blameInfos[@]} # The current index of the array
+        declare -Ag "blameInfo_${index}"
+
+        # Copy currentBlame to the new array
+        for key in "${!currentBlame[@]}"; do
+          # blameInfo_1[name]=currentBlame[name]
+          eval "blameInfo_${index}[${key}]='${currentBlame[${key}]}'"
+        done
+
+        # Add the name to blameInfos
+        blameInfos+=("blameInfo_${index}")
+
+        # Reset currentBlame
+        currentBlame=()
+      fi
+    elif echo "${line}" | rg -q '^[0-9a-f]{40}'; then
+      currentBlame[commit]=$(echo "${line}" | awk '{ print $1 }')
+    fi
+
+  done
+
+  # Debug: Show all blameInfos
+  # for info in "${blameInfos[@]}"; do
+  #   log-debug "Blame Info: ${info}"
+  #   declare -n ref="${info}" # Name reference (Requires Bash 4.3+)
+  #   for key in "${!ref[@]}"; do
+  #     log-debug "\t${key}: ${ref[${key}]}"
+  #   done
+  # done
+
+}
+
