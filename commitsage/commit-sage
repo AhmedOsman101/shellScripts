@@ -550,3 +550,34 @@ parseChangedLines() {
   changedLines=($(echo "${changedLines[*]}" | no-dups -s))
 }
 
+analyzeChanges() {
+  local filePath output status blame
+  filePath=$1
+  normalizedPath=$(normalizePath ${filePath})
+
+  # First check if file is deleted or new, as these don't need blame analysis
+  # Use git status to check file state
+  output=$(git status --porcelain ${normalizedPath})
+  status=${output:0:2}
+
+  # shellcheck disable=SC2249
+  case "${status}" in
+  ' D' | 'D ')
+    log-debug "Skipping blame analysis for deleted file: ${normalizedPath}"
+    echo "Deleted file: ${normalizedPath}"
+    return 0
+    ;;
+  '??' | 'A ')
+    log-debug "Skipping blame analysis for new file: ${normalizedPath}"
+    echo "New file: ${normalizedPath}"
+    return 0
+    ;;
+  esac
+
+  # For existing files, we need to get blame info
+  blame=$(getGitBlame "${normalizedPath}")
+
+  diff=$(git diff --unified=0 -- ${normalizedPath})
+
+  # changedLines=$()
+}
