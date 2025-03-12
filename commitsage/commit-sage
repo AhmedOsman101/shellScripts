@@ -581,3 +581,28 @@ analyzeChanges() {
 
   # changedLines=$()
 }
+
+# hasChanges "staged"
+# hasStagedChanges=$?
+
+# if [[ "${onlyStaged}" == "true" ]] || [[ "${hasStagedChanges}" -eq 0 ]]; then
+#   useStagedChanges="true"
+# else
+#   useStagedChanges="false"
+# fi
+
+# log-debug "useStagedChanges: ${useStagedChanges}"
+
+# diff=$(getDiff)
+
+# [[ -z "${diff}" ]] && log-error "No changes to commit"
+
+# # changedFiles=$(getChangedFiles)
+# mapfile -t changedFiles <<<"$(getChangedFiles "${useStagedChanges}")"
+
+# printf '%s\n' "${changedFiles[@]}"
+
+# blameAnalysis=
+
+# Testing
+getGitBlame index.js
