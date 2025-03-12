@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC2310
+# disable hinting that invoking functions inside an if statement disables -e flag
+
 set -eo pipefail
 
 trap 'exit 1' SIGUSR1
