@@ -411,3 +411,25 @@ resolvePath() {
   realpath -m "$(pwd)/${filePath}"
 }
 
+isFileDeleted() {
+  local filePath output status
+  filePath=$1
+  normalizedPath=$(normalizePath ${filePath})
+
+  output=$(git status --porcelain ${normalizedPath})
+  status=${output:0:2}
+
+  [[ "${status}" == " D" || "${status}" == "D " ]] && return 0 || return 1
+}
+
+isNewFile() {
+  local filePath output status
+  filePath=$1
+  normalizedPath=$(normalizePath ${filePath})
+
+  output=$(git status --porcelain ${normalizedPath})
+  status=${output:0:2}
+
+  [[ "${status}" == "??" || "${status}" == "A " ]] && return 0 || return 1
+}
+
