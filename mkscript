@@ -41,6 +41,7 @@ elif [[ "${isFile}" == true ]]; then
 elif [[ "${no_flags}" == true ]]; then
   name=$(gum input --placeholder "Enter Script's name: ")
   file="${SCRIPTS_DIR}/${name}"
+  mkdir -p "$(dirname ${file})" 2>/dev/null
   name="$(basename ${file})"
 fi
 
@@ -53,6 +54,8 @@ text=$(
 #!/usr/bin/env bash
 
 set -euo pipefail
+
+trap 'exit 1' SIGUSR1
 
 EOF
 )
