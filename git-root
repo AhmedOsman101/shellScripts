@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+is-git-repo
+
+git rev-parse --show-toplevel
