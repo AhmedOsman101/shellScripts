@@ -342,3 +342,59 @@ getDiff() {
   echo -e "${combinedDiff}"
 }
 
+getChangedFiles() {
+  local useStagedChanges output changedFiles=() outputArray=()
+  useStagedChanges="$1"
+  output=$(git status --porcelain)
+
+  # Split output into array and filter non-empty lines
+  mapfile -t lines <<<"${output}"
+  for line in "${lines[@]}"; do
+    trimmed=$(trim "${line}")
+    if [[ -n "${trimmed}" ]]; then
+      changedFiles+=("${trimmed}")
+    fi
+  done
+
+  # Filter valid diffs and add to diffs array if non-empty
+  local validChangedFiles=()
+  for file in "${changedFiles[@]}"; do
+    # suppresses output
+    if printf '%s' "${file}" | rg -q "Subproject commit|Entering"; then
+      continue
+    fi
+
+    if [[ "${useStagedChanges}" == "true" ]]; then
+      # For staged changes, check first character
+      firstChar="${file:0:1}"
+      if [[ -n "${STAGED_CODES_MAP[${firstChar}]}" ]]; then
+        validChangedFiles+=("${file}")
+        continue
+      fi
+    fi
+
+    # For all changes, check both staged and unstaged status
+    staged="${file:0:1}"
+    unstaged="${file:1:2}"
+    [[ "${staged}" != " " || "${unstaged}" != " " ]] && validChangedFiles+=("${file}")
+  done
+
+  local finalOutput=()
+  for item in "${validChangedFiles[@]}"; do
+    status="${item:0:2}"
+    filePath=$(trim "${item:2}")
+
+    # Handle renamed files (they have format "R100 old-name -> new-name")
+    if echo "${status}" | rg '^R' -q; then
+      filePath=$(echo "${filePath}" | awk -F ' -> ' '{ print $2 }' | trim)
+    fi
+
+    # Log file status for debugging
+    # log-debug "File ${filePath} has status: ${status}"
+    # Append relative path as git status returns it
+    finalOutput+=("${filePath}")
+  done
+
+  printf '%s\n' "${finalOutput[@]}"
+}
+
