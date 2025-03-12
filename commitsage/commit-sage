@@ -251,3 +251,94 @@ processDeleted() {
   fi
 
 }
+
+getDiff() {
+  local HasHead
+  log-debug "${onlyStaged}"
+  hasHead
+  # 0 => True, 1 => False (e.g. empty repo)
+  HasHead=$?
+
+  # 0 => True, 1 => False
+  hasChanges "staged" && hasStagedChanges=0 || hasStagedChanges=1
+
+  # Only check unstaged if !onlyStaged
+  if [[ "${onlyStaged}" != "true" ]] && hasChanges "unstaged"; then
+    hasUnstagedChanges=0 # True
+  # if no staged changes but there is changes in general
+  elif [[ ${hasStagedChanges} -eq 1 ]] && hasChanges "unstaged"; then
+    hasUnstagedChanges=0 # True
+  else
+    hasUnstagedChanges=1 # False
+  fi
+
+  # Only check untracked if !onlyStaged && !hasStagedChanges
+  if [[ "${onlyStaged}" != "true" ]] &&
+    [[ "${hasStagedChanges}" -eq 1 ]] &&
+    hasChanges "untracked"; then
+    hasUntrackedFiles=0 # True
+  elif [[ ${hasStagedChanges} -eq 1 ]] && hasChanges "untracked"; then
+    hasUntrackedFiles=0 # True
+  else
+    hasUntrackedFiles=1 # False
+  fi
+
+  # Only check deleted if hasHead && !onlyStaged && !hasStagedChanges
+  if [[ "${HasHead}" -eq 0 ]] &&
+    [[ "${onlyStaged}" != "true" ]] &&
+    [[ "${hasStagedChanges}" -eq 1 ]] &&
+    hasChanges "deleted"; then
+
+    hasDeletedFiles=0 # True
+  elif [[ "${HasHead}" -eq 0 ]] &&
+    [[ ${hasStagedChanges} -eq 1 ]] &&
+    hasChanges "deleted"; then
+    hasDeletedFiles=0 # True
+  else
+    hasDeletedFiles=1 # False
+  fi
+
+  # Log results for debugging
+  log-debug "hasHead: ${HasHead}"
+  log-debug "hasStagedChanges: ${hasStagedChanges}"
+  log-debug "hasUnstagedChanges: ${hasUnstagedChanges}"
+  log-debug "hasUntrackedFiles: ${hasUntrackedFiles}"
+  log-debug "hasDeletedFiles: ${hasDeletedFiles}"
+
+  # Check if no changes exist (all are false, i.e., 1)
+  if [[ "${hasStagedChanges}" -eq 1 ]] &&
+    [[ "${hasUnstagedChanges}" -eq 1 ]] &&
+    [[ "${hasUntrackedFiles}" -eq 1 ]] &&
+    [[ "${hasDeletedFiles}" -eq 1 ]]; then
+    log-error "No Changes Found"
+  fi
+
+  # ---- Diffs ---- #
+  # ---- If we only want staged changes and there are some, return only those ---- #
+  if [[ "${onlyStaged}" == "true" ]] && [[ "${hasStagedChanges}" -eq 0 ]]; then
+    processStagedOnly
+  else
+    # ---- Otherwise, get all changes ---- #
+    if [[ "${hasStagedChanges}" -eq 0 ]]; then
+      processStaged
+    fi
+
+    if [[ "${hasUnstagedChanges}" -eq 0 ]]; then
+      processUnstaged
+    fi
+
+    if [[ "${hasUntrackedFiles}" -eq 0 ]]; then
+      processUntracked
+    fi
+
+    if [[ "${hasDeletedFiles}" -eq 0 ]]; then
+      processDeleted
+    fi
+
+  fi
+
+  combinedDiff=$(printf "%s\n\n" "${diffs[@]}" | trim)
+  [[ -z "${combinedDiff}" ]] && log-error "No Changes Found"
+  echo -e "${combinedDiff}"
+}
+
