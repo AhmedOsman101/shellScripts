@@ -433,3 +433,9 @@ isNewFile() {
   [[ "${status}" == "??" || "${status}" == "A " ]] && return 0 || return 1
 }
 
+executeGitBlame() {
+  local filePath
+  filePath=$1
+  git blame --line-porcelain "${filePath}"
+}
+
