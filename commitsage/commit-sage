@@ -152,3 +152,56 @@ processUnstaged() {
 
 }
 
+processUntracked() {
+  local output untrackedFiles=() untrackedDiff=()
+
+  # Get untracked files
+  output=$(git ls-files --others --exclude-standard)
+  [[ $? -ne 0 ]] && log-error "Error: Git command failed"
+
+  # Split output into array and filter non-empty lines
+  mapfile -t lines <<<"${output}"
+  for line in "${lines[@]}"; do
+    trimmed=$(trim "${line}")
+    if [[ -n "${trimmed}" ]]; then
+      untrackedFiles+=("${trimmed}")
+    fi
+  done
+
+  # Generate diff for each untracked file
+  for file in "${untrackedFiles[@]}"; do
+    local diffContent=""
+    if content=$(cat "${file}" 2>/dev/null); then
+      # Read file content succeeded
+      mapfile -t contentLines <<<"${content}"
+      local contentDiff=()
+      for line in "${contentLines[@]}"; do
+        contentDiff+=("+${line}")
+      done
+      # Join contentDiff with newlines
+      contentDiffText=$(printf '%s\n' "${contentDiff[@]}")
+      local hash=$(calculateFileHash "${content}")
+      local lineCount=${#contentLines[@]}
+      diffContent=$(echo -e "diff --git a/${file} b/${file}\nnew file mode 100644\nindex 0000000..${hash}\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1,${lineCount} @@\n${contentDiffText}")
+    else
+      diffContent=""
+      log-error "Error reading new file ${file}"
+    fi
+    # Add to untrackedDiff array
+    untrackedDiff+=("${diffContent}")
+  done
+
+  # Filter valid diffs and add to diffs array if non-empty
+  local validUntrackedDiffs=()
+  for diff in "${untrackedDiff[@]}"; do
+    trimmed=$(trim "${diff}")
+    if [[ -n "${trimmed}" ]]; then
+      validUntrackedDiffs+=("${trimmed}")
+    fi
+  done
+
+  if [[ ${#validUntrackedDiffs[@]} -gt 0 ]]; then
+    diffs+=($'# New files:\n'"$(printf '%s\n' "${validUntrackedDiffs[@]}")")
+  fi
+}
+
