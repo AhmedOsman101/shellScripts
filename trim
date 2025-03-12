@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+if [[ $# -eq 0 || $1 == "-" ]]; then
+  str=$(cat)
+else
+  str="$*"
+fi
+
+[[ -z ${str} ]] && log-error "No valid input was given"
+
+echo "${str}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
