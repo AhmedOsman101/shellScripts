@@ -529,3 +529,24 @@ getGitBlame() {
   parseBlameOutput "${blameOutput}"
 }
 
+parseChangedLines() {
+  local input lines currentLine changedLines=()
+  input=$1
+  currentLine=0
+
+  mapfile -t lines <<<${input}
+  for line in "${lines[@]}"; do
+    if match=$(echo "${line}" | rg "^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@"); then
+      currentLine=1
+    elif echo "${line}" | rg -q "^(\+[^\+].*)"; then
+      changedLines+=($((currentLine)))
+      currentLine=$((currentLine + 1))
+    elif echo "${line}" | rg -qv "^(---|-)"; then
+      currentLine=$((currentLine + 1))
+    fi
+  done
+
+  # remove any duplicates
+  changedLines=($(echo "${changedLines[*]}" | no-dups -s))
+}
+
