@@ -1,35 +1,45 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
 backup=0
+useSpaces=0
 
-while getopts "b" opt; do
+while getopts "bs" opt; do
   case ${opt} in
   b) backup=1 ;;
+  s) useSpaces=1 ;;
   ? | *) log-error "Invalid option: -${OPTARG}" ;;
   esac
 done
 shift $((OPTIND - 1))
 
-file="$1"
-tmpfile="$(mktemp)"
-trap 'rm -f $tmpfile' EXIT
+# Function to process input and remove duplicates
+remove_duplicates() {
+  if [[ ${useSpaces} -eq 1 ]]; then
+    tr ' ' '\n' | awk '!a[$0]++' | paste -sd " "
+  else
+    awk '!a[$0]++'
+  fi
+}
 
-if [[ -z ${file} || ${file} == "-" ]]; then
-  # Read from stdin
-  awk '!a[$0]++' | tee "${tmpfile}" >/dev/null
-  cat "${tmpfile}"
+# Check if input is from a file or stdin
+if [[ $# -eq 0 || $1 == "-" ]]; then
+  remove_duplicates
 else
+  file="$1"
+  tmpfile="$(mktemp)"
+  trap 'rm -f $tmpfile' EXIT
+
   # Read from file
   if [[ -f ${file} ]]; then
     if [[ ${backup} -eq 1 ]]; then
       cp "${file}" "${file}.bak"
       log-info "Backup created as ${file}.bak"
     fi
-    awk '!a[$0]++' "${file}" >"${tmpfile}"
+    remove_duplicates <"${file}" >"${tmpfile}"
     mv "${tmpfile}" "${file}"
     log-info "Duplicates removed from '${file}'!"
   else
