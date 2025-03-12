@@ -19,6 +19,19 @@ fi
 
 onlyStaged=$(yq -r ".onlyStaged" ${configFile})
 
+declare -ag diffs STAGED_STATUS_CODES=("M" "A" "D" "R") blameInfos=()
+declare -Ag GIT_STATUS_CODES STAGED_CODES_MAP
+for code in "${STAGED_STATUS_CODES[@]}"; do
+  STAGED_CODES_MAP["${code}"]=1
+done
+
+GIT_STATUS_CODES[modified]="M"
+GIT_STATUS_CODES[added]="A"
+GIT_STATUS_CODES[deleted]="D"
+GIT_STATUS_CODES[renamed]="R"
+GIT_STATUS_CODES[untracked]="??"
+GIT_STATUS_CODES[submodule]="S"
+
 cd "$(git-root)" || log-error "unable to change directory to the git repo root directory"
 
 hasChanges() {
