@@ -267,7 +267,6 @@ processDeleted() {
 
   if [[ ${#validDeletedDiffs[@]} -gt 0 ]]; then
     local temp=$'# Deleted files:\n'"$(printf '%s\n' "${validDeletedDiffs[@]}")"
-    # log-debug "${temp}"
     diffs+=("${temp}") # Append as a single element
   fi
 
@@ -410,8 +409,6 @@ getChangedFiles() {
       filePath=$(echo "${filePath}" | awk -F ' -> ' '{ print $2 }' | trim)
     fi
 
-    # Log file status for debugging
-    # log-debug "File ${filePath} has status: ${status}"
     # Append relative path as git status returns it
     finalOutput+=("${filePath}")
   done
