@@ -20,10 +20,13 @@ else
   readonly configFile="${COMMIT_SAGE_CONFIG_PATH}"
 fi
 
-onlyStaged=$(yq -r ".onlyStaged" ${configFile})
+readonly onlyStaged=$(jq -r ".onlyStaged" ${configFile})
+readonly repoPath="$(git-root)"
+readonly STAGED_STATUS_CODES=("M" "A" "D" "R")
 
-declare -ag diffs STAGED_STATUS_CODES=("M" "A" "D" "R") blameInfos=()
-declare -Ag GIT_STATUS_CODES STAGED_CODES_MAP
+declare -a blameInfos diffs
+declare -A GIT_STATUS_CODES STAGED_CODES_MAP
+
 for code in "${STAGED_STATUS_CODES[@]}"; do
   STAGED_CODES_MAP["${code}"]=1
 done
