@@ -38,7 +38,9 @@ GIT_STATUS_CODES[renamed]="R"
 GIT_STATUS_CODES[untracked]="??"
 GIT_STATUS_CODES[submodule]="S"
 
-cd "$(git-root)" || log-error "unable to change directory to the git repo root directory"
+catfile() {
+  bat --pager never --style plain "$@"
+}
 
 hasChanges() {
   local type
