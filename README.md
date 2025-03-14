@@ -925,4 +925,4 @@ We welcome contributions! If you have scripts you'd like to share or improvement
 
 ## Feedback
 
-We'd love to hear from you! If you have suggestions, feedback, or feature requests, feel free to open an issue or reach out to the maintainers.
+I'd love to hear from you! If you have suggestions, feedback, or feature requests, feel free to open an issue or reach out to the maintainers.
