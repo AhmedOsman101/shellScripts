@@ -9,12 +9,15 @@ trap 'exit 1' SIGUSR1
 
 is-git-repo
 
-if [[ -z ${COMMIT_SAGE_CONFIG_PATH} ]]; then
-  configFile="$(dirname $0)/config.yml"
+readonly scriptName="$(basename $0)"
+readonly scriptDir="$(dirname $0)"
+
+if [[ -z ${COMMIT_SAGE_CONFIG_PATH} || ! -f ${COMMIT_SAGE_CONFIG_PATH} ]]; then
+  readonly configFile="${scriptDir}/config.json"
   # log-debug "no config found"
   # log-debug "using default config: '${configFile}'"
 else
-  configFile="${COMMIT_SAGE_CONFIG_PATH}"
+  readonly configFile="${COMMIT_SAGE_CONFIG_PATH}"
 fi
 
 onlyStaged=$(yq -r ".onlyStaged" ${configFile})
