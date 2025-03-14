@@ -528,13 +528,11 @@ getGitBlame() {
 
   blameOutput=$(executeGitBlame "${filePath}")
 
-  # log-debug "\n\n${blameOutput}"
-
   parseBlameOutput "${blameOutput}"
 }
 
 parseChangedLines() {
-  local input lines currentLine changedLines=()
+  local input lines currentLine _changedLines=()
   input=$1
   currentLine=0
 
@@ -543,15 +541,17 @@ parseChangedLines() {
     if match=$(echo "${line}" | rg "^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@"); then
       currentLine=1
     elif echo "${line}" | rg -q "^(\+[^\+].*)"; then
-      changedLines+=($((currentLine)))
+      _changedLines+=($((currentLine)))
       currentLine=$((currentLine + 1))
     elif echo "${line}" | rg -qv "^(---|-)"; then
       currentLine=$((currentLine + 1))
     fi
   done
 
-  # remove any duplicates
-  changedLines=($(echo "${changedLines[*]}" | no-dups -s))
+  # Remove any duplicates
+  _changedLines=($(echo "${_changedLines[*]}" | no-dups -s))
+  echo "${_changedLines[@]}"
+}
 }
 
 analyzeChanges() {
