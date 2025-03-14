@@ -419,14 +419,13 @@ getChangedFiles() {
 normalizePath() {
   local filePath
   filePath=$1
-  filePath=$(echo ${filePath} | sed -E 's/^\/+//')
-  normalizedPath=$(realpath -m ${filePath})
+  realpath -m --relative-to="${repoPath}" ${filePath}
 }
 
 resolvePath() {
   local filePath
   filePath=$1
-  realpath -m "$(pwd)/${filePath}"
+  realpath -m "${filePath}"
 }
 
 isFileDeleted() {
