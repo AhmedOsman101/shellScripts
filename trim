@@ -10,6 +10,6 @@ else
   str="$*"
 fi
 
-[[ -z ${str} ]] && log-error "No valid input was given"
+[[ -z ${str} ]] && printf '' && exit 0
 
 echo "${str}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
