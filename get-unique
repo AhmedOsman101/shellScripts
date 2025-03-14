@@ -1,31 +1,26 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
 backup=0
+useSpaces=0
 
-while getopts "b" opt; do
+while getopts "bs" opt; do
   case ${opt} in
-  b)
-    backup=1
-    ;;
-  ? | *)
-    log-error "Invalid option"
-    ;;
+  b) backup=1 ;;
+  s) useSpaces=1 ;;
+  ? | *) log-error "Invalid option: -${OPTARG}" ;;
   esac
 done
-
 shift $((OPTIND - 1))
 
-file="$1"
-tmpfile="$(mktemp)"
-trap 'rm -f $tmpfile' EXIT
-
-if [[ -z ${file} || ${file} == "-" ]]; then
-  # Read from stdin
-  awk '
+# Function to process input and remove duplicates
+remove_duplicates() {
+  if [[ ${useSpaces} -eq 1 ]]; then
+    tr ' ' '\n' |
+      awk '
     {
       count[$0]++
       lines[NR] = $0
@@ -35,29 +30,39 @@ if [[ -z ${file} || ${file} == "-" ]]; then
         if (count[lines[i]] == 1) print lines[i]
       }
     }
-  ' >"${tmpfile}"
-  # print the output to the stdout
-  cat "${tmpfile}"
+  ' | paste -sd " "
+  else
+    awk '
+    {
+      count[$0]++
+      lines[NR] = $0
+    }
+    END {
+      for (i = 1; i <= NR; i++) {
+        if (count[lines[i]] == 1) print lines[i]
+      }
+    }
+  '
+  fi
+}
+
+file="$1"
+
+if [[ -z ${file} || ${file} == "-" ]]; then
+  # Read from stdin
+  remove_duplicates
 else
+  tmpfile="$(mktemp)"
+  trap 'rm -f $tmpfile' EXIT
   # Read from file
   if [[ -f ${file} ]]; then
     if [[ ${backup} -eq 1 ]]; then
       cp "${file}" "${file}.bak"
       log-info "Backup created as ${file}.bak"
     fi
-    awk '
-      {
-        count[$0]++
-        lines[NR] = $0
-      }
-      END {
-        for (i = 1; i <= NR; i++) {
-          if (count[lines[i]] == 1) print lines[i]
-        }
-      }
-    ' "${file}" >"${tmpfile}"
+    remove_duplicates <"${file}" >"${tmpfile}"
     # override the input file
-    cat "${tmpfile}" >"${file}"
+    mv "${tmpfile}" "${file}"
     log-info "Removed all non-unique entries!"
   else
     log-error "Error: ${file} was not found!"
