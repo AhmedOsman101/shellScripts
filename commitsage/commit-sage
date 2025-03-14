@@ -555,7 +555,7 @@ parseChangedLines() {
 }
 
 analyzeChanges() {
-  local filePath output status blame
+  local filePath output status blame __changedLines=()
   filePath=$1
   normalizedPath=$(normalizePath ${filePath})
 
@@ -579,12 +579,18 @@ analyzeChanges() {
   esac
 
   # For existing files, we need to get blame info
-  blame=$(getGitBlame "${normalizedPath}")
+  getGitBlame "${normalizedPath}" # set blameInfos
 
   diff=$(git diff --unified=0 -- ${normalizedPath})
+  # log-debug "diff\n${diff}"
 
-  # changedLines=$()
+  __changedLines=($(parseChangedLines "${diff}"))
+  # log-debug "${changedLines[@]}"
+
+  # authorChanges=$(analyzeBlameInfo "${__changedLines[@]}")
+  analyzeBlameInfo "${__changedLines[@]}"
 }
+
 
 # hasChanges "staged"
 # hasStagedChanges=$?
