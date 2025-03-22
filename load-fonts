@@ -27,6 +27,6 @@ fd . -t d -d 1 | while read -r dir; do
   fi
 done
 
-gum spin --title "Caching fonts..." --spinner "dot" -- sudo fc-cache -f
+gum spin --title "Caching fonts..." --spinner "dot" -- sudo fc-cache -C -f
 
 log-success "Fonts reloaded succefully!"
