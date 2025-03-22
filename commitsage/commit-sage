@@ -24,6 +24,9 @@ readonly onlyStaged=$(jq -r ".onlyStaged" ${configFile})
 readonly repoPath="$(git-root)"
 readonly STAGED_STATUS_CODES=("M" "A" "D" "R")
 
+readonly dataFile=$(mktemp -t commit-sage-XXXXX.json)
+trap 'rm -rf "$dataFile"' EXIT
+
 declare -a blameInfos diffs
 declare -A GIT_STATUS_CODES STAGED_CODES_MAP
 
@@ -43,8 +46,7 @@ catfile() {
 }
 
 hasChanges() {
-  local type
-  type=${1:-unstaged}
+  local type=${1:-unstaged}
 
   case "${type}" in
   staged)
@@ -67,7 +69,11 @@ hasChanges() {
   output=$(trim "${output}")
 
   # True (0) if output is non-empty
-  [[ ${#output} -gt 0 ]] && return 0 || return 1
+  if [[ ${#output} -gt 0 ]]; then
+    echo 0
+  else
+    echo 1
+  fi
 }
 
 hasHead() {
@@ -274,19 +280,18 @@ processDeleted() {
 
 getDiff() {
   local HasHead
-  log-debug "${onlyStaged}"
   hasHead
   # 0 => True, 1 => False (e.g. empty repo)
   HasHead=$?
 
   # 0 => True, 1 => False
-  hasChanges "staged" && hasStagedChanges=0 || hasStagedChanges=1
+  hasStagedChanges=$(hasChanges "staged")
 
   # Only check unstaged if !onlyStaged
-  if [[ "${onlyStaged}" != "true" ]] && hasChanges "unstaged"; then
+  if [[ "${onlyStaged}" != "true" ]] && [[ $(hasChanges "unstaged") -eq 0 ]]; then
     hasUnstagedChanges=0 # True
   # if no staged changes but there is changes in general
-  elif [[ ${hasStagedChanges} -eq 1 ]] && hasChanges "unstaged"; then
+  elif [[ ${hasStagedChanges} -eq 1 ]] && [[ $(hasChanges "unstaged") -eq 0 ]]; then
     hasUnstagedChanges=0 # True
   else
     hasUnstagedChanges=1 # False
@@ -295,9 +300,9 @@ getDiff() {
   # Only check untracked if !onlyStaged && !hasStagedChanges
   if [[ "${onlyStaged}" != "true" ]] &&
     [[ "${hasStagedChanges}" -eq 1 ]] &&
-    hasChanges "untracked"; then
+    [[ $(hasChanges "untracked") -eq 0 ]]; then
     hasUntrackedFiles=0 # True
-  elif [[ ${hasStagedChanges} -eq 1 ]] && hasChanges "untracked"; then
+  elif [[ ${hasStagedChanges} -eq 1 ]] && [[ $(hasChanges "untracked") -eq 0 ]]; then
     hasUntrackedFiles=0 # True
   else
     hasUntrackedFiles=1 # False
@@ -307,23 +312,23 @@ getDiff() {
   if [[ "${HasHead}" -eq 0 ]] &&
     [[ "${onlyStaged}" != "true" ]] &&
     [[ "${hasStagedChanges}" -eq 1 ]] &&
-    hasChanges "deleted"; then
+    [[ $(hasChanges "deleted") -eq 0 ]]; then
 
     hasDeletedFiles=0 # True
   elif [[ "${HasHead}" -eq 0 ]] &&
     [[ ${hasStagedChanges} -eq 1 ]] &&
-    hasChanges "deleted"; then
+    [[ $(hasChanges "deleted") -eq 0 ]]; then
     hasDeletedFiles=0 # True
   else
     hasDeletedFiles=1 # False
   fi
 
   # Log results for debugging
-  log-debug "hasHead: ${HasHead}"
-  log-debug "hasStagedChanges: ${hasStagedChanges}"
-  log-debug "hasUnstagedChanges: ${hasUnstagedChanges}"
-  log-debug "hasUntrackedFiles: ${hasUntrackedFiles}"
-  log-debug "hasDeletedFiles: ${hasDeletedFiles}"
+  # log-debug "hasHead: ${HasHead}"
+  # log-debug "hasStagedChanges: ${hasStagedChanges}"
+  # log-debug "hasUnstagedChanges: ${hasUnstagedChanges}"
+  # log-debug "hasUntrackedFiles: ${hasUntrackedFiles}"
+  # log-debug "hasDeletedFiles: ${hasDeletedFiles}"
 
   # Check if no changes exist (all are false, i.e., 1)
   if [[ "${hasStagedChanges}" -eq 1 ]] &&
@@ -457,57 +462,55 @@ executeGitBlame() {
 }
 
 parseBlameOutput() {
-  local input
+  local input author email timestamp date line commit
   local -A currentBlame=()
   input="$1"
   mapfile -t lines <<<"${input}"
-  for line in "${lines[@]}"; do
-    if echo "${line}" | rg "^author " -q; then
-      currentBlame[author]="${line:7}"
-    elif echo "${line}" | rg "^author-mail " -q; then
-      currentBlame[email]=$(echo "${line:12}" | tr -d '<>')
-    elif echo "${line}" | rg "^author-time " -q; then
-      currentBlame[timestamp]="${line:11}"
-      currentBlame[date]=$(date -d "@${currentBlame[timestamp]}" --iso-8601=seconds --utc)
-    elif echo "${line}" | rg "^\t" -q; then
-      currentBlame[line]="${line:1}"
+  for _line in "${lines[@]}"; do
+    if echo "${_line}" | rg -q "^author "; then
+      author="${_line:7}"
+    elif echo "${_line}" | rg -q "^author-mail "; then
+      email=$(echo "${_line:12}" | tr -d '<>')
+    elif echo "${_line}" | rg -q "^author-time "; then
+      timestamp="${_line:11}"
+      date=$(date -d "@${timestamp}" --iso-8601=seconds --utc)
+    elif echo "${_line}" | rg -q "^\t"; then
+      line="${_line:1}"
 
-      if [[
-        -n ${currentBlame[author]} &&
-        -n ${currentBlame[email]} &&
-        -n ${currentBlame[timestamp]} &&
-        -n ${currentBlame[date]} &&
-        -n ${currentBlame[line]} ]]; then
-        # Create a new associative array for this blame info
-        local index=${#blameInfos[@]} # The current index of the array
-        declare -Ag "blameInfo_${index}"
+      if [[ 
+        -n ${author} && -n ${email} &&
+        -n ${timestamp} && -n ${date} &&
+        -n ${line} ]]; then
 
-        # Copy currentBlame to the new array
+        currentBlame=(
+          [author]="${author}"
+          [email]="${email}"
+          [timestamp]="${timestamp}"
+          [date]="${date}"
+          [line]="${line}"
+        )
+
+        # Build dynamic jq arguments
+        local -a jq_args=()
         for key in "${!currentBlame[@]}"; do
-          # blameInfo_1[name]=currentBlame[name]
-          eval "blameInfo_${index}[${key}]='${currentBlame[${key}]}'"
+          jq_args+=(--arg "${key}" "${currentBlame[${key}]}")
         done
 
-        # Add the name to blameInfos
-        blameInfos+=("blameInfo_${index}")
+        # Update JSON file
+        tempfile=$(mktemp -t XXXXX.json)
+        jq "${jq_args[@]}" '.blameInfos += [$ARGS.named]' "${dataFile}" >"${tempfile}"
+        mv "${tempfile}" "${dataFile}"
 
         # Reset currentBlame
         currentBlame=()
       fi
-    elif echo "${line}" | rg -q '^[0-9a-f]{40}'; then
-      currentBlame[commit]=$(echo "${line}" | awk '{ print $1 }')
+    elif echo "${_line}" | rg -q '^[0-9a-f]{40}'; then
+      currentBlame[commit]=$(echo "${_line}" | awk '{ print $1 }')
     fi
 
   done
-
-  # Debug: Show all blameInfos
-  # for info in "${blameInfos[@]}"; do
-  #   log-debug "Blame Info: ${info}"
-  #   declare -n ref="${info}" # Name reference (Requires Bash 4.3+)
-  #   for key in "${!ref[@]}"; do
-  #     log-debug "\t${key}: ${ref[${key}]}"
-  #   done
-  # done
+  # Debug: Show all data
+  # catfile "${dataFile}"
 
 }
 
@@ -552,6 +555,52 @@ parseChangedLines() {
   _changedLines=($(echo "${_changedLines[*]}" | no-dups -s))
   echo "${_changedLines[@]}"
 }
+
+analyzeBlameInfo() {
+  local -a ___changedLines=("$@") # Array of changed line numbers passed as arguments
+  local changedLinesJson authorChangesJson
+
+  # Convert the Bash array of changed lines to a JSON array
+  changedLinesJson=$(printf '%s\n' "${___changedLines[@]}" | jq -s '.')
+
+  # Use jq to analyze blameInfos, filtering by changed lines and grouping by author
+  authorChangesJson=$(jq --argjson changedLines "${changedLinesJson}" -f "${scriptDir}/script.jq" "${dataFile}")
+  echo ${authorChangesJson} >test.json
+
+  local tempfile=$(mktemp -t XXXXX.json)
+  jq --argjson authorChanges "${authorChangesJson}" '.authorChanges += $authorChanges' "${dataFile}" >"${tempfile}"
+  mv "${tempfile}" "${dataFile}"
+}
+
+formatAnalysis() {
+  local authorChangesJson
+  authorChangesJson="$(jq '.authorChanges' "${dataFile}")"
+  # Check if the JSON object is empty
+  if [[ "$(echo "${authorChangesJson}" | jq 'length')" -eq 0 ]]; then
+    echo "No changes detected."
+    return
+  fi
+
+  echo "${authorChangesJson}" | jq .
+
+  # Use jq to sort and format the author changes
+  local formattedOutput
+  formattedOutput=$(echo "${authorChangesJson}" | jq -r '
+    # Convert object to array of [key, value] pairs
+    to_entries
+    # Sort by count in descending order
+    | sort_by(.value.count) | reverse
+    # Format each entry
+    | map(
+      "\(.key) modified \(.value.count) line" +
+      (if .value.count == 1 then "" else "s" end) +
+      " (\(.value.lines | join(", ")))"
+    )
+    # Join with newlines
+    | join("\n")
+  ')
+
+  echo "${formattedOutput}" | jq '.'
 }
 
 analyzeChanges() {
@@ -567,12 +616,12 @@ analyzeChanges() {
   # shellcheck disable=SC2249
   case "${status}" in
   ' D' | 'D ')
-    log-debug "Skipping blame analysis for deleted file: ${normalizedPath}"
+    # log-debug "Skipping blame analysis for deleted file: ${normalizedPath}"
     echo "Deleted file: ${normalizedPath}"
     return 0
     ;;
   '??' | 'A ')
-    log-debug "Skipping blame analysis for new file: ${normalizedPath}"
+    # log-debug "Skipping blame analysis for new file: ${normalizedPath}"
     echo "New file: ${normalizedPath}"
     return 0
     ;;
@@ -589,30 +638,45 @@ analyzeChanges() {
 
   # authorChanges=$(analyzeBlameInfo "${__changedLines[@]}")
   analyzeBlameInfo "${__changedLines[@]}"
+  # formatAnalysis
 }
 
+main() {
+  # local -a blameAnalysis=()
+  local hasStagedChanges useStagedChanges diff blameAnalysis
+  # Ensure the file exists with an empty object if not present
+  [[ -f "${dataFile}" ]] && echo "{}" >"${dataFile}"
 
-# hasChanges "staged"
-# hasStagedChanges=$?
+  cd "${repoPath}" || log-error "Unable to open your git repo's root directory"
 
-# if [[ "${onlyStaged}" == "true" ]] || [[ "${hasStagedChanges}" -eq 0 ]]; then
-#   useStagedChanges="true"
-# else
-#   useStagedChanges="false"
-# fi
+  hasStagedChange=$(hasChanges "staged")
 
-# log-debug "useStagedChanges: ${useStagedChanges}"
+  if [[ "${onlyStaged}" == "true" ]] || [[ "${hasStagedChanges}" -eq 0 ]]; then
+    useStagedChanges="true"
+  else
+    useStagedChanges="false"
+  fi
 
-# diff=$(getDiff)
+  # log-debug "useStagedChanges: ${useStagedChanges}"
 
-# [[ -z "${diff}" ]] && log-error "No changes to commit"
+  diff=$(getDiff)
 
-# # changedFiles=$(getChangedFiles)
-# mapfile -t changedFiles <<<"$(getChangedFiles "${useStagedChanges}")"
+  [[ -z "${diff}" ]] && log-error "No changes to commit"
 
-# printf '%s\n' "${changedFiles[@]}"
+  # local changedFiles=$(getChangedFiles)
+  mapfile -t changedFiles <<<"$(getChangedFiles "${useStagedChanges}")"
 
-# blameAnalysis=
+  # printf '%s\n' "${changedFiles[@]}"
+  for file in "${changedFiles[@]}"; do
+    temp="$(analyzeChanges "${file}")"
+    if [[ -n "${temp}" ]]; then
+      blameAnalysis+="${temp};"
+    fi
+  done
+  printf '%s\n' "${blameAnalysis[@]}"
 
-# Testing
-getGitBlame index.js
+  # Testing
+  # analyzeChanges "file.txt"
+}
+
+main
