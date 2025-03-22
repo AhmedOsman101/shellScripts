@@ -16,7 +16,6 @@ if [[ -z "$1" ]]; then
   extensions_str=$(gum input --header="Enter file extensions (space-separated, e.g., ts js md):")
 else
   extensions_str="$1"
-  shift
 fi
 
 # Convert extensions string to array
