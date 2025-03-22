@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+current_layout=$(setxkbmap -query | grep layout | awk '{print $2}')
+if [[ "${current_layout}" == "us" ]]; then
+  setxkbmap -layout eg
+else
+  setxkbmap -layout us
+fi
