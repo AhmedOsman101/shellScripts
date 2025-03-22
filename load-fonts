@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2207
 
 set -euo pipefail
 
@@ -6,8 +7,22 @@ set -euo pipefail
 
 [[ ! -d "/usr/share/fonts/OTF" ]] && mkdir -p /usr/share/fonts/TTF
 
-sudo mv -i ~/fonts/*.ttf /usr/share/fonts/TTF/ >/dev/null 2>&1 || log-info "No .ttf fonts found!"
-sudo mv -i ~/fonts/*.otf /usr/share/fonts/OTF/ >/dev/null 2>&1 || log-info "No .otf fonts found!"
+cd ~/fonts
+
+sudo mv -i ./*.ttf /usr/share/fonts/TTF/ >/dev/null 2>&1 || printf ''
+sudo mv -i ./*.otf /usr/share/fonts/OTF/ >/dev/null 2>&1 || printf ''
+
+fd . -t d -d 1 | while read -r dir; do
+  ttfDirs=($(fd . -e ttf "${dir}" -x dirname {} | no-dups -s))
+  sudo mv "${ttfDirs[@]}" -t /usr/share/fonts/TTF &&
+    log-info "Moved $(echo "${ttfDirs[@]}" | tr " " "\n" | cut -d " " -f 5- | tr "\n" " " | trim)"
+
+  if [[ -d "${dir}" ]]; then
+    otfDirs=($(fd . -e otf "${dir}" -x dirname {} | no-dups -s))
+    sudo mv "${otfDirs[@]}" -t /usr/share/fonts/OTF &&
+      log-info "Moved $(echo "${otfDirs[@]}" | tr " " "\n" | cut -d " " -f 5- | tr "\n" " " | trim)"
+  fi
+done
 
 gum spin --title "Caching fonts..." --spinner "dot" -- sudo fc-cache -f
 
