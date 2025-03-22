@@ -19,8 +19,6 @@ compiler_args=${cmdarg_cfg['compiler-args']}
 
 [[ ${#cmdarg_argv[@]} -lt 1 ]] && log-error "Error: No filename provided."
 
-filename=${cmdarg_argv[0]}
-
 if [[ ${#cmdarg_argv[@]} -lt 1 ]]; then
   log-error "Error: No input files was provided."
 fi
@@ -46,11 +44,11 @@ fi
 # Splitting the args into an array instead of a single string
 read -r -a compilerArgs <<<"${compiler_args}"
 if [[ -n "${compiler_args}" ]]; then
-  if ! g++ -Wall -Wextra -Werror "${cmdarg_argv[@]}" -o "${outfile}" "${compilerArgs[@]}"; then
+  if ! g++ -Wall -Wextra "${cmdarg_argv[@]}" -o "${outfile}" "${compilerArgs[@]}"; then
     log-error "Error: Compilation failed."
   fi
 else
-  if ! g++ -Wall -Wextra -Werror "${cmdarg_argv[@]}" -o "${outfile}"; then
+  if ! g++ -Wall -Wextra "${cmdarg_argv[@]}" -o "${outfile}"; then
     log-error "Error: Compilation failed."
   fi
 fi
