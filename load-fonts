@@ -6,9 +6,9 @@ set -euo pipefail
 ttfDir="/usr/local/share/fonts/TTF"
 otfDirs="/usr/local/share/fonts/OTF"
 
-[[ ! -d "${ttfDir}" ]] && mkdir -p "${ttfDir}"
+[[ ! -d "${ttfDir}" ]] && sudo mkdir -p "${ttfDir}"
 
-[[ ! -d "${otfDir}" ]] && mkdir -p "${otfDir}"
+[[ ! -d "${otfDir}" ]] && sudo mkdir -p "${otfDir}"
 
 cd ~/fonts
 
