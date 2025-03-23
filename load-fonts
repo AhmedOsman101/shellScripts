@@ -4,13 +4,13 @@
 set -euo pipefail
 
 ttfDir="/usr/local/share/fonts/TTF"
-otfDirs="/usr/local/share/fonts/OTF"
+otfDir="/usr/local/share/fonts/OTF"
 
 [[ ! -d "${ttfDir}" ]] && sudo mkdir -p "${ttfDir}"
 
 [[ ! -d "${otfDir}" ]] && sudo mkdir -p "${otfDir}"
 
-cd ~/fonts
+cd ~/fonts || log-error "failed to find '~/fonts' directory"
 
 sudo mv -i ./*.ttf "${ttfDir}" >/dev/null 2>&1 || printf ''
 sudo mv -i ./*.otf "${otfDir}" >/dev/null 2>&1 || printf ''
@@ -27,6 +27,6 @@ fd . -t d -d 1 | while read -r dir; do
   fi
 done
 
-gum spin --title "Caching fonts..." --spinner "dot" -- sudo fc-cache -C -f
+gum spin --title "Caching fonts..." --spinner "dot" -- sudo fc-cache -r
 
 log-success "Fonts reloaded succefully!"
