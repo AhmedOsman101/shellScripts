@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+pnpm ls -g | tr "\t" "\n" | sed -n '/dependencies:/{n;:a;p;n;ba}' | awk '{print $1}'
