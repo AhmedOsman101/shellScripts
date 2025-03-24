@@ -9,5 +9,4 @@ paru -Qqe >"${DOTFILES}/pc_packages.txt"
 get-ext "${DOTFILES}/pc_extensions.json" -o
 
 # ---- pnpm ---- #
-pnpm-ls >>"${DOTFILES}/pnpm_global_packages.txt"
-no-dups "${DOTFILES}/pnpm_global_packages.txt"
+pnpm-ls >"${DOTFILES}/pnpm_global_packages.txt"
