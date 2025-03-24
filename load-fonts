@@ -17,13 +17,17 @@ sudo mv -i ./*.otf "${otfDir}" >/dev/null 2>&1 || printf ''
 
 fd . -t d -d 1 | while read -r dir; do
   ttfDirs=($(fd . -e ttf "${dir}" -x dirname {} | no-dups -s))
-  sudo mv "${ttfDirs[@]}" -t "${ttfDir}" &&
-    log-info "Moved $(echo "${ttfDirs[@]}" | tr " " "\n" | cut -d " " -f 5- | tr "\n" " " | trim)"
+  if [[ ${#ttfDirs} -gt 0 ]]; then
+    sudo mv "${ttfDirs[@]}" -t "${ttfDir}" &&
+      log-info "Moved $(echo "${ttfDirs[@]}" | tr " " "\n" | cut -d " " -f 5- | tr "\n" " " | trim)"
+  fi
 
   if [[ -d "${dir}" ]]; then
     otfDirs=($(fd . -e otf "${dir}" -x dirname {} | no-dups -s))
-    sudo mv "${otfDirs[@]}" -t "${otfDir}" &&
-      log-info "Moved $(echo "${otfDirs[@]}" | tr " " "\n" | cut -d " " -f 5- | tr "\n" " " | trim)"
+    if [[ ${#otfDirs} -gt 0 ]]; then
+      sudo mv "${otfDirs[@]}" -t "${otfDir}" &&
+        log-info "Moved $(echo "${otfDirs[@]}" | tr " " "\n" | cut -d " " -f 5- | tr "\n" " " | trim)"
+    fi
   fi
 done
 
