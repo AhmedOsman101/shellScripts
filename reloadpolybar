@@ -2,4 +2,4 @@
 
 killall polybar
 
-${XDG_CONFIG_HOME}/openbox/themes/launch-bar.sh 2>/dev/null
+${XDG_CONFIG_HOME}/openbox/themes/launch-bar.sh &>/dev/null
