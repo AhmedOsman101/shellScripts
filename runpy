@@ -1,14 +1,24 @@
 #!/usr/bin/env bash
 
-dir="$(dirname "$(which "$1")")/python"
+dir="${SCRIPTS_DIR}/python"
 venv="${dir}/.venv/bin/activate"
+file="${dir}/$(basename $1).py"
 
-source "${venv}" || exit
+# remove the script name from arguments and pass them to the target script
+shift
 
-file="${dir}/$1.py"
+withVenv() {
+  source "${venv}" || exit
 
-python3 "${file}" || {
-  deactivate && exit
+  python3 "${file}" "$@" || {
+    deactivate && exit
+  }
+
+  deactivate
 }
 
-deactivate
+if [[ -f "${venv}" ]]; then
+  withVenv "$@"
+else
+  python3 "${file}" "$@" && exit 0
+fi
