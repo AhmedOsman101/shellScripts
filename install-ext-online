@@ -28,8 +28,13 @@ fi
 for extension in ${extensions}; do
   extensionName=$(echo "${extension}" | cut -d '.' -f 2)
 
-  log-info "installing ${extensionName}..."
-  repeat-it "code --install-extension ${extension} --force &>/dev/null"
+  if gum spin \
+    --title "Installing ${extensionName}..." \
+    --title.foreground="${U_CYAN}" \
+    --spinner.foreground="${U_CYAN}" \
+    -- repeat-it --preserve "code --install-extension ${extension} --force &>/dev/null"; then
+    log-info "Installed ${extensionName}"
+  fi
 done
 
 log-success "Installation Done 🚀"
