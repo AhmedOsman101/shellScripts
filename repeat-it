@@ -2,10 +2,22 @@
 
 trap 'exit 1' SIGUSR1
 
-cmd="$1"
+source cmdarg.sh
+
+# ----  Main script logic ---- #
+cmdarg_info "header" "Repeats a command until it succeeds (exit code 0)."
+
+cmdarg "p" "preserve" "preserve output between retries (doesn't clear the screen)"
+
+cmdarg_parse "$@"
+
+preserve=${cmdarg_cfg['preserve']}
+
+cmd=${cmdarg_argv[0]}
+
 counter=1
 
-if [[ $# -eq 0 ]]; then
+if [[ -z ${cmd} ]]; then
   cmd=$(gum write --placeholder "enter a command to repeat...")
   # Evaluate the command to parse variables
   cmd=$(eval echo "${cmd}")
@@ -22,7 +34,7 @@ while true; do
   fi
 
   # Run gum spin, and check its exit status
-  if ! gum spin --spinner dot \
+  if ! gum spin \
     --title "Retrying '${cmd}' in 5s..." \
     --title.foreground="${U_GREEN}" \
     --spinner.foreground="${U_GREEN}" \
@@ -31,6 +43,6 @@ while true; do
     exit 0
   fi
 
-  clear
+  [[ "${preserve}" != true ]] && clear
   counter=$((counter + 1))
 done
