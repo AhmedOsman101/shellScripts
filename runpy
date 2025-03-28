@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-dir="${SCRIPTS_DIR}/python"
+dir="$(dirname $0)/python"
 venv="${dir}/.venv/bin/activate"
 file="${dir}/$(basename $1).py"
 
