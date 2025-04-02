@@ -5,8 +5,9 @@ set -euo pipefail
 trap 'exit 1' SIGUSR1
 
 current_layout=$(setxkbmap -query | grep layout | awk '{print $2}')
+
 if [[ "${current_layout}" == "us" ]]; then
-  setxkbmap -layout eg
+  setxkbmap -layout eg && notify-send "changed layout to ${current_layout}"
 else
-  setxkbmap -layout us
+  setxkbmap -layout us && notify-send "changed layout to ${current_layout}"
 fi
