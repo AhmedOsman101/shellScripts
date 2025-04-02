@@ -22,7 +22,7 @@ if [[ -d "${SCRIPTS_DIR}" ]]; then
 
   count=0
 
-  for script in $(fd -t x --full-path ${SCRIPTS_DIR}); do
+  for script in $(fd . -t x ${SCRIPTS_DIR}); do
     exclude=false
     for excluded in "${EXCLUDE_DIRS[@]}"; do
       if [[ "$(dirname ${script})" == "${excluded}"* || "${script}" == "${excluded}"* ]]; then
