@@ -4,7 +4,7 @@
 DIR="${HOME}/.config/openbox"
 STYLE="default"
 RASI="${DIR}/themes/${STYLE}/rofi/music.rasi"
-PATH="$PATH:$HOME/.local/bin/scripts"
+PATH="${PATH}:${HOME}/.local/bin/scripts"
 
 # Theme Elements
 status="$(spotifyctl current)"
