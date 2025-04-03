@@ -30,7 +30,6 @@ extensions=$(
 # Prompt user for the command to run if not provided
 if [[ -z "$2" ]]; then
   command_to_run=$(gum input --header="Enter the command to execute on changes:")
-  # read -r command_to_run
 else
   shift
   command_to_run="$*"
