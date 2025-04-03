@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
-#shellcheck disable="SC2046"
 
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+declare -a files
+
 if [[ $# -eq 0 || $1 == "." ]]; then
-  prettier --write --config "${PRETTIERRC}" $(fd . -e md)
+  # Populate the array directly from fd output
+  mapfile -t files < <(fd . -e md --unrestricted)
 else
-  files=()
   for file in "$@"; do
     ext=$(echo "${file}" | awk -F. '{print $NF}')
     [[ "${ext}" == "md" || "${ext}" == "markdown" ]] && files+=("${file}")
   done
-  if [[ ${#files[@]} -eq 0 ]]; then
-    log-error "No valid markdown file were passed"
-  else
-    prettier --write --config "${PRETTIERRC}" "${files[@]}"
-  fi
+fi
+
+if [[ ${#files[@]} -eq 0 ]]; then
+  log-error "No valid markdown file were passed"
+else
+  prettier --write --config "${PRETTIERRC}" "${files[@]}"
 fi
