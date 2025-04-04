@@ -31,8 +31,8 @@ if [[ "${isTemp}" == true ]]; then
 elif [[ "${isFile}" == true ]]; then
   name=$(gum input --placeholder "Enter Script's name: ")
   file="${PWD}/${name}"
-  mkdir -p "$(dirname ${file})" 2>/dev/null
-  name="$(basename ${file})"
+  mkdir -p "$(dirname "${file}")" 2>/dev/null
+  name="$(basename "${file}")"
 
   if [[ "${name}" != *.sh ]]; then
     gum confirm "Do you want to add .sh extension to your script?" && file="${PWD}/${name}.sh"
@@ -41,8 +41,8 @@ elif [[ "${isFile}" == true ]]; then
 elif [[ "${no_flags}" == true ]]; then
   name=$(gum input --placeholder "Enter Script's name: ")
   file="${SCRIPTS_DIR}/${name}"
-  mkdir -p "$(dirname ${file})" 2>/dev/null
-  name="$(basename ${file})"
+  mkdir -p "$(dirname "${file}")" 2>/dev/null
+  name="$(basename "${file}")"
 fi
 
 [[ -f "${file}" && "${isTemp}" == false ]] && log-error "The script '${name}' already exists at '${file}'!"
@@ -62,8 +62,10 @@ EOF
 
 echo "${text}" >"${file}"
 
-chmod u+x "${file}" || log-error "Failed to make '$(basename ${file})' executable"
+chmod u+x "${file}" || log-error "Failed to make '$(basename "${file}")' executable"
 
 "${EDITOR}" "${file}"
 
-log-success "Script '$(basename ${file})' created succefully!"
+"${SCRIPTS_DIR}/init.sh" &>/dev/null &
+
+log-success "Script '$(basename "${file}")' created succefully!"
