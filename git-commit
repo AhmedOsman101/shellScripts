@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+is-git-repo
+
 choices=(
   "feat: Introduce a new feature."
   "fix: Patching a bug."
@@ -20,6 +22,27 @@ terminate() {
   exit 0
 }
 
+declare -a files
+
+if ! git status --porcelain | grep -q '^'; then
+  log-info "Nothing to commit"
+  exit 0
+fi
+
+if ! git status --porcelain | rg -q '^[MAD]'; then
+  log-info "No staged changes found\n"
+  output=$(
+    git status --porcelain |
+      rg -v '^[MAD]' |
+      trim |
+      gum choose --no-limit --header="Choose files to stage:" --header.foreground="${U_GREEN}"
+  ) || terminate
+
+  mapfile -t files < <(echo "${output}" | awk '{print $2}') || terminate
+
+  git add "${files[@]}"
+fi
+
 type=$(
   gum filter \
     --placeholder "Commit type..." "${choices[@]}" |
@@ -31,6 +54,7 @@ summary=$(
     --value "(${type}): " \
     --placeholder "Summary of this change"
 )
+
 details=$(gum write --placeholder "Details of this change") || terminate
 
 gum confirm "Commit changes?" || terminate
