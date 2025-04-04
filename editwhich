@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+[[ -z $1 ]] && log-error "No valid input was given!"
+
+[[ -z ${EDITOR} ]] && EDITOR="nano"
+
+if path=$(which "$1" 2>/dev/null); then
+  ${EDITOR} "${path}"
+else
+  log-error "Script $1 doesn't exist!"
+fi
