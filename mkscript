@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+set -o pipefail
 
 trap 'exit 1' SIGUSR1
 
@@ -10,12 +10,12 @@ source cmdarg.sh
 cmdarg_info "header" "A script for creating bash scripts automatically"
 
 cmdarg "t" "temp" "Creates the script at /tmp and copies its name to clipboard"
-cmdarg "f" "file" "Creates the script in the current working directory"
+cmdarg "f?" "file" "Creates the script with the given name in the current working directory" ""
 
 cmdarg_parse "$@"
 
 isTemp=${cmdarg_cfg['temp']}
-isFile=${cmdarg_cfg['file']}
+filename=${cmdarg_cfg['file']}
 # Store option values
 no_flags=false
 file=""
@@ -28,7 +28,13 @@ if [[ "${isTemp}" == true ]]; then
   clipcopy "${file}"
   log-info "The script name was copied to clipboard"
 
-elif [[ "${isFile}" == true ]]; then
+elif [[ "${no_flags}" == true ]]; then
+  name=$(gum input --placeholder "Enter Script's name: ")
+  file="${SCRIPTS_DIR}/${name}"
+  mkdir -p "$(dirname "${file}")" 2>/dev/null
+  name="$(basename "${file}")"
+
+elif [[ -z "${filename}" ]]; then
   name=$(gum input --placeholder "Enter Script's name: ")
   file="${PWD}/${name}"
   mkdir -p "$(dirname "${file}")" 2>/dev/null
@@ -38,11 +44,14 @@ elif [[ "${isFile}" == true ]]; then
     gum confirm "Do you want to add .sh extension to your script?" && file="${PWD}/${name}.sh"
   fi
 
-elif [[ "${no_flags}" == true ]]; then
-  name=$(gum input --placeholder "Enter Script's name: ")
-  file="${SCRIPTS_DIR}/${name}"
+elif [[ -n "${filename}" ]]; then
+  file="${PWD}/${filename}"
   mkdir -p "$(dirname "${file}")" 2>/dev/null
   name="$(basename "${file}")"
+
+  if [[ "${name}" != *.sh ]]; then
+    gum confirm "Do you want to add .sh extension to your script?" && file="${PWD}/${name}.sh"
+  fi
 fi
 
 [[ -f "${file}" && "${isTemp}" == false ]] && log-error "The script '${name}' already exists at '${file}'!"
@@ -65,7 +74,5 @@ echo "${text}" >"${file}"
 chmod u+x "${file}" || log-error "Failed to make '$(basename "${file}")' executable"
 
 "${EDITOR}" "${file}"
-
-"${SCRIPTS_DIR}/init.sh" &>/dev/null &
 
 log-success "Script '$(basename "${file}")' created succefully!"
