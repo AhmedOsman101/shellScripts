@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+GREEN='\e[32m'
+RED='\e[31m'
+RESET='\e[0m'
+
+READY="${GREEN}●${RESET} Ready"
+ERROR="${RED}●${RESET} Error"
+
