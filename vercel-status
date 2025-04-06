@@ -11,3 +11,28 @@ RESET='\e[0m'
 READY="${GREEN}●${RESET} Ready"
 ERROR="${RED}●${RESET} Error"
 
+AUTH_HEADER="Authorization: Bearer ${VERCEL_TOKEN}"
+
+reponse=$(curl -sH "${AUTH_HEADER}" "https://api.vercel.com/v6/deployments?limit=1")
+now=$(date +"%s")
+
+dep=$(echo "${reponse}" | jq '.deployments[0]')
+readyAt=$(echo "${dep}" | jq '.ready')
+
+age=$(sec2time $((now - (readyAt / 1000))) --short | awk '{print $1}')
+
+projectName=$(echo "${dep}" | jq '.name')
+username=$(echo "${dep}" | jq '.creator.username')
+deploymentUrl=$(echo "${dep}" | jq '.url')
+status=$(echo "${dep}" | jq '.state')
+
+if [[ "${status}" == *"READY"* ]]; then
+  status="${READY}"
+else
+  status="${ERROR}"
+fi
+
+file=$(mktemp -t "XXXXXX.json")
+trap 'rm -f $file' EXIT
+
+nu -c "[ [Age ProjectName Username Status]; [\"${age}\" \"${projectName}\" \"${username}\" \"${status}\"]] | table --index false" && exit 0
