@@ -17,11 +17,11 @@ compile=${cmdarg_cfg['compile']}
 verbose=${cmdarg_cfg['verbose']}
 compiler_args=${cmdarg_cfg['compiler-args']}
 
-[[ ${#cmdarg_argv[@]} -lt 1 ]] && log-error "Error: No filename provided."
-
 if [[ ${#cmdarg_argv[@]} -lt 1 ]]; then
-  log-error "Error: No input files was provided."
+  log-error "Error: No input files were provided."
 fi
+
+declare -a files
 
 for file in "${cmdarg_argv[@]}"; do
   if [[ ! -r "${file}" ]]; then
@@ -31,35 +31,37 @@ for file in "${cmdarg_argv[@]}"; do
   if [[ ! "${file}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
     log-error "Error: Invalid filename '${file}'."
   fi
+
+  files+=("${file}")
 done
 
 if [[ ${compile} == true ]]; then
-  first_file=${cmdarg_argv[0]}
-  outfile="$(echo "${first_file}" | cut -d "." -f1).out"
+  outfile="$(echo "${files[0]}" | cut -d "." -f1).out"
 else
   outfile=$(mktemp -t "$(basename "$0")"-XXXXXX.out)
   trap 'rm -f $outfile' EXIT
 fi
 
 # Splitting the args into an array instead of a single string
-read -r -a compilerArgs <<<"${compiler_args}"
+mapfile -t compilerArgs <<<"${compiler_args}"
+
 if [[ -n "${compiler_args}" ]]; then
-  if ! clang -Wall -Wextra "${cmdarg_argv[@]}" -o "${outfile}" "${compilerArgs[@]}"; then
+  if ! clang -Wall -Wextra "${files[@]}" -o "${outfile}" "${compilerArgs[@]}"; then
     log-error "Error: Compilation failed."
   fi
 else
-  if ! clang -Wall -Wextra "${cmdarg_argv[@]}" -o "${outfile}"; then
+  if ! clang -Wall -Wextra "${files[@]}" -o "${outfile}"; then
     log-error "Error: Compilation failed."
   fi
 fi
 
-# Compile-only mode: just compile and exit successfully
 # Compile-and-run mode: run the program and propagate its exit status
 if [[ ${compile} != true && -f "${outfile}" ]]; then
-  "${outfile}"
+  ${outfile}
   exit $? # Propagate the program's exit status
 fi
 
+# Compile-only mode: just compile and exit successfully
 if [[ ${compile} == true && ${verbose} == true ]]; then
   log-success "Compilation successful: ${outfile}"
 fi
