@@ -1,38 +1,108 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -eo pipefail
+
+source cmdarg.sh
 
 trap 'exit 1' SIGUSR1
 
-GREEN='\e[32m'
+# ----  Main script logic ---- #
+cmdarg_info "header" "Shows the latest n deployments on vercel"
+
+cmdarg "l?" "limit" "Limit the number of deployments to show, defaults to the latest deployment" "1"
+
+cmdarg_parse "$@"
+
+limit=${cmdarg_cfg['limit']}
+
 RED='\e[31m'
+GREEN='\e[32m'
+YELLOW='\e[33m'
 RESET='\e[0m'
 
 READY="${GREEN}●${RESET} Ready"
 ERROR="${RED}●${RESET} Error"
+BUILDING="${YELLOW}●${RESET} Building"
 
 AUTH_HEADER="Authorization: Bearer ${VERCEL_TOKEN}"
 
-reponse=$(curl -sH "${AUTH_HEADER}" "https://api.vercel.com/v6/deployments?limit=1")
+response=$(
+  gum spin \
+    --title "Fetcheng..." \
+    --title.foreground="${U_GREEN}" \
+    -- curl -sH "${AUTH_HEADER}" "https://api.vercel.com/v6/deployments?limit=${limit}"
+)
 now=$(date +"%s")
 
-dep=$(echo "${reponse}" | jq '.deployments[0]')
-readyAt=$(echo "${dep}" | jq '.ready')
+parseJson() {
+  local record
+  record=$(echo "$1" | jq .)
+  readyAt=$(echo "${record}" | jq -r '.ready')
 
-age=$(sec2time $((now - (readyAt / 1000))) --short | awk '{print $1}')
+  age=$(sec2time $((now - (readyAt / 1000))) --short | awk '{print $1}')
+  projectName=$(echo "${record}" | jq -r '.name')
+  inspectorUrl=$(echo "${record}" | jq -r '.inspectorUrl')
+  username=$(echo "${record}" | jq -r '.creator.username')
 
-projectName=$(echo "${dep}" | jq '.name')
-username=$(echo "${dep}" | jq '.creator.username')
-deploymentUrl=$(echo "${dep}" | jq '.url')
-status=$(echo "${dep}" | jq '.state')
+  status=$(echo "${record}" | jq -r '.state' | trim)
+  case "${status}" in
+  'READY')
+    status="${READY}"
+    ;;
+  'BUILDING')
+    status="${BUILDING}"
+    ;;
+  'ERROR')
+    status="${ERROR}"
+    ;;
+  *)
+    log-error "Invalid status: '${status}'"
+    ;;
+  esac
 
-if [[ "${status}" == *"READY"* ]]; then
-  status="${READY}"
+  echo '{}' | jq -c \
+    --arg age "${age}" \
+    --arg name "${projectName}" \
+    --arg username "${username}" \
+    --arg status "${status}" \
+    --arg url "${inspectorUrl}" \
+    '{"Age": $age, "Project Name": $name, "Username": $username, "Status": $status, "Url": $url}'
+
+}
+
+# Check if limit is positive. Original check was > 1, which skipped limit=1 case.
+if ((limit > 0)); then
+  arr='[]'
+
+  for i in $(seq 0 $((limit - 1))); do
+    dep=$(echo "${response}" | jq ".deployments[${i}]")
+    # Basic check if deployment data exists at this index
+    if [[ -z "${dep}" || "${dep}" == "null" ]]; then
+      log-warning "No deployments found at index ${i}"
+      continue # Skip this iteration
+    fi
+    record_json=$(parseJson "$(echo "${dep}" | jq .)")
+    # Convert the record JSON string to a jq value
+    record=$(echo "${record_json}" | jq -c .)
+    # Append the record to the array
+    arr=$(echo "${arr}" | jq ". + [${record}]")
+  done
+
+  # Check if any records were actually added
+  if [[ "${arr}" != "[]" ]]; then
+    count=$(echo "${arr}" | jq '. | length')
+
+    if [[ ${count} -eq 1 ]]; then
+      # escape all ansi characters in status, show no index
+      nu --config "${NU_CONFIG}" -c "echo '${arr}' | from json | update Status { |row| \$row.Status | str replace -a '\e' (char -u '001b') } | ansi link Url --text 'Inspect' | table --index false --expand"
+    else
+      # escape all ansi characters in status
+      nu --config "${NU_CONFIG}" -c "echo '${arr}' | from json | update Status { |row| \$row.Status | str replace -a '\e' (char -u '001b') } | ansi link Url --text 'Inspect' | table --expand"
+    fi
+  else
+    log-error "No deployment data processed or appended."
+  fi
 else
-  status="${ERROR}"
+  log-warning "Limit is set to ${limit}. No deployments requested."
+  exit 1
 fi
-
-file=$(mktemp -t "XXXXXX.json")
-trap 'rm -f $file' EXIT
-
-nu -c "[ [Age ProjectName Username Status]; [\"${age}\" \"${projectName}\" \"${username}\" \"${status}\"]] | table --index false" && exit 0
