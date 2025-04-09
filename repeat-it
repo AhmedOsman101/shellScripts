@@ -7,13 +7,12 @@ source cmdarg.sh
 # ----  Main script logic ---- #
 cmdarg_info "header" "Repeats a command until it succeeds (exit code 0)."
 
-cmdarg "p" "preserve" "preserve output between retries (doesn't clear the screen)"
+cmdarg "p" "preserve" "preserve output between retries (don't clear the screen)"
 
 cmdarg_parse "$@"
 
 preserve=${cmdarg_cfg['preserve']}
-
-cmd=${cmdarg_argv[0]}
+cmd=${cmdarg_argv[*]}
 
 counter=1
 
