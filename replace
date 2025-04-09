@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# Usage function
+usage() {
+  echo "Usage: $(basename $0) <search> <replace> [file...]"
+  echo "  search:  string to find"
+  echo "  replace: string to replace with"
+  echo "  file:    optional file(s) to process (if omitted, reads from stdin)"
+  exit 1
+}
+
+# Check for minimum arguments
+if [[ $# -lt 2 ]]; then
+  log-warning "Missing required arguments"
+  usage
+fi
+
+search="$1"
+replace="$2"
+shift 2 # Remove first two arguments, leaving any files
+
+# Escape special characters in search pattern
+search_escaped=$(printf '%s' "${search}" | sed 's/[[\.*^$/]/\\&/g')
+
+# If no files specified, process stdin
+if [[ $# -eq 0 ]]; then
+  sed "s|${search_escaped}|${replace}|g"
+else
+  # Process each file
+  for file in "$@"; do
+    if [[ ! -f "${file}" ]]; then
+      log-error "File '${file}' not found"
+    fi
+    # Create backup and perform replacement
+    cp "${file}" "${file}.bak" 2>/dev/null || log-error "Backup failed for ${file}"
+
+    sed "s|${search_escaped}|${replace}|g" "${file}.bak" >"${file}" 2>/dev/null ||
+      log-warning "Replacement failed for ${file}"
+
+    log-success "Processed: ${file}"
+  done
+fi
