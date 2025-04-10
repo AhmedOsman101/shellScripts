@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+path=${TUCKR_DIR:-~/.config/dotfiles/Configs}
+
+cd "${path}" || log-error "Invalid tuckr directory: ${path}"
+
+packages=($(fd . --type d -d 1 | cut -d '/' -f1))
+
+log-debug "${path}\n${packages[*]}"
+count=0
+for package in "${packages[@]}"; do
+  tuckr add "${package}" || log-warning "Failed to sync package ${package}"
+  count=$((count + 1))
+done
+
+log-success "Synced ${count} tuckr packages"
