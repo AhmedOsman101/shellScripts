@@ -6,7 +6,7 @@ trap 'exit 1' SIGUSR1
 
 source cmdarg.sh
 
-# ----  Main script logic ---- #
+# ---  Main script logic --- #
 cmdarg_info "header" "A script for creating bash scripts automatically"
 
 cmdarg "t" "temp" "Creates the script at /tmp and copies its name to clipboard"

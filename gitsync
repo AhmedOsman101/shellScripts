@@ -6,7 +6,7 @@ trap 'exit 1' SIGUSR1
 
 source cmdarg.sh
 
-# ----  Main script logic ---- #
+# ---  Main script logic --- #
 cmdarg_info "header" "This script automates adding changes, committing them with a timestamp, and pushing the changes to the remote repository."
 
 cmdarg "b?" "branch" "Specify the branch to work on. Defaults to current branch." "no branch"

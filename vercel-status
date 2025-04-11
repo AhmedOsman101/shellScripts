@@ -6,7 +6,7 @@ source cmdarg.sh
 
 trap 'exit 1' SIGUSR1
 
-# ----  Main script logic ---- #
+# ---  Main script logic --- #
 cmdarg_info "header" "Shows the latest n deployments on vercel"
 
 cmdarg "l?" "limit" "Limit the number of deployments to show, defaults to the latest deployment" "1"

@@ -4,7 +4,7 @@ trap 'exit 1' SIGUSR1
 
 source cmdarg.sh
 
-# ----  Main script logic ---- #
+# ---  Main script logic --- #
 cmdarg_info "header" "Repeats a command until it succeeds (exit code 0)."
 
 cmdarg "p" "preserve" "preserve output between retries (don't clear the screen)"

@@ -4,7 +4,7 @@ source cmdarg.sh
 
 trap 'exit 1' SIGUSR1
 
-# ----  Main script logic ---- #
+# ---  Main script logic --- #
 cmdarg_info "header" "Compile and optionally run C++ files"
 
 cmdarg "c" "compile" "Compile the files in the current working directory"

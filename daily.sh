@@ -10,12 +10,12 @@ else
   device="pc"
 fi
 
-# ---- paru packages ---- #
+# --- paru packages --- #
 paru -Qqe >"${DOTFILES}/${device}_packages.txt"
 
-# ---- vscode extenstions---- #
+# --- vscode extenstions--- #
 get-ext "${DOTFILES}/${device}_extensions.json" -o
 
-# ---- pnpm ---- #
+# --- pnpm --- #
 pnpm-ls >>"${DOTFILES}/pnpm_global_packages.txt"
 no-dups "${DOTFILES}/pnpm_global_packages.txt"

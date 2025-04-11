@@ -4,7 +4,7 @@ trap 'exit 1' SIGUSR1
 
 source cmdarg.sh
 
-# ----  Main script logic ---- #
+# ---  Main script logic --- #
 cmdarg_info "header" "Creates a colorful framed banner in the terminal."
 
 cmdarg "f?" "frame" "Symbol to use for the banner frame" ":"
