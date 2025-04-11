@@ -14,18 +14,30 @@ cmdarg "f?" "file" "Creates the script with the given name in the current workin
 
 cmdarg_parse "$@"
 
+# Store option values
 isTemp=${cmdarg_cfg['temp']}
 filename=${cmdarg_cfg['file']}
-# Store option values
 no_flags=false
 file=""
 
 [[ $# -eq 0 ]] && no_flags=true
 
+scriptContent=$(
+  cat <<EOF
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+EOF
+)
+
 if [[ "${isTemp}" == true ]]; then
   file=$(mktemp -t XXXXX-script.sh)
   name="${file}"
   clipcopy "${file}"
+  echo "${scriptContent}" >"${file}"
   log-info "The script name was copied to clipboard"
 
 elif [[ "${no_flags}" == true ]]; then
@@ -33,12 +45,15 @@ elif [[ "${no_flags}" == true ]]; then
   file="${SCRIPTS_DIR}/${name}"
   mkdir -p "$(dirname "${file}")" 2>/dev/null
   name="$(basename "${file}")"
+  make-signature "${name}" " " "" >"${file}"
 
 elif [[ -z "${filename}" ]]; then
   name=$(gum input --placeholder "Enter Script's name: ")
   file="${PWD}/${name}"
   mkdir -p "$(dirname "${file}")" 2>/dev/null
   name="$(basename "${file}")"
+
+  make-signature "${name}" " " "" >"${file}"
 
   if [[ "${name}" != *.sh ]]; then
     gum confirm "Do you want to add .sh extension to your script?" && file="${PWD}/${name}.sh"
@@ -52,24 +67,12 @@ elif [[ -n "${filename}" ]]; then
   if [[ "${name}" != *.sh ]]; then
     gum confirm "Do you want to add .sh extension to your script?" && file="${PWD}/${name}.sh"
   fi
+  echo "${scriptContent}" >"${file}"
 fi
 
 [[ -f "${file}" && "${isTemp}" == false ]] && log-error "The script '${name}' already exists at '${file}'!"
 
 touch "${file}" || log-error "Failed to create file '${file}'"
-
-text=$(
-  cat <<EOF
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-trap 'exit 1' SIGUSR1
-
-EOF
-)
-
-echo "${text}" >"${file}"
 
 chmod u+x "${file}" || log-error "Failed to make '$(basename "${file}")' executable"
 
