@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄                            ▄▄                        ▄▄
+#            ██                            ██                        ██
+#   ▄█████▄  ██▄████▄   ▄████▄    ▄█████▄  ██ ▄██▀              ▄███▄██   ▄████▄   ██▄███▄   ▄▄█████▄
+#  ██▀    ▀  ██▀   ██  ██▄▄▄▄██  ██▀    ▀  ██▄██               ██▀  ▀██  ██▄▄▄▄██  ██▀  ▀██  ██▄▄▄▄ ▀
+#  ██        ██    ██  ██▀▀▀▀▀▀  ██        ██▀██▄     █████    ██    ██  ██▀▀▀▀▀▀  ██    ██   ▀▀▀▀██▄
+#  ▀██▄▄▄▄█  ██    ██  ▀██▄▄▄▄█  ▀██▄▄▄▄█  ██  ▀█▄             ▀██▄▄███  ▀██▄▄▄▄█  ███▄▄██▀  █▄▄▄▄▄██
+#    ▀▀▀▀▀   ▀▀    ▀▀    ▀▀▀▀▀     ▀▀▀▀▀   ▀▀   ▀▀▀              ▀▀▀ ▀▀    ▀▀▀▀▀   ██ ▀▀▀     ▀▀▀▀▀▀
+#                                                                                  ██
+#
+# --- DESCRIPTION --- #
+# Checks a script's dependencies and installs them
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
+
+if [[ $# -ne 1 ]]; then
+  log-error "Invalid arguments, only a script name is accepted"
+else
+  file=$1
+
+  [[ ! -f "${file}" ]] && log-error "Script '${file}' was not found"
+fi
+
+deps=$(get-deps "${file}")
+
+if [[ "${deps}" == "x-none" ]]; then
+  exit 0
+fi
+
+for dep in ${deps}; do
+  if ! command -v "${dep}" >/dev/null 2>&1; then
+    log-warning "${dep} is not installed."
+    exit 1
+    # TODO: Implement installing the package based on the package manager
+  fi
+done
