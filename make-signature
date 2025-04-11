@@ -12,7 +12,7 @@ echo "#!/usr/bin/env bash"
 echo ""
 echo "# --- SCRIPT SIGNATURE --- #"
 
-toilet --font mono12 --termwidth "${name}" | sed 's/^/# /'
+toilet --font mono12 --termwidth --width 170 "${name}" | sed 's/^/# /'
 
 echo "# --- DESCRIPTION --- #"
 echo "# ${desc}"
