@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#                                                ▄▄
+#                        ██                      ██
+#   ▄███▄██   ▄████▄   ███████              ▄███▄██   ▄████▄   ██▄███▄   ▄▄█████▄
+#  ██▀  ▀██  ██▄▄▄▄██    ██                ██▀  ▀██  ██▄▄▄▄██  ██▀  ▀██  ██▄▄▄▄ ▀
+#  ██    ██  ██▀▀▀▀▀▀    ██       █████    ██    ██  ██▀▀▀▀▀▀  ██    ██   ▀▀▀▀██▄
+#  ▀██▄▄███  ▀██▄▄▄▄█    ██▄▄▄             ▀██▄▄███  ▀██▄▄▄▄█  ███▄▄██▀  █▄▄▄▄▄██
+#   ▄▀▀▀ ██    ▀▀▀▀▀      ▀▀▀▀               ▀▀▀ ▀▀    ▀▀▀▀▀   ██ ▀▀▀     ▀▀▀▀▀▀
+#   ▀████▀▀                                                    ██
+#
+# --- DESCRIPTION --- #
+# Extracts the script's dependencies
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
+
+if [[ $# -ne 1 ]]; then
+  log-error "Invalid arguments, only a script name is accepted"
+else
+  file=$1
+
+  [[ ! -f "${file}" ]] && log-error "Script '${file}' was not found"
+fi
+
+sed -n '/# --- DEPENDENCIES --- #/,/# --- END SIGNATURE --- #/{/\# - /p;}' "${file}" |
+  replace '# - ' '' |
+  # tr "\n" " " |
+  grep -v " --- " || echo "x-none"
