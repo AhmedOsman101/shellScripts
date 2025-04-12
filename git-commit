@@ -1,6 +1,36 @@
 #!/usr/bin/env bash
+# --- SCRIPT SIGNATURE --- #
+#
+#               ██                                                                    ██
+#               ▀▀       ██                                                           ▀▀       ██
+#   ▄███▄██   ████     ███████              ▄█████▄   ▄████▄   ████▄██▄  ████▄██▄   ████     ███████
+#  ██▀  ▀██     ██       ██                ██▀    ▀  ██▀  ▀██  ██ ██ ██  ██ ██ ██     ██       ██
+#  ██    ██     ██       ██       █████    ██        ██    ██  ██ ██ ██  ██ ██ ██     ██       ██
+#  ▀██▄▄███  ▄▄▄██▄▄▄    ██▄▄▄             ▀██▄▄▄▄█  ▀██▄▄██▀  ██ ██ ██  ██ ██ ██  ▄▄▄██▄▄▄    ██▄▄▄
+#   ▄▀▀▀ ██  ▀▀▀▀▀▀▀▀     ▀▀▀▀               ▀▀▀▀▀     ▀▀▀▀    ▀▀ ▀▀ ▀▀  ▀▀ ▀▀ ▀▀  ▀▀▀▀▀▀▀▀     ▀▀▀▀
+#   ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# Adds a conventinal commit message or generates one with AI
+# --- DEPENDENCIES --- #
+# - git
+# - ripgrep
+# - gum
+# - mdcat
+# --- END SIGNATURE --- #
 
-set -euo pipefail
+set -eo pipefail
+
+source cmdarg.sh
+
+# ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc $0)"
+
+cmdarg "a" "ai" "Use AI to generate the message"
+
+cmdarg_parse "$@"
+
+useAi=${cmdarg_cfg['ai']}
 
 is-git-repo
 
@@ -43,19 +73,36 @@ if ! git status --porcelain | rg -q '^[MAD]'; then
   git add "${files[@]}"
 fi
 
-type=$(
-  gum filter \
-    --placeholder "Commit type..." "${choices[@]}" |
-    cut -d ':' -f 1
-) || terminate
+if [[ "${useAi}" == true ]]; then
+  commitMessage=$(
+    gum spin \
+      --title "Generating..." \
+      --title.foreground="${U_GREEN}" \
+      -- commit-sage
+  ) || log-error "Message generation failed"
 
-summary=$(
-  gum input \
-    --value "(${type}): " \
-    --placeholder "Summary of this change"
-)
+  transformed=$(echo "${commitMessage}" | tr "\n" "#")
 
-details=$(gum write --placeholder "Details of this change") || terminate
+  summary=$(echo "${transformed}" | tr "\n" "#" | awk -F "##" '{print $1}')
+  details=$(echo "${transformed}" | awk -F "##" '{print $2}' | tr "#" "\n")
+else
+  type=$(
+    gum filter \
+      --placeholder "Commit type..." "${choices[@]}" |
+      cut -d ':' -f 1
+  ) || terminate
+
+  summary=$(
+    gum input \
+      --value "(${type}): " \
+      --placeholder "Summary of this change"
+  )
+
+  details=$(gum write --placeholder "Details of this change") || terminate
+fi
+
+echo -e "${summary}\n\n${details}\n" | mdcat
+echo ""
 
 gum confirm "Commit changes?" || terminate
 
