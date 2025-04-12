@@ -68,7 +68,8 @@ if ! git status --porcelain | rg -q '^[MAD]'; then
       gum choose --no-limit --header="Choose files to stage:" --header.foreground="${U_GREEN}"
   ) || terminate
 
-  mapfile -t files < <(echo "${output}" | awk '{print $2}') || terminate
+  # Parse output to extract file names, preserving spaces
+  mapfile -t files < <(echo "${output}" | cut -d " " -f 2- | sed 's|"||g' | sed -E 's/^[?[:space:]]{3}//') || terminate
 
   git add "${files[@]}"
 fi
