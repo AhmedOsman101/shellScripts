@@ -33,4 +33,4 @@ fi
 
 sed -n '/# --- DESCRIPTION --- #/,/# --- DEPENDENCIES --- #/ {/\# /p;}' "${file}" |
   replace "# " "" |
-  grep -v " --- " || log-info "Script: '${file}' does not have a description"
+  grep -v " --- " || printf ""
