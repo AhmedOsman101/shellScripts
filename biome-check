@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄           ██                                                       ▄▄                            ▄▄
+#  ██           ▀▀                                                       ██                            ██
+#  ██▄███▄    ████      ▄████▄   ████▄██▄   ▄████▄              ▄█████▄  ██▄████▄   ▄████▄    ▄█████▄  ██ ▄██▀
+#  ██▀  ▀██     ██     ██▀  ▀██  ██ ██ ██  ██▄▄▄▄██            ██▀    ▀  ██▀   ██  ██▄▄▄▄██  ██▀    ▀  ██▄██
+#  ██    ██     ██     ██    ██  ██ ██ ██  ██▀▀▀▀▀▀   █████    ██        ██    ██  ██▀▀▀▀▀▀  ██        ██▀██▄
+#  ███▄▄██▀  ▄▄▄██▄▄▄  ▀██▄▄██▀  ██ ██ ██  ▀██▄▄▄▄█            ▀██▄▄▄▄█  ██    ██  ▀██▄▄▄▄█  ▀██▄▄▄▄█  ██  ▀█▄
+#  ▀▀ ▀▀▀    ▀▀▀▀▀▀▀▀    ▀▀▀▀    ▀▀ ▀▀ ▀▀    ▀▀▀▀▀               ▀▀▀▀▀   ▀▀    ▀▀    ▀▀▀▀▀     ▀▀▀▀▀   ▀▀   ▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Runs the check command and fixes changes with biome.js
+# --- DEPENDENCIES --- #
+# - biome
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
+
+biome check --fix --config-path="$BIOME_CONFIG_PATH" "$*"
