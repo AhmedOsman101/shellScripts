@@ -24,7 +24,7 @@ set -eo pipefail
 source cmdarg.sh
 
 # ---  Main script logic --- #
-cmdarg_info "header" "$(get-desc $0)"
+cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "a" "ai" "Use AI to generate the message"
 
@@ -33,6 +33,8 @@ cmdarg_parse "$@"
 useAi=${cmdarg_cfg['ai']}
 
 is-git-repo
+
+repoPath=$(git-root)
 
 choices=(
   "feat: Introduce a new feature."
@@ -71,7 +73,9 @@ if ! git status --porcelain | rg -q '^[MAD]'; then
   # Parse output to extract file names, preserving spaces
   mapfile -t files < <(echo "${output}" | cut -d " " -f 2- | sed 's|"||g' | sed -E 's/^[?[:space:]]{3}//') || terminate
 
-  git add "${files[@]}"
+  for file in "${files[@]}"; do
+    git add "$repoPath/$file"
+  done
 fi
 
 if [[ "${useAi}" == true ]]; then
