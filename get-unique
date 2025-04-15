@@ -4,21 +4,24 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-backup=0
-useSpaces=0
+source cmdarg.sh
 
-while getopts "bs" opt; do
-  case ${opt} in
-  b) backup=1 ;;
-  s) useSpaces=1 ;;
-  ? | *) log-error "Invalid option: -${OPTARG}" ;;
-  esac
-done
-shift $((OPTIND - 1))
+# ---  Main script logic --- #
+cmdarg_info "header" "Filters unique lines that appeared once in the whole file"
+
+cmdarg "b" "backup" "Creates a backup .bak file of the original file"
+cmdarg "a" "array" "Returns the output as a bash compatible array"
+cmdarg "q" "quiet" "Runs quietly without output on success"
+
+cmdarg_parse "$@"
+
+useBackup=${cmdarg_cfg['backup']}
+useArray=${cmdarg_cfg['array']}
+quiet=${cmdarg_cfg['quiet']}
 
 # Function to process input and remove duplicates
 remove_duplicates() {
-  if [[ ${useSpaces} -eq 1 ]]; then
+  if [[ ${useArray} == true ]]; then
     tr ' ' '\n' |
       awk '
     {
@@ -56,14 +59,14 @@ else
   trap 'rm -f $tmpfile' EXIT
   # Read from file
   if [[ -f ${file} ]]; then
-    if [[ ${backup} -eq 1 ]]; then
-      cp "${file}" "${file}.bak"
-      log-info "Backup created as ${file}.bak"
+    if [[ ${useBackup} == true ]]; then
+      cp -i "${file}" "${file}.bak"
+      [[ ${quiet} == true ]] || log-info "Backup created as ${file}.bak"
     fi
     remove_duplicates <"${file}" >"${tmpfile}"
     # override the input file
-    mv "${tmpfile}" "${file}"
-    log-info "Removed all non-unique entries!"
+    mv -i "${tmpfile}" "${file}"
+    [[ ${quiet} == true ]] || log-info "Filtered unique lines from '${file}'!"
   else
     log-error "Error: ${file} was not found!"
   fi
