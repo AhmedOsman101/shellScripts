@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#
+#   ▄█████▄   ▄█████▄  ██▄███▄   ▄▄█████▄
+#  ██▀    ▀   ▀ ▄▄▄██  ██▀  ▀██  ██▄▄▄▄ ▀
+#  ██        ▄██▀▀▀██  ██    ██   ▀▀▀▀██▄
+#  ▀██▄▄▄▄█  ██▄▄▄███  ███▄▄██▀  █▄▄▄▄▄██
+#    ▀▀▀▀▀    ▀▀▀▀ ▀▀  ██ ▀▀▀     ▀▀▀▀▀▀
+#                      ██
+#
+# --- DESCRIPTION --- #
+# Toggles the caps lock
+# --- DEPENDENCIES --- #
+# - xdotool
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
+xdotool key Caps_Lock
