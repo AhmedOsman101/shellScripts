@@ -20,7 +20,7 @@ filename=${cmdarg_cfg['file']}
 no_flags=false
 file=""
 
-[[ ${isTemp} != true || -z ${filename} ]] && no_flags=true
+[[ ${isTemp} != true && -z ${filename} ]] && no_flags=true
 
 scriptContent=$(
   cat <<EOF
@@ -29,6 +29,8 @@ scriptContent=$(
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
 
 EOF
 )
@@ -56,7 +58,7 @@ elif [[ "${no_flags}" == true ]]; then
   if [[ -n ${cmdarg_argv[0]} ]]; then
     name=${cmdarg_argv[0]}
   else
-    name=$(gum input --placeholder "Enter Script's name: ")
+    name=$(gum input --placeholder "Enter Script's name: ") || log-error "Failed to capture the script name"
   fi
   file="${SCRIPTS_DIR}/${name}"
 
@@ -67,7 +69,7 @@ elif [[ "${no_flags}" == true ]]; then
   make-signature "${name}" " " "" >"${file}"
 
 elif [[ -z "${filename}" ]]; then
-  name=$(gum input --placeholder "Enter Script's name: ")
+  name=$(gum input --placeholder "Enter Script's name: ") || log-error "Failed to capture the script name"
   file="${PWD}/${name}"
 
   validateAndCreateFile "${file}"
