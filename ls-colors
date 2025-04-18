@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄▄▄                                              ▄▄▄▄
+#  ▀▀██                                              ▀▀██
+#    ██      ▄▄█████▄             ▄█████▄   ▄████▄     ██       ▄████▄    ██▄████  ▄▄█████▄
+#    ██      ██▄▄▄▄ ▀            ██▀    ▀  ██▀  ▀██    ██      ██▀  ▀██   ██▀      ██▄▄▄▄ ▀
+#    ██       ▀▀▀▀██▄   █████    ██        ██    ██    ██      ██    ██   ██        ▀▀▀▀██▄
+#    ██▄▄▄   █▄▄▄▄▄██            ▀██▄▄▄▄█  ▀██▄▄██▀    ██▄▄▄   ▀██▄▄██▀   ██       █▄▄▄▄▄██
+#     ▀▀▀▀    ▀▀▀▀▀▀               ▀▀▀▀▀     ▀▀▀▀       ▀▀▀▀     ▀▀▀▀     ▀▀        ▀▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+#
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
+declare -a colors
+
+mapfile -t colors < <(rg -N "export U_" ${TUCKR_DIR}/zsh/.config/zsh/variables.zsh)
+
+for line in "${colors[@]}"; do
+  var=$(echo "${line}" | awk '{print $2}')
+  varname=$(echo "${var}" | awk -F "=" '{print $1}')
+  color=$(echo "${var}" | awk -F "=" '{print $2}' | tr -d '"')
+
+  gum style \
+    --foreground="${color}" \
+    "${varname}"
+done
