@@ -17,10 +17,29 @@
 # - biome
 # --- END SIGNATURE --- #
 
-set -euo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
+source cmdarg.sh
+
 # ---  Main script logic --- #
 
-biome check --fix --config-path="$BIOME_CONFIG_PATH" "$*"
+cmdarg_info "header" "$(get-desc "$0")"
+
+cmdarg "s" "summary" "Change the reporter type to summary"
+
+cmdarg_parse "$@"
+
+summary=${cmdarg_cfg["summary"]}
+
+if [[ ${summary} == true ]]; then
+  biome check \
+    --fix \
+    --config-path="${BIOME_CONFIG_PATH}" \
+    --reporter=summary "${cmdarg_argv[@]}"
+else
+  biome check \
+    --fix \
+    --config-path="${BIOME_CONFIG_PATH}" "${cmdarg_argv[@]}"
+fi
