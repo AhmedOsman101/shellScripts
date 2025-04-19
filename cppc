@@ -18,18 +18,18 @@ verbose=${cmdarg_cfg['verbose']}
 compiler_args=${cmdarg_cfg['compiler-args']}
 
 if [[ ${#cmdarg_argv[@]} -lt 1 ]]; then
-  log-error "Error: No input files were provided."
+  log-error "No input files were provided."
 fi
 
 declare -a files
 
 for file in "${cmdarg_argv[@]}"; do
   if [[ ! -r "${file}" ]]; then
-    log-error "Error: File '${file}' is not readable."
+    log-error "File '${file}' is not readable."
   fi
   # Basic filename validation (no spaces or special chars for simplicity)
   if [[ ! "${file}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
-    log-error "Error: Invalid filename '${file}'."
+    log-error "Invalid filename '${file}'."
   fi
 
   files+=("${file}")
@@ -47,11 +47,11 @@ mapfile -t compilerArgs <<<"${compiler_args}"
 
 if [[ -n "${compiler_args}" ]]; then
   if ! g++ -Wall -Wextra "${files[@]}" -o "${outfile}" "${compilerArgs[@]}"; then
-    log-error "Error: Compilation failed."
+    log-error "Compilation failed."
   fi
 else
   if ! g++ -Wall -Wextra "${files[@]}" -o "${outfile}"; then
-    log-error "Error: Compilation failed."
+    log-error "Compilation failed."
   fi
 fi
 
