@@ -8,7 +8,7 @@ source cmdarg.sh
 cmdarg_info "header" "Creates a colorful framed banner in the terminal."
 
 cmdarg "f?" "frame" "Symbol to use for the banner frame" ":"
-cmdarg "c?" "color" "Color of the banner (black, red, green, yellow, blue, magenta, cyan, white)" "white"
+cmdarg "c?" "color" "Color of the banner (black, red, green, yellow, blue, magenta, cyan, white, gray, orange, purple)" "gray"
 
 cmdarg_parse "$@"
 
@@ -19,16 +19,18 @@ msg=${cmdarg_argv[0]}
 
 [[ -z ${msg} ]] && log-error "Message is required"
 
-# Convert color name to ANSI code
 case ${color} in
-black) code=0 ;;
-red) code=1 ;;
-green) code=2 ;;
-yellow) code=3 ;;
-blue) code=4 ;;
-magenta) code=5 ;;
-cyan) code=6 ;;
-white) code=7 ;;
+black) hex=${U_BLACK} ;;
+red) hex=${U_RED} ;;
+green) hex=${U_GREEN} ;;
+yellow) hex=${U_YELLOW} ;;
+blue) hex=${U_BLUE} ;;
+magenta) hex=${U_MAGENTA} ;;
+cyan) hex=${U_CYAN} ;;
+white) hex=${U_WHITE} ;;
+gray | grey) hex=${U_GRAY} ;;
+orange) hex=${U_ORANGE} ;;
+purple) hex=${U_PURPLE} ;;
 *) log-error "Invalid color '${color}'" ;;
 esac
 
@@ -37,6 +39,4 @@ text="${frame}${frame}${frame}${frame} ${msg} ${frame}${frame}${frame}${frame}"
 edge="${text//?/${frame}}"
 
 # Print with color
-tput setaf "${code}"
-printf "%s\n%s\n%s\n" "${edge}" "${text}" "${edge}"
-tput sgr0
+gum style --foreground="${hex}" "$(printf "%s\n%s\n%s\n" "${edge}" "${text}" "${edge}")"
