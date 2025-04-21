@@ -4,6 +4,7 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# read from stdin
 if [[ $# -eq 0 || $1 == "-" ]]; then
   str=$(cat)
 else

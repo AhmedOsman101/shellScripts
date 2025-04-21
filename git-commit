@@ -67,14 +67,18 @@ if ! git status --porcelain | rg -q '^[MAD]'; then
     git status --porcelain |
       rg -v '^[MAD]' |
       trim |
-      gum choose --no-limit --header="Choose files to stage:" --header.foreground="${U_GREEN}"
+      gum choose \
+        --no-limit \
+        --header="Choose files to stage:" \
+        --header.foreground="${U_GREEN}" \
+        --select-if-one
   ) || terminate
 
   # Parse output to extract file names, preserving spaces
   mapfile -t files < <(echo "${output}" | cut -d " " -f 2- | sed 's|"||g' | sed -E 's/^[?[:space:]]{3}//') || terminate
 
   for file in "${files[@]}"; do
-    git add "$repoPath/$file"
+    git add "${repoPath}/${file}"
   done
 fi
 
