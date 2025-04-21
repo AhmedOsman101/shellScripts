@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#                         ██                         ▄▄                  ▄▄                                                ▄▄
+#                         ▀▀       ██                ██                  ██                                                ██
+#  ▄▄█████▄ ██      ██  ████     ███████    ▄█████▄  ██▄████▄            ██▄███▄    ██▄████   ▄█████▄  ██▄████▄   ▄█████▄  ██▄████▄
+#  ██▄▄▄▄ ▀ ▀█  ██  █▀    ██       ██      ██▀    ▀  ██▀   ██            ██▀  ▀██   ██▀       ▀ ▄▄▄██  ██▀   ██  ██▀    ▀  ██▀   ██
+#   ▀▀▀▀██▄  ██▄██▄██     ██       ██      ██        ██    ██   █████    ██    ██   ██       ▄██▀▀▀██  ██    ██  ██        ██    ██
+#  █▄▄▄▄▄██  ▀██  ██▀  ▄▄▄██▄▄▄    ██▄▄▄   ▀██▄▄▄▄█  ██    ██            ███▄▄██▀   ██       ██▄▄▄███  ██    ██  ▀██▄▄▄▄█  ██    ██
+#   ▀▀▀▀▀▀    ▀▀  ▀▀   ▀▀▀▀▀▀▀▀     ▀▀▀▀     ▀▀▀▀▀   ▀▀    ▀▀            ▀▀ ▀▀▀     ▀▀        ▀▀▀▀ ▀▀  ▀▀    ▀▀    ▀▀▀▀▀   ▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Switches between Git branches
+# --- DEPENDENCIES --- #
+# - git
+# - gum
+# - ripgrep
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
+is-git-repo
+
+current=$(git_current_branch)
+
+if [[ "$(git branch --list --format='%(refname:short)' | wc -l)" == 1 ]]; then
+  log-warning "This Repository only contains one branch"
+  exit 0
+fi
+
+branchesString=$(
+  (echo "${current}") # Add the current branch first
+  (git branch \
+    --list \
+    --format='%(refname:short)' |
+    rg -v "^${current}$") # Add the rest, excluding the current one
+)
+
+declare -a branches
+mapfile -t branches <<<${branchesString}
+
+if [[ ${#branches[@]} == 0 ]]; then
+  log-error "No branches were found"
+fi
+
+branch=$(
+  gum choose \
+    --selected="${current}" \
+    --limit=1 \
+    --select-if-one \
+    "${branches[@]}"
+)
+
+[[ "${branch}" == "${current}" ]] && exit 0
+
+file=$(mktemp -t XXXXX-"$(basename $0)")
+trap 'rm -f $file' EXIT
+
+git checkout "${branch}" &>${file} || log-error "Failed to switch to branch '${branch}'"
+
+log-success "$(cat ${file})"
