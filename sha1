@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄                    ▄▄▄
+#            ██                   █▀██
+#  ▄▄█████▄  ██▄████▄   ▄█████▄     ██
+#  ██▄▄▄▄ ▀  ██▀   ██   ▀ ▄▄▄██     ██
+#   ▀▀▀▀██▄  ██    ██  ▄██▀▀▀██     ██
+#  █▄▄▄▄▄██  ██    ██  ██▄▄▄███  ▄▄▄██▄▄▄
+#   ▀▀▀▀▀▀   ▀▀    ▀▀   ▀▀▀▀ ▀▀  ▀▀▀▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Prints a SHA-1 hash
+# --- DEPENDENCIES --- #
+# - sha1sum
+# - printf
+# - tr
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
+params=$(echo "$*" | tr -d "\n" | trim)
+printf "%s" "${params}" | sha1sum | awk '{print $1}'
