@@ -19,8 +19,15 @@
 # black: 0, red: 1, green: 2, yellow: 3,
 # blue: 4, magenta: 5, cyan: 6, white: 7
 
+# read from stdin
+if [[ $# -eq 0 || $1 == "-" ]]; then
+  str=$(cat)
+else
+  str="$*"
+fi
+
 tput setaf 4
 
-echo -e "[INFO]: $*"
+echo -e "[INFO]: ${str}"
 
 tput sgr0

@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 
+# read from stdin
+if [[ $# -eq 0 || $1 == "-" ]]; then
+  str=$(cat)
+else
+  str="$*"
+fi
+
 tput setaf 3
 
-echo -e "[WARNING]: $*"
+echo -e "[WARNING]: ${str}"
 
 tput sgr0

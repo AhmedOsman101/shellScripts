@@ -2,8 +2,15 @@
 
 set -euo pipefail
 
+# read from stdin
+if [[ $# -eq 0 || $1 == "-" ]]; then
+  str=$(cat)
+else
+  str="$*"
+fi
+
 tput setaf 5
 
-echo -e "[DEBUG]: $*"
+echo -e "[DEBUG]: ${str}"
 
 tput sgr0
