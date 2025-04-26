@@ -21,9 +21,9 @@
 
 set -eo pipefail
 
-source cmdarg.sh
-
 trap 'exit 1' SIGUSR1
+
+source cmdarg.sh
 
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
