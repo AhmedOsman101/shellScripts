@@ -21,9 +21,9 @@
 
 set -eo pipefail
 
-trap 'exit 1' SIGUSR1
-
 source cmdarg.sh
+
+trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
@@ -38,15 +38,14 @@ branchParam=${cmdarg_argv[0]:-"#-none-#"}
 
 is-git-repo
 
-current=$(git_current_branch)
+current=$(git_current_branch) || log-error "Cannot find current branch"
+
+branchList=$(git branch --list --format='%(refname:short)')
 
 branchesString=$(
-  (echo "${current}") # Add the current branch first
-  (git branch \
-    --list \
-    --format='%(refname:short)' |
-    rg -v "^${current}$") # Add the rest, excluding the current one
-)
+  (echo "${current}")                         # Add the current branch first
+  (echo ${branchList} | rg -v "^${current}$") # Add the rest, excluding the current one
+) || branchesString="${current}"
 
 declare -a branches
 mapfile -t branches <<<${branchesString}
@@ -58,7 +57,7 @@ switchBranch() {
   local branchName=$1
   local found=0
 
-  if [[ "$(git branch --list --format='%(refname:short)' | wc -l)" == 1 ]]; then
+  if [[ "$(echo ${branchList} | wc -l)" == 1 ]]; then
     log-warning "This Repository only contains one branch"
     exit 0
   fi
