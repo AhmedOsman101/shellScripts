@@ -19,19 +19,26 @@
 # - ripgrep
 # --- END SIGNATURE --- #
 
-set -euo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
+source cmdarg.sh
+
 # ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc "$0")"
+
+cmdarg "n" "new" "Create a new branch and switch to it"
+
+cmdarg_parse "$@"
+
+createNew=${cmdarg_cfg['new']}
+
+branchParam=${cmdarg_argv[0]:-"#-none-#"}
+
 is-git-repo
 
 current=$(git_current_branch)
-
-if [[ "$(git branch --list --format='%(refname:short)' | wc -l)" == 1 ]]; then
-  log-warning "This Repository only contains one branch"
-  exit 0
-fi
 
 branchesString=$(
   (echo "${current}") # Add the current branch first
@@ -44,23 +51,90 @@ branchesString=$(
 declare -a branches
 mapfile -t branches <<<${branchesString}
 
-if [[ ${#branches[@]} == 0 ]]; then
-  log-error "No branches were found"
-fi
-
-branch=$(
-  gum choose \
-    --selected="${current}" \
-    --limit=1 \
-    --select-if-one \
-    "${branches[@]}"
-)
-
-[[ "${branch}" == "${current}" ]] && exit 0
-
 file=$(mktemp -t XXXXX-"$(basename $0)")
 trap 'rm -f $file' EXIT
 
-git checkout "${branch}" &>${file} || log-error "Failed to switch to branch '${branch}'"
+switchBranch() {
+  local branchName=$1
+  local found=0
 
-log-success "$(cat ${file})"
+  if [[ "$(git branch --list --format='%(refname:short)' | wc -l)" == 1 ]]; then
+    log-warning "This Repository only contains one branch"
+    exit 0
+  fi
+
+  if [[ ${#branches[@]} == 0 ]]; then
+    log-error "No branches were found"
+  fi
+
+  if [[ "${branchName}" == "#-none-#" ]]; then
+    branchName=$(
+      gum choose \
+        --selected="${current}" \
+        --limit=1 \
+        --select-if-one \
+        "${branches[@]}"
+    )
+  fi
+
+  for branch in "${branches[@]}"; do
+    if [[ "${branchName}" == "${branch}" ]]; then
+      found=1
+      break
+    fi
+  done
+
+  if [[ ${found} -eq 0 ]]; then
+    log-warning "No branch with the name '${branchName}' was found!"
+    if gum confirm "Do you want to create it?"; then
+      createBranch "${branchName}"
+      exit 0
+    else
+      exit 0
+    fi
+  fi
+
+  [[ "${branchName}" == "${current}" ]] && {
+    log-success "Already on '${current}'"
+    exit 0
+  }
+
+  if git checkout "${branchName}" &>${file}; then
+    log-success "$(cat ${file})"
+  else
+    log-warning "$(cat ${file})"
+    log-error "Failed to switch to branch '${branchName}'"
+  fi
+}
+
+createBranch() {
+  local branchName=$1
+
+  if [[ "${branchName}" == "#-none-#" ]]; then
+    branchName=$(
+      gum input \
+        --placeholder "Enter the branch name: "
+    ) || log-error "Failed to capture the branch name"
+  fi
+
+  for branch in "${branches[@]}"; do
+    if [[ "${branchName}" == "${branch}" ]]; then
+      log-warning "The branch already exists! Switching to branch '${branchName}'"
+      switchBranch "${branchName}"
+      exit 0
+    fi
+  done
+
+  if git checkout -b "${branchName}" &>${file}; then
+    log-success "$(cat ${file})"
+  else
+    log-warning "$(cat ${file})"
+    log-error "Failed to create branch '${branch}'"
+  fi
+}
+
+if [[ "${createNew}" == true ]]; then
+  createBranch "${branchParam}"
+else
+  switchBranch "${branchParam}"
+fi
