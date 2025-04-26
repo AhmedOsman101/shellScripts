@@ -5,7 +5,7 @@ set -euo pipefail
 trap 'exit 1' SIGUSR1
 
 # Check if the correct number of arguments is passed
-if [[ $# -ne 1 ]]; then
+if [[ -z $1 ]]; then
   log-warning "Usage: $0 <file>"
   exit 1
 fi
