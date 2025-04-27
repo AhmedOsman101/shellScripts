@@ -1,12 +1,33 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄           ██                                                                                     ▄▄
+#  ██           ▀▀                                                                   ██                ██
+#  ██▄███▄    ████      ▄████▄   ████▄██▄   ▄████▄            ██      ██  ▄█████▄  ███████    ▄█████▄  ██▄████▄
+#  ██▀  ▀██     ██     ██▀  ▀██  ██ ██ ██  ██▄▄▄▄██           ▀█  ██  █▀  ▀ ▄▄▄██    ██      ██▀    ▀  ██▀   ██
+#  ██    ██     ██     ██    ██  ██ ██ ██  ██▀▀▀▀▀▀   █████    ██▄██▄██  ▄██▀▀▀██    ██      ██        ██    ██
+#  ███▄▄██▀  ▄▄▄██▄▄▄  ▀██▄▄██▀  ██ ██ ██  ▀██▄▄▄▄█            ▀██  ██▀  ██▄▄▄███    ██▄▄▄   ▀██▄▄▄▄█  ██    ██
+#  ▀▀ ▀▀▀    ▀▀▀▀▀▀▀▀    ▀▀▀▀    ▀▀ ▀▀ ▀▀    ▀▀▀▀▀              ▀▀  ▀▀    ▀▀▀▀ ▀▀     ▀▀▀▀     ▀▀▀▀▀   ▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Watches and formats code changes using biome.js with configurable presets
+# --- DEPENDENCIES --- #
+# - biome
+# - watchexec
+# - gum
+# - cmdarg.sh
+# --- END SIGNATURE --- #
+
 set -eo pipefail
 
 trap 'exit 1' SIGUSR1 # Terminate script on SIGUSR1
 
 source cmdarg.sh
 
-cmdarg_info "header" "Script for formatting on code changes uisng biome.js"
+# ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "p?" "preset" "The files preset to watch" "std"
 

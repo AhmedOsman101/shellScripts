@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄                                      ▄▄           ██               ▄▄
+#  ██                    ██                ██           ▀▀               ██
+#  ██▄███▄    ▄█████▄  ███████  ██      ██ ██▄████▄   ████      ▄█████▄  ██▄████▄
+#  ██▀  ▀██   ▀ ▄▄▄██    ██     ▀█  ██  █▀ ██▀   ██     ██     ██▀    ▀  ██▀   ██
+#  ██    ██  ▄██▀▀▀██    ██      ██▄██▄██  ██    ██     ██     ██        ██    ██
+#  ███▄▄██▀  ██▄▄▄███    ██▄▄▄   ▀██  ██▀  ██    ██  ▄▄▄██▄▄▄  ▀██▄▄▄▄█  ██    ██
+#  ▀▀ ▀▀▀     ▀▀▀▀ ▀▀     ▀▀▀▀    ▀▀  ▀▀   ▀▀    ▀▀  ▀▀▀▀▀▀▀▀    ▀▀▀▀▀   ▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Displays the source of a script using bat, if it exists
+# --- DEPENDENCIES --- #
+# - bat
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 [[ -z $1 ]] && log-error "No valid input was given!"
 
 if path=$(which "$1" 2>/dev/null); then

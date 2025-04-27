@@ -33,9 +33,7 @@ fi
 
 deps=$(get-deps "${file}")
 
-if [[ "${deps}" == "x-none" ]]; then
-  exit 0
-fi
+[[ "${deps}" == "x-none" ]] && exit 0
 
 for dep in ${deps}; do
   if ! command -v "${dep}" >/dev/null 2>&1; then

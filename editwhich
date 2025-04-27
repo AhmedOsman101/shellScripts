@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#                  ▄▄     ██                         ▄▄           ██               ▄▄
+#                  ██     ▀▀       ██                ██           ▀▀               ██
+#   ▄████▄    ▄███▄██   ████     ███████  ██      ██ ██▄████▄   ████      ▄█████▄  ██▄████▄
+#  ██▄▄▄▄██  ██▀  ▀██     ██       ██     ▀█  ██  █▀ ██▀   ██     ██     ██▀    ▀  ██▀   ██
+#  ██▀▀▀▀▀▀  ██    ██     ██       ██      ██▄██▄██  ██    ██     ██     ██        ██    ██
+#  ▀██▄▄▄▄█  ▀██▄▄███  ▄▄▄██▄▄▄    ██▄▄▄   ▀██  ██▀  ██    ██  ▄▄▄██▄▄▄  ▀██▄▄▄▄█  ██    ██
+#    ▀▀▀▀▀     ▀▀▀ ▀▀  ▀▀▀▀▀▀▀▀     ▀▀▀▀    ▀▀  ▀▀   ▀▀    ▀▀  ▀▀▀▀▀▀▀▀    ▀▀▀▀▀   ▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Opens a command's source file in the specified or default editor
+# --- DEPENDENCIES --- #
+# - which
+# - nano
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 [[ -z $1 ]] && log-error "No valid input was given!"
 
 EDITOR=${EDITOR:-nano}

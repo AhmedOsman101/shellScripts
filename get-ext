@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                                       
+#                                                                       
+#                        ██                                      ██     
+#   ▄███▄██   ▄████▄   ███████              ▄████▄   ▀██  ██▀  ███████  
+#  ██▀  ▀██  ██▄▄▄▄██    ██                ██▄▄▄▄██    ████      ██     
+#  ██    ██  ██▀▀▀▀▀▀    ██       █████    ██▀▀▀▀▀▀    ▄██▄      ██     
+#  ▀██▄▄███  ▀██▄▄▄▄█    ██▄▄▄             ▀██▄▄▄▄█   ▄█▀▀█▄     ██▄▄▄  
+#   ▄▀▀▀ ██    ▀▀▀▀▀      ▀▀▀▀               ▀▀▀▀▀   ▀▀▀  ▀▀▀     ▀▀▀▀  
+#   ▀████▀▀                                                             
+#                                                                       
+# --- DESCRIPTION --- #
+# Exports VS Code extensions to a JSON file with options to overwrite existing files
+# --- DEPENDENCIES --- #
+# - code
+# - jq
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 getExtensions() {
   # Get all VS Code extensions
   extensions="$(code --list-extensions)"

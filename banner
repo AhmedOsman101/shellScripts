@@ -1,11 +1,30 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄
+#  ██
+#  ██▄███▄    ▄█████▄  ██▄████▄  ██▄████▄   ▄████▄    ██▄████
+#  ██▀  ▀██   ▀ ▄▄▄██  ██▀   ██  ██▀   ██  ██▄▄▄▄██   ██▀
+#  ██    ██  ▄██▀▀▀██  ██    ██  ██    ██  ██▀▀▀▀▀▀   ██
+#  ███▄▄██▀  ██▄▄▄███  ██    ██  ██    ██  ▀██▄▄▄▄█   ██
+#  ▀▀ ▀▀▀     ▀▀▀▀ ▀▀  ▀▀    ▀▀  ▀▀    ▀▀    ▀▀▀▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Creates a colorful framed banner in the terminal.
+# --- DEPENDENCIES --- #
+# - gum
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
 trap 'exit 1' SIGUSR1
 
 source cmdarg.sh
 
 # ---  Main script logic --- #
-cmdarg_info "header" "Creates a colorful framed banner in the terminal."
+cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "f?" "frame" "Symbol to use for the banner frame" ":"
 cmdarg "c?" "color" "Color of the banner (black, red, green, yellow, blue, magenta, cyan, white, gray, orange, purple)" "gray"

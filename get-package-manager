@@ -96,4 +96,4 @@ gentoo)
   ;;
 esac
 
-echo "${pkgManager}: ${installCmd}"
+echo "${pkgManager}:${installCmd}"

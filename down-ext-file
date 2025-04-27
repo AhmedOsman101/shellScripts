@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#        ▄▄                                                                                     ▄▄▄▄      ██     ▄▄▄▄
+#        ██                                                                ██                  ██▀▀▀      ▀▀     ▀▀██
+#   ▄███▄██   ▄████▄  ██      ██ ██▄████▄             ▄████▄   ▀██  ██▀  ███████             ███████    ████       ██       ▄████▄
+#  ██▀  ▀██  ██▀  ▀██ ▀█  ██  █▀ ██▀   ██            ██▄▄▄▄██    ████      ██                  ██         ██       ██      ██▄▄▄▄██
+#  ██    ██  ██    ██  ██▄██▄██  ██    ██   █████    ██▀▀▀▀▀▀    ▄██▄      ██       █████      ██         ██       ██      ██▀▀▀▀▀▀
+#  ▀██▄▄███  ▀██▄▄██▀  ▀██  ██▀  ██    ██            ▀██▄▄▄▄█   ▄█▀▀█▄     ██▄▄▄               ██      ▄▄▄██▄▄▄    ██▄▄▄   ▀██▄▄▄▄█
+#    ▀▀▀ ▀▀    ▀▀▀▀     ▀▀  ▀▀   ▀▀    ▀▀              ▀▀▀▀▀   ▀▀▀  ▀▀▀     ▀▀▀▀               ▀▀      ▀▀▀▀▀▀▀▀     ▀▀▀▀     ▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Downloads VS Code extensions as .vsix files from a JSON file
+# --- DEPENDENCIES --- #
+# - jq
+# - wget
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 file="${1:-'extensions.json'}"
 
 if [[ -f "${file}" ]]; then

@@ -1,11 +1,31 @@
 #!/usr/bin/env bash
 
-source cmdarg.sh
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄▄▄
+#            ▀▀██
+#   ▄█████▄    ██       ▄█████▄  ██▄████▄   ▄███▄██   ▄█████▄
+#  ██▀    ▀    ██       ▀ ▄▄▄██  ██▀   ██  ██▀  ▀██  ██▀    ▀
+#  ██          ██      ▄██▀▀▀██  ██    ██  ██    ██  ██
+#  ▀██▄▄▄▄█    ██▄▄▄   ██▄▄▄███  ██    ██  ▀██▄▄███  ▀██▄▄▄▄█
+#    ▀▀▀▀▀      ▀▀▀▀    ▀▀▀▀ ▀▀  ▀▀    ▀▀   ▄▀▀▀ ██    ▀▀▀▀▀
+#                                           ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# Compiles and optionally runs C files with customizable compiler arguments
+# --- DEPENDENCIES --- #
+# - clang
+# - cmdarg.sh
+# --- END SIGNATURE --- #
+
+set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+source cmdarg.sh
+
 # ---  Main script logic --- #
-cmdarg_info "header" "Compile and optionally run C files"
+cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "c" "compile" "Compile the files in the current working directory"
 cmdarg "v" "verbose" "Show success message after compilation (works with compile mode only)"

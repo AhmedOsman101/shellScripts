@@ -24,7 +24,6 @@ trap 'exit 1' SIGUSR1
 source cmdarg.sh
 
 # ---  Main script logic --- #
-
 cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "s" "summary" "Change the reporter type to summary"

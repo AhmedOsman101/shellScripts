@@ -1,9 +1,29 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#                                             ██
+#                        ██                   ▀▀
+#   ▄███▄██   ▄████▄   ███████              ████     ██▄███▄
+#  ██▀  ▀██  ██▄▄▄▄██    ██                   ██     ██▀  ▀██
+#  ██    ██  ██▀▀▀▀▀▀    ██       █████       ██     ██    ██
+#  ▀██▄▄███  ▀██▄▄▄▄█    ██▄▄▄             ▄▄▄██▄▄▄  ███▄▄██▀
+#   ▄▀▀▀ ██    ▀▀▀▀▀      ▀▀▀▀             ▀▀▀▀▀▀▀▀  ██ ▀▀▀
+#   ▀████▀▀                                          ██
+#
+# --- DESCRIPTION --- #
+# Retrieves the IP address of the active network interface
+# --- DEPENDENCIES --- #
+# - ip
+# - ripgrep
+# - awk
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 ip="$(ip a | rg "$(net-interface)" | rg inet)"
 
 if [[ -n "${ip}" ]]; then
