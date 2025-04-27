@@ -42,10 +42,10 @@ current=$(git_current_branch) || log-error "Cannot find current branch"
 
 branchList=$(git branch --list --format='%(refname:short)')
 
-branchesString=$(
-  (echo "${current}")                         # Add the current branch first
-  (echo ${branchList} | rg -v "^${current}$") # Add the rest, excluding the current one
-) || branchesString="${current}"
+branchesString="$(
+  (printf '%s\n' "${current}")                           # Add the current branch first
+  (printf '%s\n' "${branchList}" | rg -v "^${current}$") # Add the rest, excluding the current one
+)" || branchesString="${current}"
 
 declare -a branches
 mapfile -t branches <<<${branchesString}
@@ -57,7 +57,7 @@ switchBranch() {
   local branchName=$1
   local found=0
 
-  if [[ "$(echo ${branchList} | wc -l)" == 1 ]]; then
+  if [[ ${#branches[@]} == 1 ]]; then
     log-warning "This Repository only contains one branch"
     exit 0
   fi
