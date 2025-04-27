@@ -1,9 +1,29 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄▄▄         ██
+#            ▀▀██         ▀▀
+#   ▄█████▄    ██       ████     ██▄███▄    ▄█████▄   ▄████▄   ██▄███▄   ▀██  ███
+#  ██▀    ▀    ██         ██     ██▀  ▀██  ██▀    ▀  ██▀  ▀██  ██▀  ▀██   ██▄ ██
+#  ██          ██         ██     ██    ██  ██        ██    ██  ██    ██    ████▀
+#  ▀██▄▄▄▄█    ██▄▄▄   ▄▄▄██▄▄▄  ███▄▄██▀  ▀██▄▄▄▄█  ▀██▄▄██▀  ███▄▄██▀     ███
+#    ▀▀▀▀▀      ▀▀▀▀   ▀▀▀▀▀▀▀▀  ██ ▀▀▀      ▀▀▀▀▀     ▀▀▀▀    ██ ▀▀▀       ██
+#                                ██                            ██         ███
+#
+# --- DESCRIPTION --- #
+# Copies input text or arguments to the system clipboard using available clipboard tools
+# --- DEPENDENCIES --- #
+# - copyq
+# - wl-copy
+# - xclip
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 if [[ $# -eq 0 || $1 == "-" ]]; then
   str=$(cat)
 else
@@ -12,5 +32,18 @@ fi
 
 [[ -z ${str} ]] && log-error "No valid input was given"
 
-copyq add "${str}" &>/dev/null
-copyq copy "${str}" &>/dev/null
+copyToClipboard() {
+  local str=$1
+  if command -v copyq >/dev/null 2>&1; then
+    copyq add "${str}" &>/dev/null
+    copyq copy "${str}" &>/dev/null
+  elif command -v wl-copy >/dev/null 2>&1; then
+    printf '%s' "${str}" | wl-copy
+  elif command -v xclip >/dev/null 2>&1; then
+    printf '%s' "${str}" | xclip -selection clipboard
+  else
+    log-error 'No clipboard tool (copq, wl-copy or xclip) found\n' >&2
+  fi
+}
+
+copyToClipboard "${str}"
