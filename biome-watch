@@ -17,7 +17,6 @@
 # - biome
 # - watchexec
 # - gum
-# - cmdarg.sh
 # --- END SIGNATURE --- #
 
 set -eo pipefail
