@@ -23,6 +23,7 @@ trap 'exit 1' SIGUSR1
 
 source cmdarg.sh
 
+check-deps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc $0)"
 
@@ -47,6 +48,7 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+check-deps "$0"
 # ---  Main script logic --- #
 
 EOF

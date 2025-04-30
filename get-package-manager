@@ -65,13 +65,13 @@ arch | manjaro | endeavouros | archcraft)
   # For Arch-based distros, check for AUR helpers
   if command -v paru &>/dev/null; then
     pkgManager="paru"
-    installCmd="paru -S"
+    installCmd="paru -S --noconfirm"
   elif command -v yay &>/dev/null; then
     pkgManager="yay"
-    installCmd="yay -S"
+    installCmd="yay -S --noconfirm"
   else
     pkgManager="pacman"
-    installCmd="sudo pacman -S"
+    installCmd="sudo pacman -S --noconfirm"
   fi
   ;;
 void)
@@ -124,13 +124,13 @@ gentoo)
     # For Arch-based distros, check for AUR helpers
     if command -v paru &>/dev/null; then
       pkgManager="paru"
-      installCmd="paru -S"
+      installCmd="paru -S --noconfirm"
     elif command -v yay &>/dev/null; then
       pkgManager="yay"
-      installCmd="yay -S"
+      installCmd="yay -S --noconfirm"
     else
       pkgManager="pacman"
-      installCmd="sudo pacman -S"
+      installCmd="sudo pacman -S --noconfirm"
     fi
     ;;
   *)
