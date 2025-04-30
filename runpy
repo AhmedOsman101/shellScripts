@@ -1,5 +1,27 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#
+#   ██▄████  ██    ██  ██▄████▄  ██▄███▄   ▀██  ███
+#   ██▀      ██    ██  ██▀   ██  ██▀  ▀██   ██▄ ██
+#   ██       ██    ██  ██    ██  ██    ██    ████▀
+#   ██       ██▄▄▄███  ██    ██  ███▄▄██▀     ███
+#   ▀▀        ▀▀▀▀ ▀▀  ▀▀    ▀▀  ██ ▀▀▀       ██
+#                                ██         ███
+#
+# --- DESCRIPTION --- #
+# Run a Python script from $SCRIPTS_DIR/python with optional venv
+# --- DEPENDENCIES --- #
+# - python3
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
 dir="${SCRIPTS_DIR}/python"
 venv="${dir}/.venv/bin/activate"
 file="${dir}/$(basename $1).py"
@@ -10,11 +32,8 @@ shift
 withVenv() {
   source "${venv}" || exit
 
-  python3 "${file}" "$@" || {
-    deactivate && exit
-  }
-
-  deactivate
+  python3 "${file}" "$@"
+  deactivate && exit
 }
 
 if [[ -f "${venv}" ]]; then
