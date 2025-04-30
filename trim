@@ -1,16 +1,36 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-# read from stdin
-if [[ $# -eq 0 || $1 == "-" ]]; then
+source cmdarg.sh
+
+# ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc "$0")"
+
+cmdarg "b" "backup" "Creates a backup .bak file of the original file"
+
+cmdarg_parse "$@"
+
+useBackup=${cmdarg_cfg['backup']}
+file=${cmdarg_argv[0]}
+
+if [[ ${#cmdarg_argv[@]} -eq 0 || ${file} == "-" ]]; then
   str=$(cat)
+  [[ -z ${str} ]] && printf '' && exit 0
+  echo "${str}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+elif [[ -f ${file} ]]; then
+  if [[ ${useBackup} == true ]]; then
+    cp -i "${file}" "${file}.bak"
+    sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -i "${file}"
+    log-success "Trimmed whitespaces from '${file}'. Backup created at '${file}.bak'."
+  else
+    sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -i "${file}"
+    log-success "Trimmed whitespaces from ${file}"
+  fi
 else
   str="$*"
+  [[ -z ${str} ]] && printf '' && exit 0
+  echo "${str}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
 fi
-
-[[ -z ${str} ]] && printf '' && exit 0
-
-echo "${str}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
