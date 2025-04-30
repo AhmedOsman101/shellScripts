@@ -1,18 +1,41 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#                                                                           ██
+#                                                      ██                   ▀▀       ██
+#   ██▄████   ▄████▄   ██▄███▄    ▄████▄    ▄█████▄  ███████              ████     ███████
+#   ██▀      ██▄▄▄▄██  ██▀  ▀██  ██▄▄▄▄██   ▀ ▄▄▄██    ██                   ██       ██
+#   ██       ██▀▀▀▀▀▀  ██    ██  ██▀▀▀▀▀▀  ▄██▀▀▀██    ██       █████       ██       ██
+#   ██       ▀██▄▄▄▄█  ███▄▄██▀  ▀██▄▄▄▄█  ██▄▄▄███    ██▄▄▄             ▄▄▄██▄▄▄    ██▄▄▄
+#   ▀▀         ▀▀▀▀▀   ██ ▀▀▀      ▀▀▀▀▀    ▀▀▀▀ ▀▀     ▀▀▀▀             ▀▀▀▀▀▀▀▀     ▀▀▀▀
+#                      ██
+#
+# --- DESCRIPTION --- #
+# Repeat a command until it succeeds
+# --- DEPENDENCIES --- #
+# - gum
+# - cmdarg
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
 trap 'exit 1' SIGUSR1
 
 source cmdarg.sh
 
 # ---  Main script logic --- #
-cmdarg_info "header" "Repeats a command until it succeeds (exit code 0)."
+cmdarg_info "header" "$(get-desc $0)"
 
-cmdarg "p" "preserve" "preserve output between retries (don't clear the screen)"
+cmdarg "p" "preserve" "Preserve output between retries (don't clear the screen)"
+cmdarg "d?" "delay" "Delay in seconds between retries" "5"
 
 cmdarg_parse "$@"
 
 preserve=${cmdarg_cfg['preserve']}
+delay=${cmdarg_cfg['delay']}
 cmd=${cmdarg_argv[*]}
+log-debug "${cmd}"
 
 counter=1
 
@@ -34,10 +57,10 @@ while true; do
 
   # Run gum spin, and check its exit status
   if ! gum spin \
-    --title "Retrying '${cmd}' in 5s..." \
+    --title "Retrying '${cmd}' in ${delay}s..." \
     --title.foreground="${U_GREEN}" \
     --spinner.foreground="${U_GREEN}" \
-    -- sleep 5; then
+    -- sleep ${delay}; then
     # If gum spin fails (e.g., due to Ctrl+C), exit
     exit 0
   fi
