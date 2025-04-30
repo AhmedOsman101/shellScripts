@@ -24,7 +24,7 @@ replace="$2"
 shift 2 # Remove first two arguments, leaving any files
 
 # Escape special characters in search pattern
-search_escaped=$(printf '%s' "${search}" | sed 's/[[\.*^$/]/\\&/g')
+search_escaped=$(printf '%s' "${search}" | sed 's|[[\.*^$/]|\\&|g')
 
 # If no files specified, process stdin
 if [[ $# -eq 0 ]]; then
@@ -32,14 +32,15 @@ if [[ $# -eq 0 ]]; then
 else
   # Process each file
   for file in "$@"; do
-    if [[ ! -f "${file}" ]]; then
-      log-error "File '${file}' not found"
-    fi
-    # Create backup and perform replacement
-    cp "${file}" "${file}.bak" 2>/dev/null || log-error "Backup failed for ${file}"
+    [[ ! -f "${file}" ]] && log-error "File '${file}' not found"
 
-    sed "s|${search_escaped}|${replace}|g" "${file}.bak" >"${file}" 2>/dev/null ||
+    # Create backup and perform replacement
+    cp -i "${file}" "${file}.bak" 2>/dev/null || log-error "Backup failed for ${file}"
+
+    sed -i "s|${search_escaped}|${replace}|g" "${file}" 2>/dev/null || {
       log-warning "Replacement failed for ${file}"
+      exit 0
+    }
 
     log-success "Processed: ${file}"
   done
