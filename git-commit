@@ -90,7 +90,7 @@ if [[ "${useAi}" == true ]]; then
       --title "Generating..." \
       --title.foreground="${U_GREEN}" \
       -- commit-sage
-  ) || log-error "Message generation failed"
+  )
 
   transformed=$(echo "${commitMessage}" | tr "\n" "#")
 
