@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#                                   ██
+#              ██                   ▀▀                                               ██
+#  ▄▄█████▄  ███████    ██▄████   ████     ██▄███▄              ▄████▄   ▀██  ██▀  ███████
+#  ██▄▄▄▄ ▀    ██       ██▀         ██     ██▀  ▀██            ██▄▄▄▄██    ████      ██
+#   ▀▀▀▀██▄    ██       ██          ██     ██    ██   █████    ██▀▀▀▀▀▀    ▄██▄      ██
+#  █▄▄▄▄▄██    ██▄▄▄    ██       ▄▄▄██▄▄▄  ███▄▄██▀            ▀██▄▄▄▄█   ▄█▀▀█▄     ██▄▄▄
+#   ▀▀▀▀▀▀      ▀▀▀▀    ▀▀       ▀▀▀▀▀▀▀▀  ██ ▀▀▀                ▀▀▀▀▀   ▀▀▀  ▀▀▀     ▀▀▀▀
+#                                          ██
+#
+# --- DESCRIPTION --- #
+# Remove extension(s) from a file name
+# --- DEPENDENCIES --- #
+# - basename
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
+file=$1
+shift
+
+if [[ $# == 0 ]]; then
+  basename "${file}"
+  exit 0
+else
+  filename="${file}"
+  for ext in "$@"; do
+    filename=$(basename -s ".${ext}" "${filename}")
+    filename=$(echo "${filename}" | replace ".${ext}" "")
+  done
+fi
+
+echo "${filename}"
