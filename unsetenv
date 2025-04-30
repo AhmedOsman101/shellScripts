@@ -1,7 +1,37 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                                                 
+#                                                                                 
+#                                            ██                                   
+#  ██    ██  ██▄████▄  ▄▄█████▄   ▄████▄   ███████    ▄████▄   ██▄████▄  ██▄  ▄██ 
+#  ██    ██  ██▀   ██  ██▄▄▄▄ ▀  ██▄▄▄▄██    ██      ██▄▄▄▄██  ██▀   ██   ██  ██  
+#  ██    ██  ██    ██   ▀▀▀▀██▄  ██▀▀▀▀▀▀    ██      ██▀▀▀▀▀▀  ██    ██   ▀█▄▄█▀  
+#  ██▄▄▄███  ██    ██  █▄▄▄▄▄██  ▀██▄▄▄▄█    ██▄▄▄   ▀██▄▄▄▄█  ██    ██    ████   
+#   ▀▀▀▀ ▀▀  ▀▀    ▀▀   ▀▀▀▀▀▀     ▀▀▀▀▀      ▀▀▀▀     ▀▀▀▀▀   ▀▀    ▀▀     ▀▀    
+#                                                                                 
+#                                                                                 
+# --- DESCRIPTION --- #
+# Copy unset command for selected env vars
+# --- DEPENDENCIES --- #
+# - env
+# - fzf
+# - awk
+# - wc
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
-# shellcheck disable=SC2207
-var=($(env | fzf | awk -F = '{print $1}'))
-clipcopy "unset ${var[*]}" && log-success "Copied output to clipboard"
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
+declare -a vars
+
+output=$(env | fzf | awk -F = '{print $1}')
+
+if [[ $(echo ${output} | wc -w) == 1 ]]; then
+  clipcopy "unset ${output}" && log-success "Copied output to clipboard"
+else
+  mapfile -t vars <<<${output}
+  clipcopy "unset ${vars[*]}" && log-success "Copied output to clipboard"
+fi
