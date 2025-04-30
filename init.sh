@@ -28,6 +28,13 @@ checkDeps "$0"
 # ---  Main script logic --- #
 SCRIPTS_DIR="${HOME}/scripts"
 
+sudo ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${HOME}/.local/bin/scripts"
+
+if ! echo ${PATH} | grep "${HOME}/.local/bin/scripts" -q; then
+  echo "Add this line to your .$(basename ${SHELL})rc file to make the scripts globally available"
+  printf 'export PATH="$PATH:$HOME/.local/bin/scripts"\n\n'
+fi
+
 # Define directories to exclude
 EXCLUDE_DIRS=(
   "${SCRIPTS_DIR}/.git"
@@ -58,4 +65,4 @@ if [[ -d "${SCRIPTS_DIR}" ]]; then
   done
 fi
 
-log-success "Linked ${count} scripts to ${HOME}/.local/bin"
+log-success "Linked ${count} scripts to ${HOME}/.local/bin/scripts"
