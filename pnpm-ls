@@ -1,7 +1,25 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                                       
+#                                                    ▄▄▄▄               
+#                                                    ▀▀██               
+#  ██▄███▄   ██▄████▄  ██▄███▄   ████▄██▄              ██      ▄▄█████▄ 
+#  ██▀  ▀██  ██▀   ██  ██▀  ▀██  ██ ██ ██              ██      ██▄▄▄▄ ▀ 
+#  ██    ██  ██    ██  ██    ██  ██ ██ ██   █████      ██       ▀▀▀▀██▄ 
+#  ███▄▄██▀  ██    ██  ███▄▄██▀  ██ ██ ██              ██▄▄▄   █▄▄▄▄▄██ 
+#  ██ ▀▀▀    ▀▀    ▀▀  ██ ▀▀▀    ▀▀ ▀▀ ▀▀               ▀▀▀▀    ▀▀▀▀▀▀  
+#  ██                  ██                                               
+#                                                                       
+# --- DESCRIPTION --- #
+# List globally installed pnpm packages
+# --- DEPENDENCIES --- #
+# - pnpm
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 pnpm ls -g | tr "\t" "\n" | sed -n '/dependencies:/{n;:a;p;n;ba}' | awk '{print $1}'

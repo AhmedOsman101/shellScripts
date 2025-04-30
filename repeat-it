@@ -35,7 +35,6 @@ cmdarg_parse "$@"
 preserve=${cmdarg_cfg['preserve']}
 delay=${cmdarg_cfg['delay']}
 cmd=${cmdarg_argv[*]}
-log-debug "${cmd}"
 
 counter=1
 
