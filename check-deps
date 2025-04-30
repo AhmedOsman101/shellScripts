@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Checks a script's dependencies and installs them
 # --- DEPENDENCIES --- #
-# log-error get-deps get-package-manager
+#
 # --- END SIGNATURE --- #
 
 set -eo pipefail
