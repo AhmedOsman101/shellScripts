@@ -1,11 +1,27 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#                                                                        ▄▄
+#                        ██                                              ██
+#   ▄███▄██   ▄████▄   ███████             ██▄███▄    ▄█████▄   ▄█████▄  ██ ▄██▀    ▄█████▄   ▄███▄██   ▄████▄             ████▄██▄   ▄█████▄  ██▄████▄   ▄█████▄   ▄███▄██   ▄████▄    ██▄████
+#  ██▀  ▀██  ██▄▄▄▄██    ██                ██▀  ▀██   ▀ ▄▄▄██  ██▀    ▀  ██▄██      ▀ ▄▄▄██  ██▀  ▀██  ██▄▄▄▄██            ██ ██ ██   ▀ ▄▄▄██  ██▀   ██   ▀ ▄▄▄██  ██▀  ▀██  ██▄▄▄▄██   ██▀
+#  ██    ██  ██▀▀▀▀▀▀    ██       █████    ██    ██  ▄██▀▀▀██  ██        ██▀██▄    ▄██▀▀▀██  ██    ██  ██▀▀▀▀▀▀   █████    ██ ██ ██  ▄██▀▀▀██  ██    ██  ▄██▀▀▀██  ██    ██  ██▀▀▀▀▀▀   ██
+#  ▀██▄▄███  ▀██▄▄▄▄█    ██▄▄▄             ███▄▄██▀  ██▄▄▄███  ▀██▄▄▄▄█  ██  ▀█▄   ██▄▄▄███  ▀██▄▄███  ▀██▄▄▄▄█            ██ ██ ██  ██▄▄▄███  ██    ██  ██▄▄▄███  ▀██▄▄███  ▀██▄▄▄▄█   ██
+#   ▄▀▀▀ ██    ▀▀▀▀▀      ▀▀▀▀             ██ ▀▀▀     ▀▀▀▀ ▀▀    ▀▀▀▀▀   ▀▀   ▀▀▀   ▀▀▀▀ ▀▀   ▄▀▀▀ ██    ▀▀▀▀▀             ▀▀ ▀▀ ▀▀   ▀▀▀▀ ▀▀  ▀▀    ▀▀   ▀▀▀▀ ▀▀   ▄▀▀▀ ██    ▀▀▀▀▀    ▀▀
+#   ▀████▀▀                                ██                                                 ▀████▀▀                                                               ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# Detects the Linux distribution and returns its package manager and install command
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
-
 # Parse /etc/os-release to determine the distribution
 if [[ -f /etc/os-release ]]; then
   . /etc/os-release
@@ -16,14 +32,19 @@ fi
 # Determine package manager and install command
 case "${ID}" in
 debian | ubuntu | linuxmint | pop | raspbian | kali | neon | elementary)
-  # Debian/Ubuntu-based distros
-  pkgManager="apt"
-  installCmd="sudo apt install" # Standard: sudo apt install <package>
+  # For Debian/Ubuntu-based distros, check for nala helpers
+  if command -v nala &>/dev/null; then
+    pkgManager="nala"
+    installCmd="sudo nala install"
+  else
+    pkgManager="apt"
+    installCmd="sudo apt install"
+  fi
   ;;
 fedora | rhel | almalinux | rocky | ol)
   # Fedora/RHEL-based distros (modern)
   pkgManager="dnf"
-  installCmd="sudo dnf install" # Standard: sudo dnf install <package>
+  installCmd="sudo dnf install"
   ;;
 centos)
   # CentOS (check for legacy versions)
@@ -38,22 +59,30 @@ centos)
 opensuse* | sled | sles)
   # openSUSE/SUSE-based distros
   pkgManager="zypper"
-  installCmd="sudo zypper install" # Standard: sudo zypper install <package>
+  installCmd="sudo zypper install"
   ;;
-arch | manjaro | endeavouros)
-  # Arch-based distros
-  pkgManager="pacman"
-  installCmd="sudo pacman -S" # Standard: sudo pacman -S <package>
+arch | manjaro | endeavouros | archcraft)
+  # For Arch-based distros, check for AUR helpers
+  if command -v paru &>/dev/null; then
+    pkgManager="paru"
+    installCmd="paru -S"
+  elif command -v yay &>/dev/null; then
+    pkgManager="yay"
+    installCmd="yay -S"
+  else
+    pkgManager="pacman"
+    installCmd="sudo pacman -S"
+  fi
   ;;
 void)
   # Void Linux
   pkgManager="xbps"
-  installCmd="sudo xbps-install -S" # Standard: sudo xbps-install -S <package>
+  installCmd="sudo xbps-install -S"
   ;;
 alpine)
   # Alpine Linux
   pkgManager="apk"
-  installCmd="sudo apk add" # Standard: sudo apk add <package>
+  installCmd="sudo apk add"
   ;;
 amzn)
   # Amazon Linux
@@ -68,14 +97,20 @@ amzn)
 gentoo)
   # Gentoo Linux (source-based)
   pkgManager="emerge"
-  installCmd="sudo emerge" # Standard: sudo emerge <package>
+  installCmd="sudo emerge"
   ;;
 *)
   # Fallback to ID_LIKE for derivatives
   case "${ID_LIKE}" in
   *debian* | *ubuntu*)
-    pkgManager="apt"
-    installCmd="sudo apt install"
+    # For Debian/Ubuntu-based distros, check for nala helpers
+    if command -v nala &>/dev/null; then
+      pkgManager="nala"
+      installCmd="sudo nala install"
+    else
+      pkgManager="apt"
+      installCmd="sudo apt install"
+    fi
     ;;
   *fedora* | *rhel*)
     pkgManager="dnf"
@@ -86,8 +121,17 @@ gentoo)
     installCmd="sudo zypper install"
     ;;
   *arch*)
-    pkgManager="pacman"
-    installCmd="sudo pacman -S"
+    # For Arch-based distros, check for AUR helpers
+    if command -v paru &>/dev/null; then
+      pkgManager="paru"
+      installCmd="paru -S"
+    elif command -v yay &>/dev/null; then
+      pkgManager="yay"
+      installCmd="yay -S"
+    else
+      pkgManager="pacman"
+      installCmd="sudo pacman -S"
+    fi
     ;;
   *)
     log-error "Unsupported distribution: ${PRETTY_NAME}" >&2
