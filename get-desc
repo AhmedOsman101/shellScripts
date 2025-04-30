@@ -26,7 +26,11 @@ trap 'exit 1' SIGUSR1
 if [[ $# -ne 1 ]]; then
   log-error "Invalid arguments, only a script name is accepted"
 else
-  file=$(which $1)
+  if [[ -f $1 ]]; then
+    file=$1
+  else
+    file=$(which $1)
+  fi
 
   [[ ! -f ${file} ]] && log-error "Script '${file}' was not found"
 fi
