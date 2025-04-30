@@ -1,16 +1,35 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                                                                     
+#                                ▄▄                                                                   
+#    ██                          ██                                                                   
+#  ███████   ██    ██   ▄█████▄  ██ ▄██▀    ██▄████            ▄▄█████▄  ▀██  ███  ██▄████▄   ▄█████▄ 
+#    ██      ██    ██  ██▀    ▀  ██▄██      ██▀                ██▄▄▄▄ ▀   ██▄ ██   ██▀   ██  ██▀    ▀ 
+#    ██      ██    ██  ██        ██▀██▄     ██        █████     ▀▀▀▀██▄    ████▀   ██    ██  ██       
+#    ██▄▄▄   ██▄▄▄███  ▀██▄▄▄▄█  ██  ▀█▄    ██                 █▄▄▄▄▄██     ███    ██    ██  ▀██▄▄▄▄█ 
+#     ▀▀▀▀    ▀▀▀▀ ▀▀    ▀▀▀▀▀   ▀▀   ▀▀▀   ▀▀                  ▀▀▀▀▀▀      ██     ▀▀    ▀▀    ▀▀▀▀▀  
+#                                                                         ███                         
+#                                                                                                     
+# --- DESCRIPTION --- #
+# Sync all top-level Tuckr packages
+# --- DEPENDENCIES --- #
+# - tuckr
+# - fd
+# - cut
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-path=${TUCKR_DIR:-~/.config/dotfiles/Configs}
+# ---  Main script logic --- #
+path=${TUCKR_DIR:-${HOME}/.config/dotfiles/Configs}
 
 cd "${path}" || log-error "Invalid tuckr directory: ${path}"
 
 packages=($(fd . --type d -d 1 | cut -d '/' -f1))
 
-log-debug "${path}\n${packages[*]}"
 count=0
 for package in "${packages[@]}"; do
   tuckr add "${package}" || log-warning "Failed to sync package ${package}"

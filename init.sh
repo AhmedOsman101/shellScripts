@@ -1,9 +1,29 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                                       
+#     ██                  ██                                   ▄▄       
+#     ▀▀                  ▀▀       ██                          ██       
+#   ████     ██▄████▄   ████     ███████             ▄▄█████▄  ██▄████▄ 
+#     ██     ██▀   ██     ██       ██                ██▄▄▄▄ ▀  ██▀   ██ 
+#     ██     ██    ██     ██       ██                 ▀▀▀▀██▄  ██    ██ 
+#  ▄▄▄██▄▄▄  ██    ██  ▄▄▄██▄▄▄    ██▄▄▄      ██     █▄▄▄▄▄██  ██    ██ 
+#  ▀▀▀▀▀▀▀▀  ▀▀    ▀▀  ▀▀▀▀▀▀▀▀     ▀▀▀▀      ▀▀      ▀▀▀▀▀▀   ▀▀    ▀▀ 
+#                                                                       
+#                                                                       
+# --- DESCRIPTION --- #
+# Links all executable scripts (excluding specified paths) into ~/.local/bin/scripts
+# --- DEPENDENCIES --- #
+# - fd
+# - dirname
+# - sudo
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 SCRIPTS_DIR="${HOME}/scripts"
 
 # Define directories to exclude

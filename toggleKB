@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#                                          ▄▄▄▄                ▄▄   ▄▄▄  ▄▄▄▄▄▄
+#    ██                                    ▀▀██                ██  ██▀   ██▀▀▀▀██
+#  ███████    ▄████▄    ▄███▄██   ▄███▄██    ██       ▄████▄   ██▄██     ██    ██
+#    ██      ██▀  ▀██  ██▀  ▀██  ██▀  ▀██    ██      ██▄▄▄▄██  █████     ███████
+#    ██      ██    ██  ██    ██  ██    ██    ██      ██▀▀▀▀▀▀  ██  ██▄   ██    ██
+#    ██▄▄▄   ▀██▄▄██▀  ▀██▄▄███  ▀██▄▄███    ██▄▄▄   ▀██▄▄▄▄█  ██   ██▄  ██▄▄▄▄██
+#     ▀▀▀▀     ▀▀▀▀     ▄▀▀▀ ██   ▄▀▀▀ ██     ▀▀▀▀     ▀▀▀▀▀   ▀▀    ▀▀  ▀▀▀▀▀▀▀
+#                       ▀████▀▀   ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# Toggle keyboard layout between us and eg
+# --- DEPENDENCIES --- #
+# - setxkbmap
+# - notify-send
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 current_layout=$(setxkbmap -query | grep layout | awk '{print $2}')
 
 if [[ "${current_layout}" == "us" ]]; then

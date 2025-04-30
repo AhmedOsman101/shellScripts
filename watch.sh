@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+# --- SCRIPT SIGNATURE --- #
+#                                                                                 
+#                                          ▄▄                            ▄▄       
+#                        ██                ██                            ██       
+# ██      ██  ▄█████▄  ███████    ▄█████▄  ██▄████▄            ▄▄█████▄  ██▄████▄ 
+# ▀█  ██  █▀  ▀ ▄▄▄██    ██      ██▀    ▀  ██▀   ██            ██▄▄▄▄ ▀  ██▀   ██ 
+#  ██▄██▄██  ▄██▀▀▀██    ██      ██        ██    ██             ▀▀▀▀██▄  ██    ██ 
+#  ▀██  ██▀  ██▄▄▄███    ██▄▄▄   ▀██▄▄▄▄█  ██    ██     ██     █▄▄▄▄▄██  ██    ██ 
+#   ▀▀  ▀▀    ▀▀▀▀ ▀▀     ▀▀▀▀     ▀▀▀▀▀   ▀▀    ▀▀     ▀▀      ▀▀▀▀▀▀   ▀▀    ▀▀ 
+#                                                                                 
+#                                                                                 
+# --- DESCRIPTION --- #
+# Watches files with specified extensions and runs a given command using watchexec
+# --- DEPENDENCIES --- #
+# - watchexec
+# - gum
+# --- END SIGNATURE --- #
 
-trap 'exit 1' SIGUSR1 # Terminate script on SIGUSR1
+set -euo pipefail
 
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
 # Check if 'watchexec' is installed
 if ! command -v watchexec &>/dev/null; then
   echo "'watchexec' is not installed. Please install it to proceed." >&2

@@ -1,7 +1,25 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                   
+#                      ▄▄▄▄                         
+#                      ▀▀██                         
+#  ▄▄█████▄   ▄████▄     ██       ▄█████▄  ██▄███▄  
+#  ██▄▄▄▄ ▀  ██▄▄▄▄██    ██      ██▀    ▀  ██▀  ▀██ 
+#   ▀▀▀▀██▄  ██▀▀▀▀▀▀    ██      ██        ██    ██ 
+#  █▄▄▄▄▄██  ▀██▄▄▄▄█    ██▄▄▄   ▀██▄▄▄▄█  ███▄▄██▀ 
+#   ▀▀▀▀▀▀     ▀▀▀▀▀      ▀▀▀▀     ▀▀▀▀▀   ██ ▀▀▀   
+#                                          ██       
+#                                                   
+# --- DESCRIPTION --- #
+# Copy selected text using xsel
+# --- DEPENDENCIES --- #
+# - xsel
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 xsel | clipcopy

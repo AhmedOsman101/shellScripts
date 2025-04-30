@@ -1,13 +1,33 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+# --- SCRIPT SIGNATURE --- #
+#                                                                                                                                   
+#                                                    ▄▄▄▄                                                                           
+#                                                    ▀▀██                            ██                  ██                         
+#  ██▄  ▄██   ▄████▄    ██▄████   ▄█████▄   ▄████▄     ██                ▄▄█████▄  ███████    ▄█████▄  ███████   ██    ██  ▄▄█████▄ 
+#   ██  ██   ██▄▄▄▄██   ██▀      ██▀    ▀  ██▄▄▄▄██    ██                ██▄▄▄▄ ▀    ██       ▀ ▄▄▄██    ██      ██    ██  ██▄▄▄▄ ▀ 
+#   ▀█▄▄█▀   ██▀▀▀▀▀▀   ██       ██        ██▀▀▀▀▀▀    ██       █████     ▀▀▀▀██▄    ██      ▄██▀▀▀██    ██      ██    ██   ▀▀▀▀██▄ 
+#    ████    ▀██▄▄▄▄█   ██       ▀██▄▄▄▄█  ▀██▄▄▄▄█    ██▄▄▄             █▄▄▄▄▄██    ██▄▄▄   ██▄▄▄███    ██▄▄▄   ██▄▄▄███  █▄▄▄▄▄██ 
+#     ▀▀       ▀▀▀▀▀    ▀▀         ▀▀▀▀▀     ▀▀▀▀▀      ▀▀▀▀              ▀▀▀▀▀▀      ▀▀▀▀    ▀▀▀▀ ▀▀     ▀▀▀▀    ▀▀▀▀ ▀▀   ▀▀▀▀▀▀  
+#                                                                                                                                   
+#                                                                                                                                   
+# --- DESCRIPTION --- #
+# Shows the latest n deployments on Vercel
+# --- DEPENDENCIES --- #
+# - curl
+# - jq
+# - gum
+# - nu
+# --- END SIGNATURE --- #
 
-source cmdarg.sh
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
+source cmdarg.sh
+
 # ---  Main script logic --- #
-cmdarg_info "header" "Shows the latest n deployments on vercel"
+cmdarg_info "header" "$(get-desc $0)"
 
 cmdarg "l?" "limit" "Limit the number of deployments to show, defaults to the latest deployment" "1"
 

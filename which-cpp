@@ -1,5 +1,27 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                                                           
+#            ▄▄           ██               ▄▄                                               
+#            ██           ▀▀               ██                                               
+# ██      ██ ██▄████▄   ████      ▄█████▄  ██▄████▄             ▄█████▄  ██▄███▄   ██▄███▄  
+# ▀█  ██  █▀ ██▀   ██     ██     ██▀    ▀  ██▀   ██            ██▀    ▀  ██▀  ▀██  ██▀  ▀██ 
+#  ██▄██▄██  ██    ██     ██     ██        ██    ██   █████    ██        ██    ██  ██    ██ 
+#  ▀██  ██▀  ██    ██  ▄▄▄██▄▄▄  ▀██▄▄▄▄█  ██    ██            ▀██▄▄▄▄█  ███▄▄██▀  ███▄▄██▀ 
+#   ▀▀  ▀▀   ▀▀    ▀▀  ▀▀▀▀▀▀▀▀    ▀▀▀▀▀   ▀▀    ▀▀              ▀▀▀▀▀   ██ ▀▀▀    ██ ▀▀▀   
+#                                                                        ██        ██       
+#                                                                                           
+# --- DESCRIPTION --- #
+# Detects the first available C++ compiler and prints its version
+# --- DEPENDENCIES --- #
+# - awk
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
 for compiler in g++ clang++ c++; do
   if command -v "${compiler}" &>/dev/null; then
     version="$("${compiler}" --version | head -n1)"
