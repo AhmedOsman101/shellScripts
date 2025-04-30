@@ -14,31 +14,254 @@
 # --- DESCRIPTION --- #
 # Checks a script's dependencies and installs them
 # --- DEPENDENCIES --- #
-#
+# log-error get-deps get-package-manager
 # --- END SIGNATURE --- #
 
-set -euo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
 
-if [[ $# -ne 1 ]]; then
-  log-error "Invalid arguments, only a script name is accepted"
-else
-  file=$1
+logInfo() {
+  tput setaf 4
+  echo -e "[INFO]: $*"
+  tput sgr0
+}
 
-  [[ ! -f "${file}" ]] && log-error "Script '${file}' was not found"
-fi
+logWarning() {
+  tput setaf 3
+  echo -e "[INFO]: $*"
+  tput sgr0
+}
 
-deps=$(get-deps "${file}")
+logError() {
+  # Print error message in red
+  tput setaf 1
 
-[[ "${deps}" == "x-none" ]] && exit 0
+  echo -e "[ERROR]: $*" 1>&2
+  tput sgr0
 
-for dep in ${deps}; do
-  if ! command -v "${dep}" >/dev/null 2>&1; then
-    log-warning "${dep} is not installed."
-    exit 1
-    # TODO: Implement installing the package based on the package manager
+  # Get parent PID (script that called log-error) and send SIGUSR1
+  PARENT_PID=$(ps -o ppid= $$ | xargs)
+  kill -SIGUSR1 "${PARENT_PID}"
+
+  # Exit with failure code (fallback if signal is ignored)
+  exit 1
+}
+
+getDeps() {
+  local file
+  if [[ $# -ne 1 ]]; then
+    logError "Invalid arguments, only a script name is accepted"
+  else
+    if [[ -f $1 ]]; then
+      file=$1
+    else
+      file=$(which $1)
+    fi
+
+    [[ ! -f ${file} ]] && logError "Script '${file}' was not found"
   fi
-done
+
+  sed -n '/# --- DEPENDENCIES --- #/,/# --- END SIGNATURE --- #/{/\# - /p;}' "${file}" |
+    sed 's|# - ||g' |
+    grep -v " --- " || echo "x-none"
+}
+
+getPackageManager() {
+  local installCmd pkgManager
+
+  # Parse /etc/os-release to determine the distribution
+  if [[ -f /etc/os-release ]]; then
+    . /etc/os-release
+  else
+    logError "/etc/os-release not found."
+  fi
+
+  # Determine package manager and install command
+  case "${ID}" in
+  debian | ubuntu | linuxmint | pop | raspbian | kali | neon | elementary)
+    # For Debian/Ubuntu-based distros, check for nala helpers
+    if command -v nala &>/dev/null; then
+      pkgManager="nala"
+      installCmd="sudo nala install"
+    else
+      pkgManager="apt"
+      installCmd="sudo apt install"
+    fi
+    ;;
+  fedora | rhel | almalinux | rocky | ol)
+    # Fedora/RHEL-based distros (modern)
+    pkgManager="dnf"
+    installCmd="sudo dnf install"
+    ;;
+  centos)
+    # CentOS (check for legacy versions)
+    if [[ "${VERSION_ID}" == 7* ]]; then
+      pkgManager="yum" # Legacy CentOS 7
+      installCmd="yum install"
+    else
+      pkgManager="dnf" # CentOS 8+/Stream
+      installCmd="dnf install"
+    fi
+    ;;
+  opensuse* | sled | sles)
+    # openSUSE/SUSE-based distros
+    pkgManager="zypper"
+    installCmd="sudo zypper install"
+    ;;
+  arch | manjaro | endeavouros | archcraft)
+    # For Arch-based distros, check for AUR helpers
+    if command -v paru &>/dev/null; then
+      pkgManager="paru"
+      installCmd="paru -S --noconfirm"
+    elif command -v yay &>/dev/null; then
+      pkgManager="yay"
+      installCmd="yay -S --noconfirm"
+    else
+      pkgManager="pacman"
+      installCmd="sudo pacman -S --noconfirm"
+    fi
+    ;;
+  void)
+    # Void Linux
+    pkgManager="xbps"
+    installCmd="sudo xbps-install -S"
+    ;;
+  alpine)
+    # Alpine Linux
+    pkgManager="apk"
+    installCmd="sudo apk add"
+    ;;
+  amzn)
+    # Amazon Linux
+    if [[ "${VERSION_ID}" == 2 ]]; then
+      pkgManager="yum" # Amazon Linux 2
+      installCmd="yum install"
+    else
+      pkgManager="dnf" # Amazon Linux 2023+
+      installCmd="dnf install"
+    fi
+    ;;
+  gentoo)
+    # Gentoo Linux (source-based)
+    pkgManager="emerge"
+    installCmd="sudo emerge"
+    ;;
+  *)
+    # Fallback to ID_LIKE for derivatives
+    case "${ID_LIKE}" in
+    *debian* | *ubuntu*)
+      # For Debian/Ubuntu-based distros, check for nala helpers
+      if command -v nala &>/dev/null; then
+        pkgManager="nala"
+        installCmd="sudo nala install"
+      else
+        pkgManager="apt"
+        installCmd="sudo apt install"
+      fi
+      ;;
+    *fedora* | *rhel*)
+      pkgManager="dnf"
+      installCmd="sudo dnf install"
+      ;;
+    *suse*)
+      pkgManager="zypper"
+      installCmd="sudo zypper install"
+      ;;
+    *arch*)
+      # For Arch-based distros, check for AUR helpers
+      if command -v paru &>/dev/null; then
+        pkgManager="paru"
+        installCmd="paru -S --noconfirm"
+      elif command -v yay &>/dev/null; then
+        pkgManager="yay"
+        installCmd="yay -S --noconfirm"
+      else
+        pkgManager="pacman"
+        installCmd="sudo pacman -S --noconfirm"
+      fi
+      ;;
+    *)
+      logError "Unsupported distribution: ${PRETTY_NAME}" >&2
+      ;;
+    esac
+    ;;
+  esac
+
+  echo "${pkgManager}:${installCmd}"
+}
+
+checkDeps() {
+  local file deps output installCmd completed packageName isOptional dep
+  local -a depsArray cmdArray
+
+  if [[ $# -ne 1 ]]; then
+    logError "Invalid arguments, only a script name is accepted"
+  else
+    if [[ -f $1 ]]; then
+      file=$1
+    else
+      file=$(which $1)
+    fi
+
+    [[ ! -f ${file} ]] && logError "Script '${file}' was not found"
+  fi
+
+  deps=$(getDeps "${file}")
+
+  [[ "${deps}" == "x-none" ]] && exit 0
+
+  mapfile -t depsArray < <(getDeps "${file}")
+
+  output=$(getPackageManager)
+  installCmd=$(echo ${output} | awk -F ':' '{print $2}')
+
+  completed=1
+  for item in "${depsArray[@]}"; do
+    dep=$(echo ${item} | awk '{print $1}')
+    packageName=$(echo ${item} | awk '{print $2}')
+    isOptional=$(echo ${item} | awk '{print $3}')
+
+    if ! command -v "${dep}" >/dev/null 2>&1; then
+
+      if [[ -n ${packageName} ]]; then
+        if [[ "${packageName}" == '(optional)' ]]; then
+          read -ra cmdArray <<<"${installCmd} ${dep}"
+
+          if "${cmdArray[@]}" >/dev/null; then
+            logInfo "Installed '${dep}'"
+          fi
+          continue
+        elif [[ "${isOptional}" == '(optional)' ]]; then
+          read -ra cmdArray <<<"${installCmd} ${packageName}"
+
+          if "${cmdArray[@]}" >/dev/null; then
+            logInfo "Installed '${dep}'"
+          fi
+          continue
+        else
+          logWarning "'${dep}' is not installed."
+          read -ra cmdArray <<<"${installCmd} ${packageName}"
+        fi
+      else
+        read -ra cmdArray <<<"${installCmd} ${dep}"
+      fi
+
+      if "${cmdArray[@]}"; then
+        [[ ${packageName} != '(optional)' || "${isOptional}" != '(optional)' ]] &&
+          logInfo "Installed '${dep}'"
+      else
+        [[ ${packageName} != '(optional)' || "${isOptional}" != '(optional)' ]] && {
+          logWarning "Couldn't install '${dep}'"
+          completed=0
+        }
+      fi
+    fi
+  done
+
+  [[ ${completed} == 0 ]] && logError "Failed to install all dependencies"
+
+  return 0
+}
