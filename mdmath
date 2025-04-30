@@ -23,8 +23,10 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-check-deps "$0"
-check-deps "$0"
+source check-deps
+checkDeps "$0"
+source check-deps
+checkDeps "$0"
 # ---  Main script logic --- #
 # Check if the correct number of arguments is passed
 if [[ -z $1 ]]; then

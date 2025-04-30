@@ -22,7 +22,8 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-check-deps "$0"
+source check-deps
+checkDeps "$0"
 # ---  Main script logic --- #
 name="$1"
 desc="$2"
@@ -53,6 +54,6 @@ echo "set -euo pipefail"
 echo ""
 echo "trap 'exit 1' SIGUSR1"
 echo ""
-echo "check-deps "$0"
+echo "check-deps \"$0\""
 # ---  Main script logic --- #"
 echo ""
