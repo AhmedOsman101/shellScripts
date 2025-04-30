@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#                                ▄▄▄▄
+#                                ▀▀██
+#   ██▄████   ▄████▄   ██▄███▄     ██       ▄█████▄   ▄█████▄   ▄████▄
+#   ██▀      ██▄▄▄▄██  ██▀  ▀██    ██       ▀ ▄▄▄██  ██▀    ▀  ██▄▄▄▄██
+#   ██       ██▀▀▀▀▀▀  ██    ██    ██      ▄██▀▀▀██  ██        ██▀▀▀▀▀▀
+#   ██       ▀██▄▄▄▄█  ███▄▄██▀    ██▄▄▄   ██▄▄▄███  ▀██▄▄▄▄█  ▀██▄▄▄▄█
+#   ▀▀         ▀▀▀▀▀   ██ ▀▀▀       ▀▀▀▀    ▀▀▀▀ ▀▀    ▀▀▀▀▀     ▀▀▀▀▀
+#                      ██
+#
+# --- DESCRIPTION --- #
+# String replacement with optional file input and backup
+# --- DEPENDENCIES --- #
+# - sed
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 # Usage function
 usage() {
   echo "Usage: $(basename $0) <search> <replace> [file...]"
