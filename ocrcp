@@ -1,21 +1,32 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                   
+#                                                   
+#                                                   
+#   ▄████▄    ▄█████▄   ██▄████   ▄█████▄  ██▄███▄  
+#  ██▀  ▀██  ██▀    ▀   ██▀      ██▀    ▀  ██▀  ▀██ 
+#  ██    ██  ██         ██       ██        ██    ██ 
+#  ▀██▄▄██▀  ▀██▄▄▄▄█   ██       ▀██▄▄▄▄█  ███▄▄██▀ 
+#    ▀▀▀▀      ▀▀▀▀▀    ▀▀         ▀▀▀▀▀   ██ ▀▀▀   
+#                                          ██       
+#                                                   
+# --- DESCRIPTION --- #
+# OCR an image and copy the result to clipboard
+# --- DEPENDENCIES --- #
+# - tesseract
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 file="$1"
 
 [[ -f "${file}" ]] || log-error "file '${file}' was not found!"
 
-output="$(mktemp -t XXXXXXX)"
-
-# Delete the temp file on `EXIT` signal (i.e. when the script ends)
-trap 'rm -f $output' EXIT
-
-tesseract "${file}" "${output}" 2 &>/dev/null || log-error "Tesseract failed on '${file}'."
-
-text=$(cat "${output}.txt")
+text=$(ocr ${file})
 
 if [[ -z "${text}" ]]; then
   log-warning "Tesseract produced no output for '${file}'."
