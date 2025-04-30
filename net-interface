@@ -1,5 +1,28 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#                                             ██                                                ▄▄▄▄
+#                        ██                   ▀▀                 ██                            ██▀▀▀
+#  ██▄████▄   ▄████▄   ███████              ████     ██▄████▄  ███████    ▄████▄    ██▄████  ███████    ▄█████▄   ▄█████▄   ▄████▄
+#  ██▀   ██  ██▄▄▄▄██    ██                   ██     ██▀   ██    ██      ██▄▄▄▄██   ██▀        ██       ▀ ▄▄▄██  ██▀    ▀  ██▄▄▄▄██
+#  ██    ██  ██▀▀▀▀▀▀    ██       █████       ██     ██    ██    ██      ██▀▀▀▀▀▀   ██         ██      ▄██▀▀▀██  ██        ██▀▀▀▀▀▀
+#  ██    ██  ▀██▄▄▄▄█    ██▄▄▄             ▄▄▄██▄▄▄  ██    ██    ██▄▄▄   ▀██▄▄▄▄█   ██         ██      ██▄▄▄███  ▀██▄▄▄▄█  ▀██▄▄▄▄█
+#  ▀▀    ▀▀    ▀▀▀▀▀      ▀▀▀▀             ▀▀▀▀▀▀▀▀  ▀▀    ▀▀     ▀▀▀▀     ▀▀▀▀▀    ▀▀         ▀▀       ▀▀▀▀ ▀▀    ▀▀▀▀▀     ▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Retrieves the active network interface by checking the route to external IPs
+# --- DEPENDENCIES --- #
+# - ip
+# - awk
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
 interface="$(ip route get 1.1.1.1 2>/dev/null | awk '{print $5;exit}')"
 
 if [[ -n "${interface}" ]]; then

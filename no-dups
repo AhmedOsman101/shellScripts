@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#                                      ▄▄
+#                                      ██
+#  ██▄████▄   ▄████▄              ▄███▄██  ██    ██  ██▄███▄   ▄▄█████▄
+#  ██▀   ██  ██▀  ▀██            ██▀  ▀██  ██    ██  ██▀  ▀██  ██▄▄▄▄ ▀
+#  ██    ██  ██    ██   █████    ██    ██  ██    ██  ██    ██   ▀▀▀▀██▄
+#  ██    ██  ▀██▄▄██▀            ▀██▄▄███  ██▄▄▄███  ███▄▄██▀  █▄▄▄▄▄██
+#  ▀▀    ▀▀    ▀▀▀▀                ▀▀▀ ▀▀   ▀▀▀▀ ▀▀  ██ ▀▀▀     ▀▀▀▀▀▀
+#                                                    ██
+#
+# --- DESCRIPTION --- #
+# Removes duplicate lines from a file or stdin, with options for backup, output as array, and quiet mode
+# --- DEPENDENCIES --- #
+# - tr
+# - awk
+# - paste
+# - mktemp
+# --- END SIGNATURE --- #
+
 set -eo pipefail
 
 trap 'exit 1' SIGUSR1
@@ -7,7 +27,7 @@ trap 'exit 1' SIGUSR1
 source cmdarg.sh
 
 # ---  Main script logic --- #
-cmdarg_info "header" "Remove duplicate lines from a file"
+cmdarg_info "header" "$(get-desc $0)"
 
 cmdarg "b" "backup" "Creates a backup .bak file of the original file"
 cmdarg "a" "array" "Returns the output as a bash compatible array"

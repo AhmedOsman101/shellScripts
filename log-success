@@ -1,5 +1,27 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                                                                               
+#  ▄▄▄▄                                                                                                         
+#  ▀▀██                                                                                                         
+#    ██       ▄████▄    ▄███▄██            ▄▄█████▄  ██    ██   ▄█████▄   ▄█████▄   ▄████▄   ▄▄█████▄  ▄▄█████▄ 
+#    ██      ██▀  ▀██  ██▀  ▀██            ██▄▄▄▄ ▀  ██    ██  ██▀    ▀  ██▀    ▀  ██▄▄▄▄██  ██▄▄▄▄ ▀  ██▄▄▄▄ ▀ 
+#    ██      ██    ██  ██    ██   █████     ▀▀▀▀██▄  ██    ██  ██        ██        ██▀▀▀▀▀▀   ▀▀▀▀██▄   ▀▀▀▀██▄ 
+#    ██▄▄▄   ▀██▄▄██▀  ▀██▄▄███            █▄▄▄▄▄██  ██▄▄▄███  ▀██▄▄▄▄█  ▀██▄▄▄▄█  ▀██▄▄▄▄█  █▄▄▄▄▄██  █▄▄▄▄▄██ 
+#     ▀▀▀▀     ▀▀▀▀     ▄▀▀▀ ██             ▀▀▀▀▀▀    ▀▀▀▀ ▀▀    ▀▀▀▀▀     ▀▀▀▀▀     ▀▀▀▀▀    ▀▀▀▀▀▀    ▀▀▀▀▀▀  
+#                       ▀████▀▀                                                                                 
+#                                                                                                               
+# --- DESCRIPTION --- #
+# Prints success messages in green with a '[SUCCESS]:' prefix; reads from stdin or arguments
+# --- DEPENDENCIES --- #
+# - tput
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
 # read from stdin
 if [[ $# -eq 0 || $1 == "-" ]]; then
   str=$(cat)

@@ -1,13 +1,30 @@
 #!/usr/bin/env bash
 
-set -o pipefail
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄                                         ██
+#            ██                                         ▀▀                 ██
+#  ████▄██▄  ██ ▄██▀   ▄▄█████▄   ▄█████▄   ██▄████   ████     ██▄███▄   ███████
+#  ██ ██ ██  ██▄██     ██▄▄▄▄ ▀  ██▀    ▀   ██▀         ██     ██▀  ▀██    ██
+#  ██ ██ ██  ██▀██▄     ▀▀▀▀██▄  ██         ██          ██     ██    ██    ██
+#  ██ ██ ██  ██  ▀█▄   █▄▄▄▄▄██  ▀██▄▄▄▄█   ██       ▄▄▄██▄▄▄  ███▄▄██▀    ██▄▄▄
+#  ▀▀ ▀▀ ▀▀  ▀▀   ▀▀▀   ▀▀▀▀▀▀     ▀▀▀▀▀    ▀▀       ▀▀▀▀▀▀▀▀  ██ ▀▀▀       ▀▀▀▀
+#                                                              ██
+#
+# --- DESCRIPTION --- #
+# Automatically creates bash scripts with optional flags for temporary or named files, and copies the script name to the clipboard if temporary
+# --- DEPENDENCIES --- #
+# - gum
+# --- END SIGNATURE --- #
+
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
 source cmdarg.sh
 
 # ---  Main script logic --- #
-cmdarg_info "header" "A script for creating bash scripts automatically"
+cmdarg_info "header" "$(get-desc $0)"
 
 cmdarg "t" "temp" "Creates the script at /tmp and copies its name to clipboard"
 cmdarg "f?" "file" "Creates the script with the given name in the current working directory" ""

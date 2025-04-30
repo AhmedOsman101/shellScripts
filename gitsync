@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#               ██
+#               ▀▀       ██
+#   ▄███▄██   ████     ███████   ▄▄█████▄  ▀██  ███  ██▄████▄   ▄█████▄
+#  ██▀  ▀██     ██       ██      ██▄▄▄▄ ▀   ██▄ ██   ██▀   ██  ██▀    ▀
+#  ██    ██     ██       ██       ▀▀▀▀██▄    ████▀   ██    ██  ██
+#  ▀██▄▄███  ▄▄▄██▄▄▄    ██▄▄▄   █▄▄▄▄▄██     ███    ██    ██  ▀██▄▄▄▄█
+#   ▄▀▀▀ ██  ▀▀▀▀▀▀▀▀     ▀▀▀▀    ▀▀▀▀▀▀      ██     ▀▀    ▀▀    ▀▀▀▀▀
+#   ▀████▀▀                                 ███
+#
+# --- DESCRIPTION --- #
+# Automates adding, committing with a timestamp, and pushing changes to a Git repository
+# --- DEPENDENCIES --- #
+# - git
+# - gum
+# --- END SIGNATURE --- #
+
 set -eo pipefail
 
 trap 'exit 1' SIGUSR1
@@ -7,7 +25,7 @@ trap 'exit 1' SIGUSR1
 source cmdarg.sh
 
 # ---  Main script logic --- #
-cmdarg_info "header" "This script automates adding changes, committing them with a timestamp, and pushing the changes to the remote repository."
+cmdarg_info "header" "$(get-desc $0)"
 
 cmdarg "b?" "branch" "Specify the branch to work on. Defaults to current branch." "no branch"
 cmdarg "m" "message" "Opens an interactive model for adding a custom commit message"

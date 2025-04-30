@@ -1,6 +1,27 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄▄▄                                          ▄▄            ▄▄
+#  ▀▀██                                          ██            ██
+#    ██       ▄████▄    ▄███▄██             ▄███▄██   ▄████▄   ██▄███▄   ██    ██   ▄███▄██
+#    ██      ██▀  ▀██  ██▀  ▀██            ██▀  ▀██  ██▄▄▄▄██  ██▀  ▀██  ██    ██  ██▀  ▀██
+#    ██      ██    ██  ██    ██   █████    ██    ██  ██▀▀▀▀▀▀  ██    ██  ██    ██  ██    ██
+#    ██▄▄▄   ▀██▄▄██▀  ▀██▄▄███            ▀██▄▄███  ▀██▄▄▄▄█  ███▄▄██▀  ██▄▄▄███  ▀██▄▄███
+#     ▀▀▀▀     ▀▀▀▀     ▄▀▀▀ ██              ▀▀▀ ▀▀    ▀▀▀▀▀   ▀▀ ▀▀▀     ▀▀▀▀ ▀▀   ▄▀▀▀ ██
+#                       ▀████▀▀                                                     ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# Prints debug messages in magenta with a '[DEBUG]:' prefix; reads from stdin or arguments
+# --- DEPENDENCIES --- #
+# - tput
+# --- END SIGNATURE --- #
+
 set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
 
 # read from stdin
 if [[ $# -eq 0 || $1 == "-" ]]; then

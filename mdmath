@@ -1,9 +1,29 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#                  ▄▄                                ▄▄
+#                  ██                        ██      ██
+#  ████▄██▄   ▄███▄██  ████▄██▄   ▄█████▄  ███████   ██▄████▄
+#  ██ ██ ██  ██▀  ▀██  ██ ██ ██   ▀ ▄▄▄██    ██      ██▀   ██
+#  ██ ██ ██  ██    ██  ██ ██ ██  ▄██▀▀▀██    ██      ██    ██
+#  ██ ██ ██  ▀██▄▄███  ██ ██ ██  ██▄▄▄███    ██▄▄▄   ██    ██
+#  ▀▀ ▀▀ ▀▀    ▀▀▀ ▀▀  ▀▀ ▀▀ ▀▀   ▀▀▀▀ ▀▀     ▀▀▀▀   ▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Replaces LaTeX math delimiters with dollar signs in a given file; counts and logs the replacements made
+# --- DEPENDENCIES --- #
+# - grep
+# - wc
+# - sed
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 # Check if the correct number of arguments is passed
 if [[ -z $1 ]]; then
   log-warning "Usage: $0 <file>"
@@ -14,7 +34,7 @@ fi
 file="$1"
 
 # Check if the file exists
-[[ ! -f ${file} ]] && log-error "Error: File '${file}' does not exist."
+[[ ! -f ${file} ]] && log-error "File '${file}' does not exist."
 
 # Initialize replacement counts
 count_1=$(grep -o '\\\[' "${file}" | wc -l)

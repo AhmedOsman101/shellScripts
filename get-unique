@@ -1,13 +1,28 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#                                                                 ██
+#                        ██                                       ▀▀
+#   ▄███▄██   ▄████▄   ███████             ██    ██  ██▄████▄   ████      ▄███▄██  ██    ██   ▄████▄
+#  ██▀  ▀██  ██▄▄▄▄██    ██                ██    ██  ██▀   ██     ██     ██▀  ▀██  ██    ██  ██▄▄▄▄██
+#  ██    ██  ██▀▀▀▀▀▀    ██       █████    ██    ██  ██    ██     ██     ██    ██  ██    ██  ██▀▀▀▀▀▀
+#  ▀██▄▄███  ▀██▄▄▄▄█    ██▄▄▄             ██▄▄▄███  ██    ██  ▄▄▄██▄▄▄  ▀██▄▄███  ██▄▄▄███  ▀██▄▄▄▄█
+#   ▄▀▀▀ ██    ▀▀▀▀▀      ▀▀▀▀              ▀▀▀▀ ▀▀  ▀▀    ▀▀  ▀▀▀▀▀▀▀▀    ▀▀▀ ██   ▀▀▀▀ ▀▀    ▀▀▀▀▀
+#   ▀████▀▀                                                                    ██
+#
+# --- DESCRIPTION --- #
+# Filters unique lines that appear once in a file or stdin, with options for backup and array output
+# --- DEPENDENCIES --- #
+# - awk
+# --- END SIGNATURE --- #
+
 set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source cmdarg.sh
-
 # ---  Main script logic --- #
-cmdarg_info "header" "Filters unique lines that appeared once in the whole file"
+cmdarg_info "header" "$(get-desc $0)"
 
 cmdarg "b" "backup" "Creates a backup .bak file of the original file"
 cmdarg "a" "array" "Returns the output as a bash compatible array"
@@ -68,6 +83,6 @@ else
     mv -i "${tmpfile}" "${file}"
     [[ ${quiet} == true ]] || log-info "Filtered unique lines from '${file}'!"
   else
-    log-error "Error: ${file} was not found!"
+    log-error "${file} was not found!"
   fi
 fi

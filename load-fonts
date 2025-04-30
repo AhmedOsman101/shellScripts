@@ -1,7 +1,29 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2207
+
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄▄▄                                ▄▄               ▄▄▄▄
+#  ▀▀██                                ██              ██▀▀▀                         ██
+#    ██       ▄████▄    ▄█████▄   ▄███▄██            ███████    ▄████▄   ██▄████▄  ███████   ▄▄█████▄
+#    ██      ██▀  ▀██   ▀ ▄▄▄██  ██▀  ▀██              ██      ██▀  ▀██  ██▀   ██    ██      ██▄▄▄▄ ▀
+#    ██      ██    ██  ▄██▀▀▀██  ██    ██   █████      ██      ██    ██  ██    ██    ██       ▀▀▀▀██▄
+#    ██▄▄▄   ▀██▄▄██▀  ██▄▄▄███  ▀██▄▄███              ██      ▀██▄▄██▀  ██    ██    ██▄▄▄   █▄▄▄▄▄██
+#     ▀▀▀▀     ▀▀▀▀     ▀▀▀▀ ▀▀    ▀▀▀ ▀▀              ▀▀        ▀▀▀▀    ▀▀    ▀▀     ▀▀▀▀    ▀▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Moves TTF and OTF fonts from ~/fonts to system font directories and refreshes the font cache
+# --- DEPENDENCIES --- #
+# - fd
+# - gum
+# --- END SIGNATURE --- #
 
 set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
+cd "${HOME}/fonts" || log-error "failed to find '${HOME}/fonts' directory, create it first."
 
 ttfDir="/usr/local/share/fonts/TTF"
 otfDir="/usr/local/share/fonts/OTF"
@@ -9,8 +31,6 @@ otfDir="/usr/local/share/fonts/OTF"
 [[ ! -d "${ttfDir}" ]] && sudo mkdir -p "${ttfDir}"
 
 [[ ! -d "${otfDir}" ]] && sudo mkdir -p "${otfDir}"
-
-cd ~/fonts || log-error "failed to find '~/fonts' directory"
 
 sudo mv -i ./*.ttf "${ttfDir}" >/dev/null 2>&1 || printf ''
 sudo mv -i ./*.otf "${otfDir}" >/dev/null 2>&1 || printf ''

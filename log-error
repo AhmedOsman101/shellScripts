@@ -1,5 +1,30 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                                                           
+#  ▄▄▄▄                                                                                     
+#  ▀▀██                                                                                     
+#    ██       ▄████▄    ▄███▄██             ▄████▄    ██▄████   ██▄████   ▄████▄    ██▄████ 
+#    ██      ██▀  ▀██  ██▀  ▀██            ██▄▄▄▄██   ██▀       ██▀      ██▀  ▀██   ██▀     
+#    ██      ██    ██  ██    ██   █████    ██▀▀▀▀▀▀   ██        ██       ██    ██   ██      
+#    ██▄▄▄   ▀██▄▄██▀  ▀██▄▄███            ▀██▄▄▄▄█   ██        ██       ▀██▄▄██▀   ██      
+#     ▀▀▀▀     ▀▀▀▀     ▄▀▀▀ ██              ▀▀▀▀▀    ▀▀        ▀▀         ▀▀▀▀     ▀▀      
+#                       ▀████▀▀                                                             
+#                                                                                           
+# --- DESCRIPTION --- #
+# Prints error messages in red with a '[ERROR]:' prefix to stderr, signals parent with SIGUSR1, and exits with failure
+# --- DEPENDENCIES --- #
+# - tput
+# - ps
+# - xargs
+# - kill
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
 # read from stdin
 if [[ $# -eq 0 || $1 == "-" ]]; then
   str=$(cat)

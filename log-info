@@ -13,7 +13,7 @@
 # --- DESCRIPTION --- #
 # Prints blue info text
 # --- DEPENDENCIES --- #
-#
+# - tput
 # --- END SIGNATURE --- #
 
 # black: 0, red: 1, green: 2, yellow: 3,

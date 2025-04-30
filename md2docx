@@ -1,22 +1,41 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#                  ▄▄   ▄▄▄▄▄          ▄▄
+#                  ██  █▀▀▀▀██▄        ██
+#  ████▄██▄   ▄███▄██        ██   ▄███▄██   ▄████▄    ▄█████▄  ▀██  ██▀
+#  ██ ██ ██  ██▀  ▀██      ▄█▀   ██▀  ▀██  ██▀  ▀██  ██▀    ▀    ████
+#  ██ ██ ██  ██    ██    ▄█▀     ██    ██  ██    ██  ██          ▄██▄
+#  ██ ██ ██  ▀██▄▄███  ▄██▄▄▄▄▄  ▀██▄▄███  ▀██▄▄██▀  ▀██▄▄▄▄█   ▄█▀▀█▄
+#  ▀▀ ▀▀ ▀▀    ▀▀▀ ▀▀  ▀▀▀▀▀▀▀▀    ▀▀▀ ▀▀    ▀▀▀▀      ▀▀▀▀▀   ▀▀▀  ▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Converts a Markdown file to DOCX using pandoc, optionally applying a reference template from MRT, with success and error logging
+# --- DEPENDENCIES --- #
+# - pandoc pandoc-cli
+# - sed
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 file="$1"
 
 if [[ -f "${file}" ]]; then
   filename="$(echo "${file}" | sed 's/\.[^.]*$//')"
 
   if [[ -z "${MRT}" && -f ${MRT} ]]; then
-    pandoc "${file}" -o "${filename}.docx" || log-error "an Error occured"
+    pandoc "${file}" -o "${filename}.docx" || log-error "Unknown Error Occured"
   else
-    pandoc "${file}" -o "${filename}.docx" --reference-doc="${MRT}" || log-error "an Error occured"
+    pandoc "${file}" -o "${filename}.docx" --reference-doc="${MRT}" || log-error "Unknown Error Occured"
   fi
 
-  log-success "${file} converted successfully!"
+  log-success "File '${file}' converted successfully!"
 
 else
-  log-error "File ${file} does not exist!"
+  log-error "File '${file}' does not exist!"
 fi

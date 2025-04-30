@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#               ██
+#               ▀▀       ██                                                ██
+#   ▄███▄██   ████     ███████              ██▄████   ▄████▄    ▄████▄   ███████
+#  ██▀  ▀██     ██       ██                 ██▀      ██▀  ▀██  ██▀  ▀██    ██
+#  ██    ██     ██       ██       █████     ██       ██    ██  ██    ██    ██
+#  ▀██▄▄███  ▄▄▄██▄▄▄    ██▄▄▄              ██       ▀██▄▄██▀  ▀██▄▄██▀    ██▄▄▄
+#   ▄▀▀▀ ██  ▀▀▀▀▀▀▀▀     ▀▀▀▀              ▀▀         ▀▀▀▀      ▀▀▀▀       ▀▀▀▀
+#   ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# Displays the root directory of the current Git repository
+# --- DEPENDENCIES --- #
+# - git
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+# ---  Main script logic --- #
 is-git-repo
 
 git rev-parse --show-toplevel

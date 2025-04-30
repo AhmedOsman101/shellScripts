@@ -1,5 +1,27 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#
+#  ████▄██▄  ██▄  ▄██  ██▄███▄
+#  ██ ██ ██   ██  ██   ██▀  ▀██
+#  ██ ██ ██   ▀█▄▄█▀   ██    ██
+#  ██ ██ ██    ████    ███▄▄██▀
+#  ▀▀ ▀▀ ▀▀     ▀▀     ██ ▀▀▀
+#                      ██
+#
+# --- DESCRIPTION --- #
+# Moves a file to a new location, creating the target directory if necessary
+# --- DEPENDENCIES --- #
+# - mkdir
+# - mv
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
-mkdir -p "$(dirname "$2")" && mv -i "$1" "$2"
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
+mkdir -p "$(dirname "$2")" 2>/dev/null
+mv -i "$1" "$2"

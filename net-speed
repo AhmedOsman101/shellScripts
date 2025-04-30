@@ -1,5 +1,29 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                                                           
+#                                                                                        ▄▄ 
+#                        ██                                                              ██ 
+#  ██▄████▄   ▄████▄   ███████             ▄▄█████▄  ██▄███▄    ▄████▄    ▄████▄    ▄███▄██ 
+#  ██▀   ██  ██▄▄▄▄██    ██                ██▄▄▄▄ ▀  ██▀  ▀██  ██▄▄▄▄██  ██▄▄▄▄██  ██▀  ▀██ 
+#  ██    ██  ██▀▀▀▀▀▀    ██       █████     ▀▀▀▀██▄  ██    ██  ██▀▀▀▀▀▀  ██▀▀▀▀▀▀  ██    ██ 
+#  ██    ██  ▀██▄▄▄▄█    ██▄▄▄             █▄▄▄▄▄██  ███▄▄██▀  ▀██▄▄▄▄█  ▀██▄▄▄▄█  ▀██▄▄███ 
+#  ▀▀    ▀▀    ▀▀▀▀▀      ▀▀▀▀              ▀▀▀▀▀▀   ██ ▀▀▀      ▀▀▀▀▀     ▀▀▀▀▀     ▀▀▀ ▀▀ 
+#                                                    ██                                     
+#                                                                                           
+# --- DESCRIPTION --- #
+# Monitors and displays the network download and upload speeds in Kbps for the active network interface
+# --- DEPENDENCIES --- #
+# - cat
+# - awk
+# - printf
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
 interface="$(net-interface)"
 
 downOld="$(cat /sys/class/net/"${interface}"/statistics/rx_bytes)"

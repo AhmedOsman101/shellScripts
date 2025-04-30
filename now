@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                               
+#                               
+#                               
+#  ██▄████▄   ▄████▄  ██      ██
+#  ██▀   ██  ██▀  ▀██ ▀█  ██  █▀
+#  ██    ██  ██    ██  ██▄██▄██ 
+#  ██    ██  ▀██▄▄██▀  ▀██  ██▀ 
+#  ▀▀    ▀▀    ▀▀▀▀     ▀▀  ▀▀  
+#                               
+#                               
+# --- DESCRIPTION --- #
+# Prints the current date and time
+# --- DEPENDENCIES --- #
+# - date
+# --- END SIGNATURE --- #
+
 set -euo pipefail
 
+trap 'exit 1' SIGUSR1
+
+# ---  Main script logic --- #
 date +"%Y-%m-%d@%I:%M%p"
