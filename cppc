@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Compiles and optionally runs C++ files with customizable compiler arguments
 # --- DEPENDENCIES --- #
-# - gcc
+# - g++ gcc
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -23,6 +23,7 @@ trap 'exit 1' SIGUSR1
 
 source cmdarg.sh
 
+check-deps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
 

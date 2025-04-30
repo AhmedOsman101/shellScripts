@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
 # --- SCRIPT SIGNATURE --- #
-#                                                             
-#            ▄▄                                         ▄▄▄▄  
-#            ██                                        ██▀▀▀  
-#  ████▄██▄  ██ ▄██▀    ▄█████▄   ▄████▄   ██▄████▄  ███████  
-#  ██ ██ ██  ██▄██     ██▀    ▀  ██▀  ▀██  ██▀   ██    ██     
-#  ██ ██ ██  ██▀██▄    ██        ██    ██  ██    ██    ██     
-#  ██ ██ ██  ██  ▀█▄   ▀██▄▄▄▄█  ▀██▄▄██▀  ██    ██    ██     
-#  ▀▀ ▀▀ ▀▀  ▀▀   ▀▀▀    ▀▀▀▀▀     ▀▀▀▀    ▀▀    ▀▀    ▀▀     
-#                                                             
-#                                                             
+#
+#            ▄▄                                         ▄▄▄▄
+#            ██                                        ██▀▀▀
+#  ████▄██▄  ██ ▄██▀    ▄█████▄   ▄████▄   ██▄████▄  ███████
+#  ██ ██ ██  ██▄██     ██▀    ▀  ██▀  ▀██  ██▀   ██    ██
+#  ██ ██ ██  ██▀██▄    ██        ██    ██  ██    ██    ██
+#  ██ ██ ██  ██  ▀█▄   ▀██▄▄▄▄█  ▀██▄▄██▀  ██    ██    ██
+#  ▀▀ ▀▀ ▀▀  ▀▀   ▀▀▀    ▀▀▀▀▀     ▀▀▀▀    ▀▀    ▀▀    ▀▀
+#
+#
 # --- DESCRIPTION --- #
 # Creates or moves configuration directories for an app; interacts with the user to confirm actions and manage directories
 # --- DEPENDENCIES --- #
@@ -22,6 +22,7 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+check-deps "$0"
 # ---  Main script logic --- #
 app=$(gum input --placeholder "Enter app's name e.g. vim")
 

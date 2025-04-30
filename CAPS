@@ -21,5 +21,6 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+check-deps "$0"
 # ---  Main script logic --- #
 xdotool key Caps_Lock

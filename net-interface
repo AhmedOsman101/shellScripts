@@ -22,6 +22,7 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+check-deps "$0"
 # ---  Main script logic --- #
 interface="$(ip route get 1.1.1.1 2>/dev/null | awk '{print $5;exit}')"
 

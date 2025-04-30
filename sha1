@@ -23,6 +23,7 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+check-deps "$0"
 # ---  Main script logic --- #
 params=$(echo "$*" | tr -d "\n" | trim)
 printf "%s" "${params}" | sha1sum | awk '{print $1}'
