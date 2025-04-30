@@ -40,7 +40,13 @@ is-git-repo
 
 current=$(git_current_branch) || log-error "Cannot find current branch"
 
-branchList=$(git branch --list --format='%(refname:short)')
+branchList=$(
+  git branch --list \
+    --format='%(refname:short)' \
+    --remote |
+    replace "origin" '' |
+    tr -d "/" | trim | remove-blanks
+)
 
 branchesString="$(
   (printf '%s\n' "${current}")                           # Add the current branch first
