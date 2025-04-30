@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#                                                                        ▄▄        ▄▄▄▄                          ▄▄
+#                                                                        ██        ▀▀██                          ██
+#   ██▄████   ▄████▄   ████▄██▄   ▄████▄   ██▄  ▄██   ▄████▄             ██▄███▄     ██       ▄█████▄  ██▄████▄  ██ ▄██▀   ▄▄█████▄
+#   ██▀      ██▄▄▄▄██  ██ ██ ██  ██▀  ▀██   ██  ██   ██▄▄▄▄██            ██▀  ▀██    ██       ▀ ▄▄▄██  ██▀   ██  ██▄██     ██▄▄▄▄ ▀
+#   ██       ██▀▀▀▀▀▀  ██ ██ ██  ██    ██   ▀█▄▄█▀   ██▀▀▀▀▀▀   █████    ██    ██    ██      ▄██▀▀▀██  ██    ██  ██▀██▄     ▀▀▀▀██▄
+#   ██       ▀██▄▄▄▄█  ██ ██ ██  ▀██▄▄██▀    ████    ▀██▄▄▄▄█            ███▄▄██▀    ██▄▄▄   ██▄▄▄███  ██    ██  ██  ▀█▄   █▄▄▄▄▄██
+#   ▀▀         ▀▀▀▀▀   ▀▀ ▀▀ ▀▀    ▀▀▀▀       ▀▀       ▀▀▀▀▀             ▀▀ ▀▀▀       ▀▀▀▀    ▀▀▀▀ ▀▀  ▀▀    ▀▀  ▀▀   ▀▀▀   ▀▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Removes blank lines from stdin or a file
+# --- DEPENDENCIES --- #
+# - sed
+# - moreutils
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source cmdarg.sh
+
+# ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc "$0")"
+
+cmdarg "b" "backup" "Creates a backup .bak file of the original file"
+
+cmdarg_parse "$@"
+
+useBackup=${cmdarg_cfg['backup']}
+file=${cmdarg_argv[0]}
+
+# read from stdin
+if [[ ${#cmdarg_argv[@]} -eq 0 || ${file} == "-" ]]; then
+  str=$(cat)
+  [[ -z ${str} ]] && printf '' && exit 0
+  echo "${str}" | awk 'NF'
+elif [[ -f ${file} ]]; then
+  if [[ ${useBackup} == true ]]; then
+    cp -i "${file}" "${file}.bak"
+    awk 'NF' "${file}" | sponge "${file}"
+    log-success "Blank lines removed from ${file} with backup with a ${file}.bak file"
+  else
+    awk 'NF' "${file}" | sponge "${file}"
+    log-success "Blank lines removed from ${file}"
+  fi
+else
+  str="$*"
+  [[ -z ${str} ]] && printf '' && exit 0
+  echo "${str}" | awk 'NF'
+fi
