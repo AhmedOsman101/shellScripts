@@ -80,7 +80,11 @@ elif [[ -z "${filename}" ]]; then
   make-signature "${name}" " " "" >"${file}"
 
   if [[ "${name}" != *.sh ]]; then
-    gum confirm "Do you want to add .sh extension to your script?" && file="${PWD}/${name}.sh"
+    gum confirm "Do you want to add .sh extension to your script?" && {
+      rm -f "${file}"
+      file="${PWD}/${name}.sh"
+      validateAndCreateFile "${file}"
+    }
   fi
 
 elif [[ -n "${filename}" ]]; then
@@ -92,7 +96,11 @@ elif [[ -n "${filename}" ]]; then
   name="$(basename "${file}")"
 
   if [[ "${name}" != *.sh ]]; then
-    gum confirm "Do you want to add .sh extension to your script?" && file="${PWD}/${name}.sh"
+    gum confirm "Do you want to add .sh extension to your script?" && {
+      rm -f "${file}"
+      file="${PWD}/${name}.sh"
+      validateAndCreateFile "${file}"
+    }
   fi
   echo "${scriptContent}" >"${file}"
 fi
