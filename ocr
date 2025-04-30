@@ -1,38 +1,58 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#
+#   ▄████▄    ▄█████▄   ██▄████
+#  ██▀  ▀██  ██▀    ▀   ██▀
+#  ██    ██  ██         ██
+#  ▀██▄▄██▀  ▀██▄▄▄▄█   ██
+#    ▀▀▀▀      ▀▀▀▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Extract text from an image using Tesseract
+# --- DEPENDENCIES --- #
+# - tesseract
+# --- END SIGNATURE --- #
+
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-file="$1"
-shift
+source cmdarg.sh
 
-[[ -f "${file}" ]] || log-error "file '${file}' was not found!"
+# ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc $0)"
 
-output="$(mktemp "${file}-XXX.txt")"
+cmdarg "s" "save" "Save the result to a file"
 
-if (("$#" == 0)); then
-  tesseract "${file}" "${output}" 2 &>/dev/null ||
-    log-error "Tesseract failed on '${file}'."
-  # Delete the temp file on `EXIT` signal (i.e. when the script ends)
-  trap 'rm -f $output' EXIT
-  cat "${output}.txt"
+cmdarg_parse "$@"
+
+saveToFile=${cmdarg_cfg['save']}
+image=${cmdarg_argv[0]}
+
+[[ -f "${image}" ]] || log-error "file '${image}' was not found!"
+
+if [[ ${saveToFile} == true ]]; then
+
+  imgNameWithoutExt="$(strip-ext ${image} png jpg jpeg webp svg gif)"
+
+  tesseract "${image}" "${imgNameWithoutExt}" 2 &>/dev/null ||
+    log-error "Tesseract failed on '${image}'."
+
+  log-success "Result saved as '${imgNameWithoutExt}.txt'"
+else
+  outputFile="$(mktemp -t ocr-XXXXX)"
+  trap 'rm -f $outputFile' EXIT
+
+  if ! tesseract "${image}" "${outputFile}" 2 &>/dev/null; then
+    log-error "Tesseract failed on '${image}'."
+  fi
+
+  output=$(cat "${outputFile}.txt")
+  [[ -z ${output} ]] && log-warning "No readable text found in image '${image}'"
+
+  cat "${outputFile}.txt"
 fi
-
-while (($# > 0)); do
-  case "${1}" in
-  -f | --file)
-    # only save as a file
-    shift
-    tesseract "${file}" "${output}" 2 &>/dev/null ||
-      log-error "Tesseract failed on '${file}'." ||
-      exit 1
-
-    log-success "Output file: '${output}' was created successfully!"
-    ;;
-  *)
-    # unknown flag/switch
-    log-error "Unknown flag '${1}'!"
-    ;;
-  esac
-done
