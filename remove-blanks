@@ -34,7 +34,6 @@ cmdarg_parse "$@"
 useBackup=${cmdarg_cfg['backup']}
 file=${cmdarg_argv[0]}
 
-# read from stdin
 if [[ ${#cmdarg_argv[@]} -eq 0 || ${file} == "-" ]]; then
   str=$(cat)
   [[ -z ${str} ]] && printf '' && exit 0
@@ -43,10 +42,10 @@ elif [[ -f ${file} ]]; then
   if [[ ${useBackup} == true ]]; then
     cp -i "${file}" "${file}.bak"
     awk 'NF' "${file}" | sponge "${file}"
-    log-success "Blank lines removed from ${file} with backup with a ${file}.bak file"
+    log-success "Removed blank lines from '${file}'. Backup created at '${file}.bak'."
   else
     awk 'NF' "${file}" | sponge "${file}"
-    log-success "Blank lines removed from ${file}"
+    log-success "Removed blank lines from '${file}'."
   fi
 else
   str="$*"
