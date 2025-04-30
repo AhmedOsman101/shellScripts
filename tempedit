@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Creates a temporary file to edit with the given extesnsion
 # --- DEPENDENCIES --- #
-#
+# - nano
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -37,8 +37,11 @@ extension=${cmdarg_argv[0]:-md}
 
 EDITOR=${EDITOR:-nano}
 
-file=$(mktemp -t "XXXXXX.${extension}")
-
-[[ ${preserve} == true ]] || trap 'rm -f $file' EXIT
+if [[ ${preserve} == true ]]; then
+  file=$(mktemp "XXXXXX.${extension}")
+else
+  file=$(mktemp -t "XXXXXX.${extension}")
+  trap 'rm -f $file' EXIT
+fi
 
 ${EDITOR} "${file}"
