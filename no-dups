@@ -51,22 +51,22 @@ remove_duplicates() {
 }
 
 # Check if input is from a file or stdin
-if [[ $# -eq 0 || $1 == "-" ]]; then
+if [[ ${#cmdarg_argv[@]} -eq 0 || ${cmdarg_argv[0]} == "-" ]]; then
   remove_duplicates
 else
-  file="$1"
+  file=${cmdarg_argv[0]}
   tmpfile="$(mktemp)"
   trap 'rm -f $tmpfile' EXIT
 
   # Read from file
   if [[ -f ${file} ]]; then
     if [[ ${useBackup} == true ]]; then
-      cp -i "${file}" "${file}.bak"
+      cp "${file}" "${file}.bak"
 
       [[ ${quiet} == true ]] || log-info "Backup created as ${file}.bak"
     fi
     remove_duplicates <"${file}" >"${tmpfile}"
-    mv -i "${tmpfile}" "${file}"
+    mv "${tmpfile}" "${file}"
 
     [[ ${quiet} == true ]] || log-info "Duplicates removed from '${file}'!"
   else
