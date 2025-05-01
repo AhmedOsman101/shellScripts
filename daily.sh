@@ -10,7 +10,10 @@ else
   device="pc"
 fi
 
-# --- paru packages --- #
+# ---- Timeshift ---- #
+sudo timeshift --create
+
+# --- installed packages --- #
 paru -Qqe >"${DOTFILES}/${device}_packages.txt"
 
 # --- vscode extenstions--- #
