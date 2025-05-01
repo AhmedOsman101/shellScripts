@@ -29,6 +29,7 @@ checkDeps "$0"
 SCRIPTS_DIR="${HOME}/scripts"
 
 sudo ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${HOME}/.local/bin/scripts"
+ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${SCRIPTS_DIR}/cmdarg.sh"
 
 if ! echo ${PATH} | grep "${HOME}/.local/bin/scripts" -q; then
   echo "Add this line to your .$(basename ${SHELL})rc file to make the scripts globally available"
