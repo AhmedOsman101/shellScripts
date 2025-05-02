@@ -21,4 +21,4 @@ get-ext "${DOTFILES}/${device}_extensions.json" -o
 
 # --- pnpm --- #
 pnpm-ls >>"${DOTFILES}/pnpm_global_packages.txt"
-no-dups "${DOTFILES}/pnpm_global_packages.txt"
+no-dups -f "${DOTFILES}/pnpm_global_packages.txt"

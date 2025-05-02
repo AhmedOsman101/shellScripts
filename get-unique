@@ -21,18 +21,22 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
+source cmdarg.sh
+
 source check-deps
 checkDeps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc $0)"
 
 cmdarg "b" "backup" "Creates a backup .bak file of the original file"
+cmdarg "f" "force" "Overwrite the original file without cofirmation"
 cmdarg "a" "array" "Returns the output as a bash compatible array"
 cmdarg "q" "quiet" "Runs quietly without output on success"
 
 cmdarg_parse "$@"
 
 useBackup=${cmdarg_cfg['backup']}
+force=${cmdarg_cfg['force']}
 useArray=${cmdarg_cfg['array']}
 quiet=${cmdarg_cfg['quiet']}
 
@@ -66,7 +70,7 @@ remove_duplicates() {
   fi
 }
 
-file="$1"
+file=${cmdarg_argv[0]}
 
 if [[ -z ${file} || ${file} == "-" ]]; then
   # Read from stdin
@@ -77,12 +81,19 @@ else
   # Read from file
   if [[ -f ${file} ]]; then
     if [[ ${useBackup} == true ]]; then
-      cp -i "${file}" "${file}.bak"
+      cp "${file}" "${file}.bak"
       [[ ${quiet} == true ]] || log-info "Backup created as ${file}.bak"
     fi
+
     remove_duplicates <"${file}" >"${tmpfile}"
+
     # override the input file
-    mv -i "${tmpfile}" "${file}"
+    if [[ ${force} == true ]]; then
+      mv "${tmpfile}" "${file}"
+    else
+      mv -i "${tmpfile}" "${file}"
+    fi
+
     [[ ${quiet} == true ]] || log-info "Filtered unique lines from '${file}'!"
   else
     log-error "${file} was not found!"

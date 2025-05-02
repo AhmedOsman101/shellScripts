@@ -32,12 +32,14 @@ checkDeps "$0"
 cmdarg_info "header" "$(get-desc $0)"
 
 cmdarg "b" "backup" "Creates a backup .bak file of the original file"
+cmdarg "f" "force" "Overwrite the original file without cofirmation"
 cmdarg "a" "array" "Returns the output as a bash compatible array"
 cmdarg "q" "quiet" "Runs quietly without output on success"
 
 cmdarg_parse "$@"
 
 useBackup=${cmdarg_cfg['backup']}
+force=${cmdarg_cfg['force']}
 useArray=${cmdarg_cfg['array']}
 quiet=${cmdarg_cfg['quiet']}
 
@@ -50,11 +52,12 @@ remove_duplicates() {
   fi
 }
 
+file=${cmdarg_argv[0]}
+
 # Check if input is from a file or stdin
-if [[ ${#cmdarg_argv[@]} -eq 0 || ${cmdarg_argv[0]} == "-" ]]; then
+if [[ -z ${file} || ${file} == "-" ]]; then
   remove_duplicates
 else
-  file=${cmdarg_argv[0]}
   tmpfile="$(mktemp)"
   trap 'rm -f $tmpfile' EXIT
 
@@ -62,11 +65,17 @@ else
   if [[ -f ${file} ]]; then
     if [[ ${useBackup} == true ]]; then
       cp "${file}" "${file}.bak"
-
       [[ ${quiet} == true ]] || log-info "Backup created as ${file}.bak"
     fi
+
     remove_duplicates <"${file}" >"${tmpfile}"
-    mv "${tmpfile}" "${file}"
+
+    # override the input file
+    if [[ ${force} == true ]]; then
+      mv "${tmpfile}" "${file}"
+    else
+      mv -i "${tmpfile}" "${file}"
+    fi
 
     [[ ${quiet} == true ]] || log-info "Duplicates removed from '${file}'!"
   else
