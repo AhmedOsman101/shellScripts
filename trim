@@ -1,4 +1,20 @@
 #!/usr/bin/env bash
+# --- SCRIPT SIGNATURE --- #
+#
+#                         ██
+#    ██                   ▀▀
+#  ███████    ██▄████   ████     ████▄██▄
+#    ██       ██▀         ██     ██ ██ ██
+#    ██       ██          ██     ██ ██ ██
+#    ██▄▄▄    ██       ▄▄▄██▄▄▄  ██ ██ ██
+#     ▀▀▀▀    ▀▀       ▀▀▀▀▀▀▀▀  ▀▀ ▀▀ ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Trims leading and trailing whitespace from a file or input string, with optional backup
+# --- DEPENDENCIES --- #
+# - sed
+# --- END SIGNATURE --- #
 
 set -eo pipefail
 

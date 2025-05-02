@@ -15,7 +15,7 @@
 # Removes blank lines from stdin or a file
 # --- DEPENDENCIES --- #
 # - sed
-# - moreutils
+# - sponge moreutils
 # --- END SIGNATURE --- #
 
 set -eo pipefail
