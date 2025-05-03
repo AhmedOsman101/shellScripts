@@ -25,12 +25,6 @@ trap 'exit 1' SIGUSR1
 source check-deps
 checkDeps "$0"
 # ---  Main script logic --- #
-# Check if 'watchexec' is installed
-if ! command -v watchexec &>/dev/null; then
-  echo "'watchexec' is not installed. Please install it to proceed." >&2
-  exit 1
-fi
-
 # Get the extensions string
 # Prompt user for extensions if not provided as arguments
 if [[ -z "$1" ]]; then

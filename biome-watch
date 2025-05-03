@@ -46,11 +46,6 @@ Presets:
 EOF
 }
 
-# Check if 'watchexec' is installed
-if ! command -v watchexec &>/dev/null; then
-  log-error "'watchexec' is not installed. Please install it to proceed."
-fi
-
 if [[ -z "${preset}" ]]; then
   presets=('std' 'vue' 'react')
   preset="$(gum choose --header "Choose a preset: " "${presets[@]}")"
