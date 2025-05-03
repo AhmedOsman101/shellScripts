@@ -1,5 +1,29 @@
 #!/usr/bin/env bash
 
+# --- SCRIPT SIGNATURE --- #
+#                                                                                 
+#        ▄▄               ██     ▄▄▄▄                                    ▄▄       
+#        ██               ▀▀     ▀▀██                                    ██       
+#   ▄███▄██   ▄█████▄   ████       ██      ▀██  ███            ▄▄█████▄  ██▄████▄ 
+#  ██▀  ▀██   ▀ ▄▄▄██     ██       ██       ██▄ ██             ██▄▄▄▄ ▀  ██▀   ██ 
+#  ██    ██  ▄██▀▀▀██     ██       ██        ████▀              ▀▀▀▀██▄  ██    ██ 
+#  ▀██▄▄███  ██▄▄▄███  ▄▄▄██▄▄▄    ██▄▄▄      ███       ██     █▄▄▄▄▄██  ██    ██ 
+#    ▀▀▀ ▀▀   ▀▀▀▀ ▀▀  ▀▀▀▀▀▀▀▀     ▀▀▀▀      ██        ▀▀      ▀▀▀▀▀▀   ▀▀    ▀▀ 
+#                                           ███                                   
+#                                                                                 
+# --- DESCRIPTION --- #
+# Creates daily Timeshift backup, exports installed packages, VS Code extensions, and unique pnpm global packages
+# --- DEPENDENCIES --- #
+# - timeshift
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
 DOTFILES="${HOME}/dotfiles"
 
 chassis=$(hostnamectl chassis)
@@ -13,12 +37,12 @@ fi
 # ---- Timeshift ---- #
 sudo timeshift --create --comments "Daily backup $(now)"
 
-# --- installed packages --- #
-paru -Qqe >"${DOTFILES}/${device}_packages.txt"
+# --- Installed packages --- #
+pacman -Qqe >"${DOTFILES}/${device}_packages.txt"
 
-# --- vscode extenstions--- #
+# --- VS Code Extenstions--- #
 get-ext "${DOTFILES}/${device}_extensions.json" -o
 
-# --- pnpm --- #
+# --- PNPM --- #
 pnpm-ls >>"${DOTFILES}/pnpm_global_packages.txt"
 no-dups -f "${DOTFILES}/pnpm_global_packages.txt"
