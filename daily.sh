@@ -11,7 +11,7 @@ else
 fi
 
 # ---- Timeshift ---- #
-sudo timeshift --create
+sudo timeshift --create --comments "Daily backup $(now)"
 
 # --- installed packages --- #
 paru -Qqe >"${DOTFILES}/${device}_packages.txt"
