@@ -14,18 +14,42 @@
 # --- DESCRIPTION --- #
 # Links all executable scripts (excluding specified paths) into ~/.local/bin/scripts
 # --- DEPENDENCIES --- #
-# - fd
-# - dirname
-# - sudo
+#
 # --- END SIGNATURE --- #
 
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
-checkDeps "$0"
 # ---  Main script logic --- #
+
+logError() {
+  # Print error message in red
+  tput setaf 1
+
+  echo -e "[ERROR]: $*" 1>&2
+  tput sgr0
+
+  # Get parent PID (script that called log-error) and send SIGUSR1
+  PARENT_PID=$(ps -o ppid= $$ | xargs)
+  kill -SIGUSR1 "${PARENT_PID}"
+
+  # Exit with failure code (fallback if signal is ignored)
+  exit 1
+}
+
+error=$(
+  cat <<END
+The 'fd' command is not installed.
+Please install it by following the instructions here:
+  https://github.com/sharkdp/fd#installation
+END
+)
+
+if ! command -v fd &>/dev/null; then
+  logError "${error}"
+fi
+
 SCRIPTS_DIR="${HOME}/scripts"
 
 sudo ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${HOME}/.local/bin/scripts"
