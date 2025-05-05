@@ -26,7 +26,7 @@ source cmdarg.sh
 source check-deps
 checkDeps "$0"
 # ---  Main script logic --- #
-cmdarg_info "header" "$(get-desc $0)"
+cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "t" "temp" "Creates the script at /tmp and copies its name to clipboard"
 cmdarg "f?" "file" "Creates the script with the given name in the current working directory" ""

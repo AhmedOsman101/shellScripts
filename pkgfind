@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#                                             ▄▄▄▄      ██                     ▄▄
+#                                            ██▀▀▀      ▀▀                     ██
+#  ██▄███▄    ▄█████▄   ██▄████  ██    ██  ███████    ████     ██▄████▄   ▄███▄██
+#  ██▀  ▀██   ▀ ▄▄▄██   ██▀      ██    ██    ██         ██     ██▀   ██  ██▀  ▀██
+#  ██    ██  ▄██▀▀▀██   ██       ██    ██    ██         ██     ██    ██  ██    ██
+#  ███▄▄██▀  ██▄▄▄███   ██       ██▄▄▄███    ██      ▄▄▄██▄▄▄  ██    ██  ▀██▄▄███
+#  ██ ▀▀▀     ▀▀▀▀ ▀▀   ▀▀        ▀▀▀▀ ▀▀    ▀▀      ▀▀▀▀▀▀▀▀  ▀▀    ▀▀    ▀▀▀ ▀▀
+#  ██
+#
+# --- DESCRIPTION --- #
+# Searches for packages (installed and online)
+# --- DEPENDENCIES --- #
+# - rg ripgrep
+# - paru
+# --- END SIGNATURE --- #
+
+# - paru|pacman|yay
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source cmdarg.sh
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc "$0")"
+
+cmdarg "o" "online" "Search online instead of installed packages"
+cmdarg "l" "local" "Search in installed packages, no prompt for searching online"
+cmdarg "v" "version" "Display the package version"
+cmdarg "m?" "manager" "Which package manager to use (paru, pacman, yay)" "paru"
+
+cmdarg_parse "$@"
+
+# Store option values
+online=${cmdarg_cfg['online']}
+pkgManager=${cmdarg_cfg['manager']}
+local=${cmdarg_cfg['local']}
+version=${cmdarg_cfg['version']}
+pkg=${cmdarg_argv[0]}
+
+if [[ "${online}" == true ]]; then
+  ${pkgManager} -Ss "${pkg}"
+else
+
+  if [[ "${version}" == true ]]; then
+    ${pkgManager} -Q | rg -i "${pkg}" && exit 0
+  else
+    ${pkgManager} -Qq | rg -i "${pkg}" && exit 0
+  fi
+
+  log-warning "The package: '${pkg}' was not found"
+
+  if [[ "${local}" != true ]]; then
+    if gum confirm "Try to search online?"; then
+      printf '\n\n'
+      ${pkgManager} -Ss "${pkg}"
+    fi
+  fi
+fi

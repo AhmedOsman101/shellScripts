@@ -4,46 +4,54 @@
 
 Requires bash >= 4.
 
-    source cmdarg.sh
+```bash
+source cmdarg.sh
+```
 
-Enjoy
-
-# Installation
+## Installation
 
 From source
 
-    cd cmdarg
-    make install
+```bash
+cd cmdarg
+make install
+```
 
 From RPM
 
-    # add http://yum.aklabs.net/el/[5|6]/noarch as a yum repo for your system
-    yum install cmdarg
+```bash
+# add http://yum.aklabs.net/el/[5|6]/noarch as a yum repo for your system
+yum install cmdarg
+```
 
 # Usage
 
 cmdarg is a helper library I wrote for bash scripts because, at current, option parsing in bash (-foo bar, etc) is really hard, lots harder than it should be, given bash's target audience. So here's my solution. There are 4 functions you will care about:
 
-    cmdarg
-    cmdarg_info
-    cmdarg_parse
-    cmdarg_usage
+```bash
+cmdarg
+cmdarg_info
+cmdarg_parse
+cmdarg_usage
+```
 
 # TL;DR
 
 Cmdarg lets you specify arguments (things you require), options (things you don't require), and lets you easily parse them. The arguments can be set on the command line either via '-X' or '--Y', where X is the short option and Y is the long option.
 
-    cmdarg 'r:' 'required-thing' 'Some thing I require'
-    cmdarg 'o?' 'optional-thing' 'Some optional thing'
-    cmdarg 'b' 'boolean-thing' 'Some boolean thing'
-    cmdarg_parse "$@"
+```bash
+cmdarg 'r:' 'required-thing' 'Some thing I require'
+cmdarg 'o?' 'optional-thing' 'Some optional thing'
+cmdarg 'b' 'boolean-thing' 'Some boolean thing'
+cmdarg_parse "$@"
 
-    echo ${cmdarg_cfg['required-thing']}
-    echo ${cmdarg_cfg['optional-thing']}
-    echo ${cmdarg_cfg['boolean-thing']}
+echo ${cmdarg_cfg['required-thing']}
+echo ${cmdarg_cfg['optional-thing']}
+echo ${cmdarg_cfg['boolean-thing']}
 
-    # your_script.sh -r some_thingy -b -o optional_thing
-    # your_script.sh --required-thing some_thingy --boolean-thing
+your_script.sh -r some_thingy -b -o optional_thing
+your_script.sh --required-thing some_thingy --boolean-thing
+```
 
 Because cmdarg does key off of the short options, you are limited to as many options as you have unique single characters in your character set (likely 61 - 26 lower & upper alpha, +9 numerics).
 
@@ -51,14 +59,18 @@ Because cmdarg does key off of the short options, you are limited to as many opt
 
 This function is used to tell the library what command line arguments you accept.
 
-    cmdarg FLAGS LONGOPT DESCRIPTION DEFAULT VALIDATOR
+```bash
+cmdarg FLAGS LONGOPT DESCRIPTION DEFAULT VALIDATOR
+```
 
 Examples:
 
-    cmdarg 'f' 'boolean-flag' 'Some boolean flag'
-    cmdarg 'a:' 'required-arg' 'Some required arg'
-    cmdarg 'a?' 'optional-arg' 'Some optional arg with a default' 'default_value'
-    cmdarg 'a:' 'required-validated-arg' 'Some required argument with a validator' '' validator_function
+```bash
+cmdarg 'f' 'boolean-flag' 'Some boolean flag'
+cmdarg 'a:' 'required-arg' 'Some required arg'
+cmdarg 'a?' 'optional-arg' 'Some optional arg with a default' 'default_value'
+cmdarg 'a:' 'required-validated-arg' 'Some required argument with a validator' '' validator_function
+```
 
 _FLAGS_ : The first argument to cmdarg must be an argument specification. Argument specifications take the form 'NOT', where:
 
@@ -82,27 +94,32 @@ Validators must be bash function names - not bash statements - and they must acc
 
 For example, this is a valid validator:
 
-    function validate_int
-    {
-        if [[ "$1" =~ ^[0-9]+$ ]] ; then
-            return 0
-        fi
-        return 1
-    }
+```bash
+validate_int() {
+  if [[ "$1" =~ ^[0-9]+$ ]] ; then
+    return 0
+  fi
+  return 1
+}
 
-    cmdarg 'x' 'x-option' 'some opt' '' validate_int
+cmdarg 'x' 'x-option' 'some opt' '' validate_int
+```
 
 ... While this is not:
 
-    cmdarg 'x' 'x-option' 'some opt' '' "grep -E '^[0-9]+$'"
+```bash
+cmdarg 'x' 'x-option' 'some opt' '' "grep -E '^[0-9]+$'"
+```
 
 There is an exception to this form, and that is for hash arguments (e.g. 'x:{}'). In this instance, the key for the argument (e.g. -x key=value) is to be considered a part of the value, and the user may want to validate this as well as the value. In this instance, when calling a validator against a hash argument, the validator will receive a second argument, which is the key of the hash being validated. For example:
 
-    # When we receive
-    cmdarg 'x:{}' 'something' 'something' my_validator
-    cmdarg_parse -x hashkey=hashvalue
-    # ... we will call
-    my_validator hashvalue hashkey
+```bash
+# When we receive
+cmdarg 'x:{}' 'something' 'something' my_validator
+cmdarg_parse -x hashkey=hashvalue
+# ... we will call
+my_validator hashvalue hashkey
+```
 
 # cmdarg_info
 
@@ -253,7 +270,7 @@ CMDARG_ERROR_BEHAVIOR is treated as a function call (e.g. return or exit) with o
 
 # getopt vs getopts
 
-cmdarg does not use getopt or getopts for option parsing. Its parser is written in 100% pure bash, and is self contained in cmdarg_parse. It will run the same way anywhere you have bash4.
+cmdarg does not use getopt or getopts for option parsing. Its parser is written in 100% pure bash, and is self contained in cmdarg_parse. It will run the same way anywhere you have bash.
 
 # Tests
 
