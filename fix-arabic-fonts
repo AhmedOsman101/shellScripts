@@ -23,5 +23,4 @@ trap 'exit 1' SIGUSR1
 source check-deps
 checkDeps "$0"
 # ---  Main script logic --- #
-cat ${HOME}/.config/fontconfig/65-nonlatin.conf |
-  sudo tee /etc/fonts/conf.d/65-nonlatin.conf 1>/dev/null
+cat ${HOME}/.config/fontconfig/65-nonlatin.conf | sudo tee /etc/fonts/conf.d/65-nonlatin.conf
