@@ -18,13 +18,26 @@
 # - jq
 # --- END SIGNATURE --- #
 
-set -euo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
+
+source cmdarg.sh
 
 source check-deps
 checkDeps "$0"
 # ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc "$0")"
+
+cmdarg "o" "overwrite" "Overwrite the file if it exists"
+
+cmdarg_parse "$@"
+
+overwrite=${cmdarg_cfg['overwrite']}
+frame=${cmdarg_cfg['frame']}
+
+file=${cmdarg_argv[0]:-extensions.json}
+
 getExtensions() {
   # Get all VS Code extensions
   extensions="$(code --list-extensions)"
@@ -33,34 +46,26 @@ getExtensions() {
   readarray -t array <<<"${extensions}"
 
   # Create the JSON content
-  printf '%s\n' "${array[@]}" | jq -R . | jq -s .
+  output="$(printf '%s\n' "${array[@]}" | jq -R . | jq -s .)"
+  echo "${output}"
 }
-
-file="${1:-'extensions.json'}"
 
 # Check if the file already exists
 if [[ -f "${file}" ]]; then
-  if [[ $1 == "-o" || $2 == "-o" ]]; then
-    eval getExtensions >"${file}"
+  if [[ ${overwrite} == true ]]; then
+    getExtensions >"${file}"
     log-info "${file} has been overwritten."
-  elif [[ $1 == "" || $2 == "" ]]; then
-    overwrite='n'
-    log-warning "${file} exists do you want to overwrite it? (y/N): "
-    read -r overwrite
-    if [[ ${overwrite} == "y" || ${overwrite} == "Y" ]]; then
-      eval getExtensions >"${file}"
-      log-info "${file} has been overwritten."
-    elif [[ ${overwrite} == "n" || ${overwrite} == "N" || ${overwrite} == "" ]]; then
-      log-info "Original file was not overwritten."
-      exit 0
-    else
-      log-error "Invalid option!"
-    fi
   else
-    log-error "Invalid option!"
+    if gum confirm "File: ${file} exists do you want to overwrite it?" --prompt.foreground="#DBAC66"; then
+      getExtensions >"${file}"
+      log-info "${file} has been overwritten."
+    else
+      log-info "No changes made"
+      exit 0
+    fi
   fi
 else
   touch "${file}"
-  eval getExtensions >"${file}"
+  getExtensions >"${file}"
   log-info "${file} has been created."
 fi
