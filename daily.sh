@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
 # --- SCRIPT SIGNATURE --- #
-#                                                                                 
-#        ▄▄               ██     ▄▄▄▄                                    ▄▄       
-#        ██               ▀▀     ▀▀██                                    ██       
-#   ▄███▄██   ▄█████▄   ████       ██      ▀██  ███            ▄▄█████▄  ██▄████▄ 
-#  ██▀  ▀██   ▀ ▄▄▄██     ██       ██       ██▄ ██             ██▄▄▄▄ ▀  ██▀   ██ 
-#  ██    ██  ▄██▀▀▀██     ██       ██        ████▀              ▀▀▀▀██▄  ██    ██ 
-#  ▀██▄▄███  ██▄▄▄███  ▄▄▄██▄▄▄    ██▄▄▄      ███       ██     █▄▄▄▄▄██  ██    ██ 
-#    ▀▀▀ ▀▀   ▀▀▀▀ ▀▀  ▀▀▀▀▀▀▀▀     ▀▀▀▀      ██        ▀▀      ▀▀▀▀▀▀   ▀▀    ▀▀ 
-#                                           ███                                   
-#                                                                                 
+#
+#        ▄▄               ██     ▄▄▄▄                                    ▄▄
+#        ██               ▀▀     ▀▀██                                    ██
+#   ▄███▄██   ▄█████▄   ████       ██      ▀██  ███            ▄▄█████▄  ██▄████▄
+#  ██▀  ▀██   ▀ ▄▄▄██     ██       ██       ██▄ ██             ██▄▄▄▄ ▀  ██▀   ██
+#  ██    ██  ▄██▀▀▀██     ██       ██        ████▀              ▀▀▀▀██▄  ██    ██
+#  ▀██▄▄███  ██▄▄▄███  ▄▄▄██▄▄▄    ██▄▄▄      ███       ██     █▄▄▄▄▄██  ██    ██
+#    ▀▀▀ ▀▀   ▀▀▀▀ ▀▀  ▀▀▀▀▀▀▀▀     ▀▀▀▀      ██        ▀▀      ▀▀▀▀▀▀   ▀▀    ▀▀
+#                                           ███
+#
 # --- DESCRIPTION --- #
 # Creates daily Timeshift backup, exports installed packages, VS Code extensions, and unique pnpm global packages
 # --- DEPENDENCIES --- #
@@ -41,8 +41,8 @@ sudo timeshift --create --comments "Daily backup $(now)"
 pacman -Qqe >"${DOTFILES}/${device}_packages.txt"
 
 # --- VS Code Extenstions--- #
-get-ext "${DOTFILES}/${device}_extensions.json" -o
+get-ext --overwrite "${DOTFILES}/${device}_extensions.json"
 
 # --- PNPM --- #
 pnpm-ls >>"${DOTFILES}/pnpm_global_packages.txt"
-no-dups -f "${DOTFILES}/pnpm_global_packages.txt"
+no-dups --force "${DOTFILES}/pnpm_global_packages.txt"

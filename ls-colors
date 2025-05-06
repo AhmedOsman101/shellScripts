@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Parses exported color variables from a Zsh config and displays their names with the corresponding color
 # --- DEPENDENCIES --- #
-# - rg
+# - rg ripgrep
 # - awk
 # - tr
 # - gum
@@ -38,5 +38,5 @@ for line in "${colors[@]}"; do
 
   gum style \
     --foreground="${color}" \
-    "${varname}"
+    "${varname} ${color}"
 done
