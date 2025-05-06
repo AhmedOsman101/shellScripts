@@ -36,7 +36,7 @@ cmdarg_parse "$@"
 color=${cmdarg_cfg['color']}
 frame=${cmdarg_cfg['frame']}
 
-msg=${cmdarg_argv[0]}
+msg=${cmdarg_argv[*]}
 
 [[ -z ${msg} ]] && log-error "Message is required"
 
