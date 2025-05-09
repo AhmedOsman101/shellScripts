@@ -35,7 +35,7 @@ END
 
 # For debian-based distros fd package is named fdfind
 if command -v fdfind &>/dev/null; then
-  sudo ln -si "$(which fdfind)" /usr/bin/fd 2>/dev/null
+  sudo ln -si "$(which fdfind)" /usr/bin/fd
 fi
 
 if ! command -v fd &>/dev/null; then
