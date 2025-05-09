@@ -21,7 +21,7 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source "./utils.sh"
+source "$(dirname $0)/utils.sh"
 
 # ---  Main script logic --- #
 
@@ -32,6 +32,11 @@ Please install it by following the instructions here:
   https://github.com/sharkdp/fd#installation
 END
 )
+
+# For debian-based distros fd package is named fdfind
+if command -v fdfind &>/dev/null; then
+  sudo ln -si "$(which fdfind)" /usr/bin/fd 2>/dev/null
+fi
 
 if ! command -v fd &>/dev/null; then
   logError "${error}"
