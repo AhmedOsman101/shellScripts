@@ -44,6 +44,10 @@ fi
 
 SCRIPTS_DIR="$(dirname $0)"
 
+sudo rm -rf "${HOME}/.local/bin/scripts" || printf ''
+sudo mkdir -p "${HOME}/.local/bin/scripts" || printf ''
+
+# Create symlinks
 sudo ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${HOME}/.local/bin/scripts"
 sudo ln -sf "${SCRIPTS_DIR}/clipcopy" "${HOME}/.local/bin/scripts/copyclip"
 ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${SCRIPTS_DIR}/cmdarg.sh"
@@ -65,8 +69,6 @@ EXCLUDE_DIRS=(
 # Dynamically add subdirectories of $HOME/scripts containing executables to PATH
 # excluding specified directories and their subdirectories
 if [[ -d "${SCRIPTS_DIR}" ]]; then
-  sudo rm -rf "${HOME}/.local/bin/scripts" || printf ''
-  sudo mkdir -p "${HOME}/.local/bin/scripts" || printf ''
 
   count=0
 
