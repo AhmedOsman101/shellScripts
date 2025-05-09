@@ -14,29 +14,16 @@
 # --- DESCRIPTION --- #
 # Links all executable scripts (excluding specified paths) into ~/.local/bin/scripts
 # --- DEPENDENCIES --- #
-#
+# - fd
 # --- END SIGNATURE --- #
 
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+source "./utils.sh"
+
 # ---  Main script logic --- #
-
-logError() {
-  # Print error message in red
-  tput setaf 1
-
-  echo -e "[ERROR]: $*" 1>&2
-  tput sgr0
-
-  # Get parent PID (script that called log-error) and send SIGUSR1
-  PARENT_PID=$(ps -o ppid= $$ | xargs)
-  kill -SIGUSR1 "${PARENT_PID}"
-
-  # Exit with failure code (fallback if signal is ignored)
-  exit 1
-}
 
 error=$(
   cat <<END

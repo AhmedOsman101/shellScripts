@@ -20,10 +20,6 @@ logError() {
   echo -e "[ERROR]: $*" 1>&2
   tput sgr0
 
-  # Get parent PID (script that called log-error) and send SIGUSR1
-  PARENT_PID=$(ps -o ppid= $$ | xargs)
-  kill -SIGUSR1 "${PARENT_PID}"
-
   # Exit with failure code (fallback if signal is ignored)
   exit 1
 }
