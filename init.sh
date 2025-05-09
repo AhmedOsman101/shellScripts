@@ -35,7 +35,7 @@ END
 
 # For debian-based distros fd package is named fdfind
 if command -v fdfind &>/dev/null; then
-  sudo ln -sf "$(which fdfind)" /usr/bin/fd
+  sudo ln -sf "$(which fdfind)" /usr/bin/fd 2>/dev/null
 fi
 
 if ! command -v fd &>/dev/null; then
@@ -48,10 +48,10 @@ sudo rm -rf "${HOME}/.local/bin/scripts" || printf ''
 sudo mkdir -p "${HOME}/.local/bin/scripts" || printf ''
 
 # Create symlinks
-sudo ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${HOME}/.local/bin/scripts"
-sudo ln -sf "${SCRIPTS_DIR}/clipcopy" "${HOME}/.local/bin/scripts/copyclip"
-ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${SCRIPTS_DIR}/cmdarg.sh"
-ln -sf "${SCRIPTS_DIR}/clipcopy" "${SCRIPTS_DIR}/copyclip"
+sudo ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${HOME}/.local/bin/scripts" 2>/dev/null
+sudo ln -sf "${SCRIPTS_DIR}/clipcopy" "${HOME}/.local/bin/scripts/copyclip" 2>/dev/null
+ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${SCRIPTS_DIR}/cmdarg.sh" 2>/dev/null
+ln -sf "${SCRIPTS_DIR}/clipcopy" "${SCRIPTS_DIR}/copyclip" 2>/dev/null
 
 if ! echo ${PATH} | grep "${HOME}/.local/bin/scripts" -q; then
   echo "Add this line to your .$(basename ${SHELL})rc file to make the scripts globally available"
@@ -69,9 +69,7 @@ EXCLUDE_DIRS=(
 # Dynamically add subdirectories of $HOME/scripts containing executables to PATH
 # excluding specified directories and their subdirectories
 if [[ -d "${SCRIPTS_DIR}" ]]; then
-
   count=0
-
   for script in $(fd . -t x "${SCRIPTS_DIR}"); do
     exclude=false
     for excluded in "${EXCLUDE_DIRS[@]}"; do
