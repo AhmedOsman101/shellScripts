@@ -42,10 +42,12 @@ if ! command -v fd &>/dev/null; then
   logError "${error}"
 fi
 
-SCRIPTS_DIR="${HOME}/scripts"
+SCRIPTS_DIR="$(dirname $0)"
 
 sudo ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${HOME}/.local/bin/scripts"
+sudo ln -sf "${SCRIPTS_DIR}/clipcopy" "${HOME}/.local/bin/scripts/copyclip"
 ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${SCRIPTS_DIR}/cmdarg.sh"
+ln -sf "${SCRIPTS_DIR}/clipcopy" "${SCRIPTS_DIR}/copyclip"
 
 if ! echo ${PATH} | grep "${HOME}/.local/bin/scripts" -q; then
   echo "Add this line to your .$(basename ${SHELL})rc file to make the scripts globally available"
