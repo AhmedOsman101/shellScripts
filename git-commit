@@ -91,7 +91,6 @@ if [[ "${useAi}" == true ]]; then
     gum spin \
       --title "Generating..." \
       --title.foreground="${U_GREEN}" \
-      --show-output \
       -- commit-sage
   )
 
