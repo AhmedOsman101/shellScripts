@@ -29,67 +29,61 @@ checkDeps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc $0)"
 
-cmdarg "b?" "branch" "Specify the branch to work on. Defaults to current branch." "no branch"
+cmdarg "b?" "branch" "Specify the branch to work on. Defaults to current branch." "#no-branch#"
 cmdarg "m" "message" "Opens an interactive model for adding a custom commit message"
+cmdarg "s" "staged" "Commits the staged changes only, no auto stage"
+
+cmdarg_parse "$@"
 
 # check if in a git repo and if the user is inside .git directory
 is-git-repo
 
-cmdarg_parse "$@"
-
 branch=${cmdarg_cfg['branch']}
+onlyStaged=${cmdarg_cfg['staged']}
 hasMsg=${cmdarg_cfg['message']}
 
 currentBranch="$(git_current_branch)"
-
 [[ -z "${currentBranch}" ]] && log-error "Unable to determine current branch."
 
 # Check if the branch argument is an empty string
-if [[ "${branch}" == "no branch" || -z "${branch}" ]]; then
+if [[ "${branch}" == "#no-branch#" || -z "${branch}" ]]; then
   # returns the current working branch
   branch="${currentBranch}"
 elif [[ "${branch}" != "${currentBranch}" ]]; then
-  git checkout "${branch}" 2>/dev/null || log-error "Failed to checkout branch: ${branch}"
-  log-info "Checked out to branch: ${branch}"
+  switch-branch "${branch}" || log-error "Switching to branch '${branch}' failed"
+  log-info "Switched to branch: ${branch}"
 fi
 
-main() {
-  local timestamp
+[[ ${onlyStaged} != true ]] && git add --all
+
+# Check for changes before attempting to commit
+if git status --porcelain | grep -q '^'; then
+
   timestamp="$(now)"
-
-  git add --all
-
-  # Set default message if unset or empty
-  [[ -z ${msg} ]] && msg="Updated Files ${timestamp}"
-
-  # Check for changes before attempting to commit
-  if git status --porcelain | grep -q '^'; then
-
-    if [[ ${hasMsg} == true ]]; then
-      msg=$(gum write --placeholder "Write the commit message...")
-      gum confirm "Add timestamps?" && msg="${msg} ${timestamp}"
-    fi
-
-    # There are changes, so attempt the commit
-    if git commit -am "${msg}"; then
-      log-info "Committed Changes Locally ${timestamp}"
-    else
-      # Commit failed (e.g., due to pre-commit hook)
-      log-error "Commit failed!"
-    fi
+  if [[ ${hasMsg} == true ]]; then
+    msg=$(gum write --placeholder "Write the commit message...")
+    gum confirm "Add timestamps?" && msg="${msg} ${timestamp}"
   else
-    log-info "Nothing to commit"
+    # Set default message if unset or empty
+    msg="Updated Files ${timestamp}"
   fi
 
-  # Push if remote exists
-  if [[ -n "$(git remote -v)" ]]; then
-    if git push origin "${branch}"; then
-      log-success "Changes pushed to ${branch} successfully!"
-    else
-      log-error "Failed to push to ${branch}."
-    fi
+  # There are changes, so attempt the commit
+  if git commit -m "${msg}"; then
+    log-info "Committed Changes Locally ${timestamp}"
+  else
+    # Commit failed (e.g., due to pre-commit hook)
+    log-error "Commit failed!"
   fi
-}
+else
+  log-info "Nothing to commit"
+fi
 
-# run the main function if no errors occurred
-main
+# Push if remote exists
+if [[ -n "$(git remote -v)" ]]; then
+  if git push origin "${branch}"; then
+    log-success "Changes pushed to ${branch} successfully!"
+  else
+    log-error "Failed to push to ${branch}."
+  fi
+fi
