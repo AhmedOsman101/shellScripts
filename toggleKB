@@ -28,5 +28,5 @@ current_layout=$(setxkbmap -query | grep layout | awk '{print $2}')
 if [[ "${current_layout}" == "us" ]]; then
   setxkbmap -layout eg && notify-send "changed layout to eg"
 else
-  setxkbmap -layout us && notify-send "changed layout to us"
+  setxkbmap -layout us && setxkbmap -layout us && notify-send "changed layout to us"
 fi
