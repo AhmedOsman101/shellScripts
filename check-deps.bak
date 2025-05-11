@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄                            ▄▄                        ▄▄
+#            ██                            ██                        ██
+#   ▄█████▄  ██▄████▄   ▄████▄    ▄█████▄  ██ ▄██▀              ▄███▄██   ▄████▄   ██▄███▄   ▄▄█████▄
+#  ██▀    ▀  ██▀   ██  ██▄▄▄▄██  ██▀    ▀  ██▄██               ██▀  ▀██  ██▄▄▄▄██  ██▀  ▀██  ██▄▄▄▄ ▀
+#  ██        ██    ██  ██▀▀▀▀▀▀  ██        ██▀██▄     █████    ██    ██  ██▀▀▀▀▀▀  ██    ██   ▀▀▀▀██▄
+#  ▀██▄▄▄▄█  ██    ██  ▀██▄▄▄▄█  ▀██▄▄▄▄█  ██  ▀█▄             ▀██▄▄███  ▀██▄▄▄▄█  ███▄▄██▀  █▄▄▄▄▄██
+#    ▀▀▀▀▀   ▀▀    ▀▀    ▀▀▀▀▀     ▀▀▀▀▀   ▀▀   ▀▀▀              ▀▀▀ ▀▀    ▀▀▀▀▀   ██ ▀▀▀     ▀▀▀▀▀▀
+#                                                                                  ██
+#
+# --- DESCRIPTION --- #
+# Checks a script's dependencies and installs them
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source utils.sh
+
+# ---  Main script logic --- #
+
+checkDeps() {
+  local file deps output installCmd completed packageName isOptional depEntry i dep
+  local -a depsArray cmdArray
+
+  if [[ $# -ne 1 ]]; then
+    logError "Invalid arguments, only a script name is accepted"
+  else
+    if [[ -f $1 ]]; then
+      file=$1
+    else
+      file=$(which $1)
+    fi
+
+    [[ ! -f ${file} ]] && logError "Script '${file}' was not found"
+  fi
+
+  deps=$(getDeps "${file}")
+
+  [[ "${deps}" == "x-none" ]] && exit 0
+
+  mapfile -t depsArray < <(getDeps "${file}")
+
+  output=$(getPackageManager)
+  installCmd=$(echo ${output} | awk -F ':' '{print $2}')
+
+  completed=1
+  for item in "${depsArray[@]}"; do
+    depEntry=$(echo ${item} | awk '{print $1}')
+    packageName=$(echo ${item} | awk '{print $2}')
+    isOptional=$(echo ${item} | awk '{print $3}')
+
+    i=1
+
+    while
+      dep=$(echo "{depEntry}" | awk -F "|" "{print \$${i}}")
+      [[ -n "${dep}" ]]
+    do
+      if ! command -v "${depEntry}" >/dev/null 2>&1; then
+        if [[ -n ${packageName} ]]; then
+          if [[ "${packageName}" == '(optional)' ]]; then
+            read -ra cmdArray <<<"${installCmd} ${depEntry}"
+
+            if "${cmdArray[@]}" >/dev/null; then
+              logInfo "Installed '${depEntry}'"
+            fi
+            ((i++))
+            continue
+          elif [[ "${isOptional}" == '(optional)' ]]; then
+            read -ra cmdArray <<<"${installCmd} ${packageName}"
+
+            if "${cmdArray[@]}" >/dev/null; then
+              logInfo "Installed '${depEntry}'"
+            fi
+            ((i++))
+            continue
+          else
+            logWarning "'${depEntry}' is not installed."
+            read -ra cmdArray <<<"${installCmd} ${packageName}"
+          fi
+        else
+          read -ra cmdArray <<<"${installCmd} ${depEntry}"
+        fi
+
+        if "${cmdArray[@]}"; then
+          [[ ${packageName} != '(optional)' || "${isOptional}" != '(optional)' ]] &&
+            logInfo "Installed '${depEntry}'"
+        else
+          [[ ${packageName} != '(optional)' || "${isOptional}" != '(optional)' ]] && {
+            logWarning "Couldn't install '${depEntry}'"
+            completed=0
+          }
+        fi
+      fi
+      ((i++))
+    done
+
+    # if ! command -v "${depEntry}" >/dev/null 2>&1; then
+    #   if [[ -n ${packageName} ]]; then
+    #     if [[ "${packageName}" == '(optional)' ]]; then
+    #       read -ra cmdArray <<<"${installCmd} ${depEntry}"
+
+    #       if "${cmdArray[@]}" >/dev/null; then
+    #         logInfo "Installed '${depEntry}'"
+    #       fi
+    #       continue
+    #     elif [[ "${isOptional}" == '(optional)' ]]; then
+    #       read -ra cmdArray <<<"${installCmd} ${packageName}"
+
+    #       if "${cmdArray[@]}" >/dev/null; then
+    #         logInfo "Installed '${depEntry}'"
+    #       fi
+    #       continue
+    #     else
+    #       logWarning "'${depEntry}' is not installed."
+    #       read -ra cmdArray <<<"${installCmd} ${packageName}"
+    #     fi
+    #   else
+    #     read -ra cmdArray <<<"${installCmd} ${depEntry}"
+    #   fi
+
+    #   if "${cmdArray[@]}"; then
+    #     [[ ${packageName} != '(optional)' || "${isOptional}" != '(optional)' ]] &&
+    #       logInfo "Installed '${depEntry}'"
+    #   else
+    #     [[ ${packageName} != '(optional)' || "${isOptional}" != '(optional)' ]] && {
+    #       logWarning "Couldn't install '${depEntry}'"
+    #       completed=0
+    #     }
+    #   fi
+    # fi
+  done
+
+  [[ ${completed} == 0 ]] && logError "Failed to install all dependencies"
+
+  return 0
+}
