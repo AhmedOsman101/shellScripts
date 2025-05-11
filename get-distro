@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#                                                ▄▄     ██
+#                        ██                      ██     ▀▀                 ██
+#   ▄███▄██   ▄████▄   ███████              ▄███▄██   ████     ▄▄█████▄  ███████    ██▄████   ▄████▄
+#  ██▀  ▀██  ██▄▄▄▄██    ██                ██▀  ▀██     ██     ██▄▄▄▄ ▀    ██       ██▀      ██▀  ▀██
+#  ██    ██  ██▀▀▀▀▀▀    ██       █████    ██    ██     ██      ▀▀▀▀██▄    ██       ██       ██    ██
+#  ▀██▄▄███  ▀██▄▄▄▄█    ██▄▄▄             ▀██▄▄███  ▄▄▄██▄▄▄  █▄▄▄▄▄██    ██▄▄▄    ██       ▀██▄▄██▀
+#   ▄▀▀▀ ██    ▀▀▀▀▀      ▀▀▀▀               ▀▀▀ ▀▀  ▀▀▀▀▀▀▀▀   ▀▀▀▀▀▀      ▀▀▀▀    ▀▀         ▀▀▀▀
+#   ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# Prints the distro's pretty name from `/etc/os-release`.
+# --- DEPENDENCIES --- #
+# - rg ripgrep
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+
+rg PRETTY_NAME "/etc/os-release" | awk -F '=' '{print $2}' | tr -d '"'
