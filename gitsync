@@ -70,7 +70,7 @@ if git status --porcelain | grep -q '^'; then
 
   # There are changes, so attempt the commit
   if git commit -m "${msg}"; then
-    log-info "Committed Changes Locally ${timestamp}"
+    log-info "Committed Changes Locally"
   else
     # Commit failed (e.g., due to pre-commit hook)
     log-error "Commit failed!"

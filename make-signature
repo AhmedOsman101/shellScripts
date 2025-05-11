@@ -49,7 +49,7 @@ fi
 
 printf "# --- END SIGNATURE --- #\n\n"
 
-printf "set -euo pipefail\n\n"
+printf "set -eo pipefail\n\n"
 
 printf "trap 'exit 1' SIGUSR1\n\n"
 
