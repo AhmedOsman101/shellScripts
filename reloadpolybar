@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
 
-killall polybar
-
+# Terminate already running bar instances
 ${XDG_CONFIG_HOME}/openbox/themes/launch-bar.sh &>/dev/null
