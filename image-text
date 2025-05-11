@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#     ██
+#     ▀▀                                                         ██                            ██
+#   ████     ████▄██▄   ▄█████▄   ▄███▄██   ▄████▄             ███████    ▄████▄   ▀██  ██▀  ███████
+#     ██     ██ ██ ██   ▀ ▄▄▄██  ██▀  ▀██  ██▄▄▄▄██              ██      ██▄▄▄▄██    ████      ██
+#     ██     ██ ██ ██  ▄██▀▀▀██  ██    ██  ██▀▀▀▀▀▀   █████      ██      ██▀▀▀▀▀▀    ▄██▄      ██
+#  ▄▄▄██▄▄▄  ██ ██ ██  ██▄▄▄███  ▀██▄▄███  ▀██▄▄▄▄█              ██▄▄▄   ▀██▄▄▄▄█   ▄█▀▀█▄     ██▄▄▄
+#  ▀▀▀▀▀▀▀▀  ▀▀ ▀▀ ▀▀   ▀▀▀▀ ▀▀   ▄▀▀▀ ██    ▀▀▀▀▀                ▀▀▀▀     ▀▀▀▀▀   ▀▀▀  ▀▀▀     ▀▀▀▀
+#                                 ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# Generates a blank image with text on it
+# --- DEPENDENCIES --- #
+# - magick imagemagick
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source cmdarg.sh
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc "$0")"
+
+cmdarg "w?" "width" "The image's width in pixels" "1280"
+cmdarg "t?" "height" "The image's height in pixels" "720"
+cmdarg "b?" "background" "Background color" "black"
+cmdarg "f?" "foreground" "Text color" "white"
+cmdarg "s?" "font-size" "Text font size (points)" "50"
+cmdarg "e?" "extension" "The image's extension" "png"
+cmdarg "n?" "name" "The image's name" "blank"
+cmdarg "m:" "message" "The text to be written on the image"
+
+cmdarg_parse "$@"
+
+width=${cmdarg_cfg['width']}
+height=${cmdarg_cfg['height']}
+extension=${cmdarg_cfg['extension']}
+foreground=${cmdarg_cfg['foreground']}
+background=${cmdarg_cfg['background']}
+fontSize=${cmdarg_cfg['font-size']}
+msg=${cmdarg_cfg['message']}
+name=${cmdarg_cfg['name']:-${cmdarg_argv[0]}}
+
+magick -size "${width}x${height}" \
+  "xc:${background}" \
+  -pointsize "${fontSize}" \
+  -fill "${foreground}" \
+  -family "Inter" \
+  -gravity center \
+  -annotate "0x0" \
+  "${msg}" \
+  "${name}.${extension}" &&
+  log-success "Created image '${name}.${extension}' successfully"
