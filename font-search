@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#     ▄▄▄▄                                                                                             ▄▄
+#    ██▀▀▀                         ██                                                                  ██
+#  ███████    ▄████▄   ██▄████▄  ███████             ▄▄█████▄   ▄████▄    ▄█████▄   ██▄████   ▄█████▄  ██▄████▄
+#    ██      ██▀  ▀██  ██▀   ██    ██                ██▄▄▄▄ ▀  ██▄▄▄▄██   ▀ ▄▄▄██   ██▀      ██▀    ▀  ██▀   ██
+#    ██      ██    ██  ██    ██    ██       █████     ▀▀▀▀██▄  ██▀▀▀▀▀▀  ▄██▀▀▀██   ██       ██        ██    ██
+#    ██      ▀██▄▄██▀  ██    ██    ██▄▄▄             █▄▄▄▄▄██  ▀██▄▄▄▄█  ██▄▄▄███   ██       ▀██▄▄▄▄█  ██    ██
+#    ▀▀        ▀▀▀▀    ▀▀    ▀▀     ▀▀▀▀              ▀▀▀▀▀▀     ▀▀▀▀▀    ▀▀▀▀ ▀▀   ▀▀         ▀▀▀▀▀   ▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Searches for a font in the list of installed fonts
+# --- DEPENDENCIES --- #
+# - rg ripgrep
+# --- END SIGNATURE --- #
+
+set -euo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+fc-list |
+  awk -F ':' '{print $2}' |
+  rg -i "$@" || log-error "Font '$*' was not found"
