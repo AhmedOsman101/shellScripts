@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#                  ▄▄            ▄▄▄▄
+#                  ██            ▀▀██
+#  ████▄██▄   ▄███▄██   ▄█████▄    ██       ▄████▄    ▄█████▄  ██▄████▄
+#  ██ ██ ██  ██▀  ▀██  ██▀    ▀    ██      ██▄▄▄▄██   ▀ ▄▄▄██  ██▀   ██
+#  ██ ██ ██  ██    ██  ██          ██      ██▀▀▀▀▀▀  ▄██▀▀▀██  ██    ██
+#  ██ ██ ██  ▀██▄▄███  ▀██▄▄▄▄█    ██▄▄▄   ▀██▄▄▄▄█  ██▄▄▄███  ██    ██
+#  ▀▀ ▀▀ ▀▀    ▀▀▀ ▀▀    ▀▀▀▀▀      ▀▀▀▀     ▀▀▀▀▀    ▀▀▀▀ ▀▀  ▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Cleans md files from common Unicode garabage symbols
+# --- DEPENDENCIES --- #
+# - sponge moreutils
+# - perl
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+file=$1
+
+[[ ! -f ${file} ]] && log-error "File '${file}' was not found!"
+
+tr -d '\f' <"${file}" | sponge "${file}"
+
+replace '• ' '- ' <"${file}" | sponge "${file}"
+replace '•' '-' <"${file}" | sponge "${file}"
+replace 'كلية تكنولوجيا الصناعة والطاقة' '' <"${file}" | sponge "${file}"
+
+perl -CSD -pe 's/[\x{202A}-\x{202E}\x{200F}\x{2066}-\x{2069}]//g' "${file}" | sponge "${file}"
+
+log-success "${file} was cleaned successfully"
