@@ -38,7 +38,7 @@ fi
 sudo timeshift --create --comments "Daily backup $(now)"
 
 # --- Installed packages --- #
-pacman -Qqe >"${DOTFILES}/${device}_packages.txt"
+paru -Qqe >"${DOTFILES}/${device}_packages.txt"
 
 # --- VS Code Extenstions--- #
 get-ext --overwrite "${DOTFILES}/${device}_extensions.json"
