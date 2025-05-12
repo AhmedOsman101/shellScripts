@@ -87,10 +87,20 @@ if ! git status --porcelain | rg -q '^[MAD]'; then
 fi
 
 if [[ "${useAi}" == true ]]; then
+  # file=$(mktemp -t XXXXX.md)
+  # if ! gum spin \
+  #   --title "Generating..." \
+  #   --show-error \
+  #   --show-output \
+  #   -- commit-sage; then
+  #   exit 1
+  # fi
+
   commitMessage=$(
     gum spin \
       --title "Generating..." \
-      --title.foreground="${U_GREEN}" \
+      --show-error \
+      --show-output \
       -- commit-sage
   )
 
