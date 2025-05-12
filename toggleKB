@@ -18,15 +18,17 @@
 # - notify-send
 # --- END SIGNATURE --- #
 
-set -euo pipefail
+set -uo pipefail
 
 trap 'exit 1' SIGUSR1
 
+source check-deps
+checkDeps "$0"
 # ---  Main script logic --- #
 current_layout=$(setxkbmap -query | grep layout | awk '{print $2}')
 
-if [[ "${current_layout}" == "us" ]]; then
-  setxkbmap -layout eg && notify-send "changed layout to eg"
+if [[ "${current_layout}" == "eg" ]]; then
+  setxkbmap -layout us && notify-send "changed layout to us"
 else
-  setxkbmap -layout us && setxkbmap -layout us && notify-send "changed layout to us"
+  setxkbmap -layout eg && notify-send "changed layout to eg"
 fi
