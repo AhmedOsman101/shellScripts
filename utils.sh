@@ -20,7 +20,7 @@ logError() {
   echo -e "[ERROR]: $*" 1>&2
   tput sgr0
 
-  # Exit with failure code (fallback if signal is ignored)
+  # Exit with failure code
   exit 1
 }
 
