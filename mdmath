@@ -12,7 +12,7 @@
 #
 #
 # --- DESCRIPTION --- #
-# Replaces LaTeX math delimiters with dollar signs in a given file; counts and logs the replacements made
+# Replaces LaTeX math delimiters with Obsidian's delimiters in a given file
 # --- DEPENDENCIES --- #
 #
 # --- END SIGNATURE --- #
@@ -35,13 +35,24 @@ file="$1"
 [[ ! -f ${file} ]] && log-error "File '${file}' does not exist."
 
 # Initialize replacement counts
-count_1=$(
-  grep -o '\\\[' "${file}" || printf '' | wc -l
-)
-count_2=$(
-  grep -o '\\(' "${file}" || printf '' | wc -l
-)
-count=$((count_1 + count_2))
+# Count occurrences of all delimiters to be replaced
+count_display=0
+count_inline=0
+
+if grep -o '\\\[' "${file}" -q; then
+  count_display=$(grep -o '\\\[' "${file}" | wc -l)
+fi
+
+if grep -o '\\(' "${file}" -q; then
+  count_inline=$(grep -o '\\(' "${file}" | wc -l)
+fi
+
+count=$((count_display + count_inline))
+
+if [[ ${count} -eq 0 ]]; then
+  log-info "Nothing to do"
+  exit 0
+fi
 
 # Perform the replacements
 sed -i -e 's~\\\[~$$~g' \
@@ -49,10 +60,5 @@ sed -i -e 's~\\\[~$$~g' \
   -e 's~ \\)~$~g' \
   -e 's~\\( ~$~g' \
   -e 's~\\(~$~g' \
-  -e 's~\\)~$~g' "${file}"
-
-if [[ ${count} == 0 ]]; then
-  log-info "${count} Replacements made"
-else
+  -e 's~\\)~$~g' "${file}" &&
   log-success "${count} Replacements made"
-fi
