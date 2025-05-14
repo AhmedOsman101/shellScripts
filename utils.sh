@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# ---  Main script logic --- #
 logInfo() {
   tput setaf 4
   echo -e "[INFO]: $*"
@@ -59,16 +58,16 @@ getPackageManager() {
     # For Debian/Ubuntu-based distros, check for nala helpers
     if command -v nala &>/dev/null; then
       pkgManager="nala"
-      installCmd="sudo nala install"
+      installCmd="sudo -A nala install"
     else
       pkgManager="apt"
-      installCmd="sudo apt install"
+      installCmd="sudo -A apt install"
     fi
     ;;
   fedora | rhel | almalinux | rocky | ol)
     # Fedora/RHEL-based distros (modern)
     pkgManager="dnf"
-    installCmd="sudo dnf install"
+    installCmd="sudo -A dnf install"
     ;;
   centos)
     # CentOS (check for legacy versions)
@@ -83,30 +82,30 @@ getPackageManager() {
   opensuse* | sled | sles)
     # openSUSE/SUSE-based distros
     pkgManager="zypper"
-    installCmd="sudo zypper install"
+    installCmd="sudo -A zypper install"
     ;;
   arch | manjaro | endeavouros | archcraft)
     # For Arch-based distros, check for AUR helpers
     if command -v paru &>/dev/null; then
       pkgManager="paru"
-      installCmd="paru -S --noconfirm"
+      installCmd="sudo -A paru -S --noconfirm"
     elif command -v yay &>/dev/null; then
       pkgManager="yay"
-      installCmd="yay -S --noconfirm"
+      installCmd="sudo -A yay -S --noconfirm"
     else
       pkgManager="pacman"
-      installCmd="sudo pacman -S --noconfirm"
+      installCmd="sudo -A pacman -S --noconfirm"
     fi
     ;;
   void)
     # Void Linux
     pkgManager="xbps"
-    installCmd="sudo xbps-install -S"
+    installCmd="sudo -A xbps-install -S"
     ;;
   alpine)
     # Alpine Linux
     pkgManager="apk"
-    installCmd="sudo apk add"
+    installCmd="sudo -A apk add"
     ;;
   amzn)
     # Amazon Linux
@@ -121,7 +120,7 @@ getPackageManager() {
   gentoo)
     # Gentoo Linux (source-based)
     pkgManager="emerge"
-    installCmd="sudo emerge"
+    installCmd="sudo -A emerge"
     ;;
   *)
     # Fallback to ID_LIKE for derivatives
@@ -130,31 +129,31 @@ getPackageManager() {
       # For Debian/Ubuntu-based distros, check for nala helpers
       if command -v nala &>/dev/null; then
         pkgManager="nala"
-        installCmd="sudo nala install"
+        installCmd="sudo -A nala install"
       else
         pkgManager="apt"
-        installCmd="sudo apt install"
+        installCmd="sudo -A apt install"
       fi
       ;;
     *fedora* | *rhel*)
       pkgManager="dnf"
-      installCmd="sudo dnf install"
+      installCmd="sudo -A dnf install"
       ;;
     *suse*)
       pkgManager="zypper"
-      installCmd="sudo zypper install"
+      installCmd="sudo -A zypper install"
       ;;
     *arch*)
       # For Arch-based distros, check for AUR helpers
       if command -v paru &>/dev/null; then
         pkgManager="paru"
-        installCmd="paru -S --noconfirm"
+        installCmd="sudo -A paru -S --noconfirm"
       elif command -v yay &>/dev/null; then
         pkgManager="yay"
-        installCmd="yay -S --noconfirm"
+        installCmd="sudo -A yay -S --noconfirm"
       else
         pkgManager="pacman"
-        installCmd="sudo pacman -S --noconfirm"
+        installCmd="sudo -A pacman -S --noconfirm"
       fi
       ;;
     *)
