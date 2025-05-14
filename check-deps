@@ -17,15 +17,102 @@
 #
 # --- END SIGNATURE --- #
 
-trap 'exit 1' SIGUSR1
-
-source utils.sh
+source "$(dirname $0)/utils.sh"
 
 # ---  Main script logic --- #
 
+checkDep() {
+  local line exeName pkgName i
+  line=$1
+  pkgName=""
+  i=1
+
+  # Check for multi-packages enetries, if one is installed then skip
+  while
+    exeName=$(echo "${line}" | tr -d ' ' | awk -F "|" "{print \$${i}}")
+    [[ -n "${exeName}" ]]
+  do
+    if command -v "${exeName}" >/dev/null 2>&1; then
+      echo ""
+      return 0
+    fi
+
+    ((i++))
+  done
+
+  exeName=$(echo "${line}" | tr -d ' ' | awk -F "|" '{print $1}')
+
+  if echo "${exeName}" | grep -oP '\(\K[^)]*(?=\))' -q; then
+    pkgName=$(echo "${exeName}" | grep -oP '\(\K[^)]*(?=\))')
+  fi
+
+  if [[ -n ${pkgName} ]]; then
+    echo "${pkgName}"
+  else
+    echo "${exeName}"
+  fi
+
+  return 0
+}
+
+getAskPass() {
+  local askpass=""
+
+  # Check if running in a graphical environment
+  if [[ -n "${DISPLAY}" || -n "${WAYLAND_DISPLAY}" ]]; then
+    # Check for rofi-askpass
+    if command -v rofi-askpass >/dev/null 2>&1; then
+      askpass="$(command -v rofi-askpass)"
+    # Check for zenity
+    elif command -v zenity >/dev/null 2>&1; then
+      askpass="zenity --password --title='Authentication Required' --timeout=30"
+    # Check for kdialog
+    elif command -v kdialog >/dev/null 2>&1; then
+      askpass="kdialog --password 'Authentication Required'"
+    # Check for yad (zenity fork)
+    elif command -v yad >/dev/null 2>&1; then
+      askpass="yad --entry --hide-text --title='Authentication Required' --button=OK:0 --timeout=30 --width=300 --height=150 --center"
+    # Check for ssh-askpass (common in some X11 setups)
+    elif command -v ssh-askpass >/dev/null 2>&1; then
+      askpass="$(command -v ssh-askpass)"
+    # Check for x11-ssh-askpass (alternative askpass tool)
+    elif command -v x11-ssh-askpass >/dev/null 2>&1; then
+      askpass="$(command -v x11-ssh-askpass)"
+    fi
+  else
+    # Fallback for non-graphical environments (e.g., terminal prompt)
+    askpass="/bin/cat"
+  fi
+
+  printf '%s' "${askpass}"
+}
+
+installDep() {
+  local pkg pkgManager installCmd
+  local -a cmdArray
+
+  pkg=$1
+
+  pkgManager=$(getPackageManager)
+  installCmd=$(echo ${pkgManager} | awk -F ':' '{print $NF}')
+  read -ra cmdArray <<<"${installCmd} ${pkg}"
+
+  logInfo "Attempting to install package: ${pkg}"
+
+  if SUDO_ASKPASS="$(getAskPass)" "${cmdArray[@]}"; then
+    sleep 1 && clear
+    logInfo "Installed ${pkg}"
+    return 0
+  else
+    sleep 1 && clear
+    logWarning "Couldn't install ${pkg}"
+    return 1
+  fi
+}
+
 checkDeps() {
-  local file deps output installCmd completed packageName isOptional dep
-  local -a depsArray cmdArray
+  local file completed item line
+  local -a depsArray
 
   if [[ $# -ne 1 ]]; then
     logError "Invalid arguments, only a script name is accepted"
@@ -39,59 +126,18 @@ checkDeps() {
     [[ ! -f ${file} ]] && logError "Script '${file}' was not found"
   fi
 
-  deps=$(getDeps "${file}")
-
-  [[ "${deps}" == "x-none" ]] && return 0
+  [[ "$(getDeps "${file}")" == "x-none" ]] && return 0
 
   mapfile -t depsArray < <(getDeps "${file}")
 
-  output=$(getPackageManager)
-  installCmd=$(echo ${output} | awk -F ':' '{print $2}')
-
-  completed=1
-  for item in "${depsArray[@]}"; do
-    dep=$(echo ${item} | awk '{print $1}')
-    packageName=$(echo ${item} | awk '{print $2}')
-    isOptional=$(echo ${item} | awk '{print $3}')
-
-    if ! command -v "${dep}" >/dev/null 2>&1; then
-
-      if [[ -n ${packageName} ]]; then
-        if [[ "${packageName}" == '(optional)' ]]; then
-          read -ra cmdArray <<<"${installCmd} ${dep}"
-
-          if "${cmdArray[@]}" >/dev/null; then
-            logInfo "Installed '${dep}'"
-          fi
-          continue
-        elif [[ "${isOptional}" == '(optional)' ]]; then
-          read -ra cmdArray <<<"${installCmd} ${packageName}"
-
-          if "${cmdArray[@]}" >/dev/null; then
-            logInfo "Installed '${dep}'"
-          fi
-          continue
-        else
-          logWarning "'${dep}' is not installed."
-          read -ra cmdArray <<<"${installCmd} ${packageName}"
-        fi
-      else
-        read -ra cmdArray <<<"${installCmd} ${dep}"
-      fi
-
-      if "${cmdArray[@]}"; then
-        [[ ${packageName} != '(optional)' || "${isOptional}" != '(optional)' ]] &&
-          logInfo "Installed '${dep}'"
-      else
-        [[ ${packageName} != '(optional)' || "${isOptional}" != '(optional)' ]] && {
-          logWarning "Couldn't install '${dep}'"
-          completed=0
-        }
-      fi
+  completed=0
+  for line in "${depsArray[@]}"; do
+    item=$(checkDep "${line}")
+    if [[ -n "${item}" ]]; then
+      installDep "${item}" || completed=1
     fi
   done
 
-  [[ ${completed} == 0 ]] && logError "Failed to install all dependencies"
-
+  [[ ${completed} == 1 ]] && logError "Failed to install all dependencies"
   return 0
 }
