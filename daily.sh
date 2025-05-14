@@ -15,7 +15,7 @@
 # Creates daily Timeshift backup, exports installed packages, VS Code extensions, and unique pnpm global packages
 # --- DEPENDENCIES --- #
 # - timeshift
-# - doas opendoas
+# - doas (opendoas)
 # --- END SIGNATURE --- #
 
 set -euo pipefail

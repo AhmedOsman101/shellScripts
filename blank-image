@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Creates a blank image with given width, height and color
 # --- DEPENDENCIES --- #
-# - magick imagemagick
+# - magick (imagemagick)
 # --- END SIGNATURE --- #
 
 set -eo pipefail

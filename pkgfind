@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Searches for packages (installed and online)
 # --- DEPENDENCIES --- #
-# - rg ripgrep
+# - rg (ripgrep)
 # - paru
 # --- END SIGNATURE --- #
 

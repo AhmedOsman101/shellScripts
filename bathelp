@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Displays help content with bat in plain format using the 'help' language syntax
 # --- DEPENDENCIES --- #
-# - bat
+# - bat | batcat (bat)
 # --- END SIGNATURE --- #
 
 set -euo pipefail

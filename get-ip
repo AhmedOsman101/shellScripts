@@ -15,7 +15,7 @@
 # Retrieves the IP address of the active network interface
 # --- DEPENDENCIES --- #
 # - ip
-# - rg ripgrep
+# - rg (ripgrep)
 # - awk
 # --- END SIGNATURE --- #
 

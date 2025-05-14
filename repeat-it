@@ -15,7 +15,6 @@
 # Repeat a command until it succeeds
 # --- DEPENDENCIES --- #
 # - gum
-# - cmdarg
 # --- END SIGNATURE --- #
 
 set -eo pipefail

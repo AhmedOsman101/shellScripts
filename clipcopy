@@ -14,9 +14,7 @@
 # --- DESCRIPTION --- #
 # Copies input text or arguments to the system clipboard using available clipboard tools
 # --- DEPENDENCIES --- #
-# - copyq
-# - wl-copy wl-clipboard (optional)
-# - xclip (optional)
+# - copyq | xclip | wl-copy (wl-clipboard)
 # --- END SIGNATURE --- #
 
 set -euo pipefail

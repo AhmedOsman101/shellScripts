@@ -16,7 +16,7 @@
 # --- DEPENDENCIES --- #
 # - git
 # - gum
-# - rg ripgrep
+# - rg (ripgrep)
 # --- END SIGNATURE --- #
 
 set -eo pipefail

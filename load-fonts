@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Moves TTF and OTF fonts from ~/fonts to system font directories and refreshes the font cache
 # --- DEPENDENCIES --- #
-# - fd
+# - fd | fdfind (fd-find)
 # - gum
 # --- END SIGNATURE --- #
 

@@ -17,7 +17,7 @@
 # - curl
 # - jq
 # - gum
-# - nu nushell
+# - nu (nushell)
 # --- END SIGNATURE --- #
 
 set -eo pipefail

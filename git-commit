@@ -14,9 +14,10 @@
 # Adds a conventinal commit message or generates one with AI
 # --- DEPENDENCIES --- #
 # - git
-# - rg ripgrep
+# - rg (ripgrep)
 # - gum
 # - mdcat
+# - commit-sage
 # --- END SIGNATURE --- #
 
 set -eo pipefail

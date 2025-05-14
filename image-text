@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Generates a blank image with text on it
 # --- DEPENDENCIES --- #
-# - magick imagemagick
+# - magick (imagemagick)
 # --- END SIGNATURE --- #
 
 set -eo pipefail

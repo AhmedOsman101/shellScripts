@@ -14,15 +14,15 @@
 # --- DESCRIPTION --- #
 # Links all executable scripts (excluding specified paths) into ~/.local/bin/scripts
 # --- DEPENDENCIES --- #
-# - fd
+# - fd | fdfind (fd-find)
 # --- END SIGNATURE --- #
 
 set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source "$(dirname $0)/utils.sh"
-
+source "$(dirname $0)/check-deps"
+checkDeps "$0"
 # ---  Main script logic --- #
 
 error=$(
