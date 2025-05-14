@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
 # Import Current Theme
-DIR="${HOME}/.config/openbox"
-STYLE="default"
-RASI="${DIR}/themes/${STYLE}/rofi/music.rasi"
+RASI="$(dirname $0)/music.rasi"
 PATH="${PATH}:${HOME}/.local/bin/scripts"
 
 # Theme Elements
