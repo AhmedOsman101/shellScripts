@@ -29,18 +29,17 @@ checkDep() {
 
   # Check for multi-packages enetries, if one is installed then skip
   while
-    exeName=$(echo "${line}" | tr -d ' ' | awk -F "|" "{print \$${i}}")
+    exeName=$(echo "${line}" | awk -F "|" "{print \$${i}}" | Trim | awk '{print $1}')
     [[ -n "${exeName}" ]]
   do
     if command -v "${exeName}" >/dev/null 2>&1; then
-      echo ""
       return 0
     fi
 
     ((i++))
   done
 
-  exeName=$(echo "${line}" | tr -d ' ' | awk -F "|" '{print $1}')
+  exeName=$(echo "${line}" | awk -F "|" '{print $1}' | Trim | awk '{print $1}')
 
   if echo "${exeName}" | grep -oP '\(\K[^)]*(?=\))' -q; then
     pkgName=$(echo "${exeName}" | grep -oP '\(\K[^)]*(?=\))')
