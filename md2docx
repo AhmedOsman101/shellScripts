@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Converts a Markdown file to DOCX using pandoc, optionally applying a reference template from MRT, with success and error logging
 # --- DEPENDENCIES --- #
-# - pandoc pandoc-cli
+# - pandoc (pandoc-cli)
 # - sed
 # --- END SIGNATURE --- #
 

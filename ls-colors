@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Parses exported color variables from a Zsh config and displays their names with the corresponding color
 # --- DEPENDENCIES --- #
-# - rg ripgrep
+# - rg (ripgrep)
 # - awk
 # - tr
 # - gum

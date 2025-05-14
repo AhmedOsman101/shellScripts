@@ -15,7 +15,7 @@
 # Sync all top-level Tuckr packages
 # --- DEPENDENCIES --- #
 # - tuckr
-# - fd
+# - fd | fdfind (fd-find)
 # - cut
 # --- END SIGNATURE --- #
 

@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Cleans md files from common Unicode garabage symbols
 # --- DEPENDENCIES --- #
-# - sponge moreutils
+# - sponge (moreutils)
 # - perl
 # --- END SIGNATURE --- #
 

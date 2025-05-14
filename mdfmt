@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Formats Markdown files using Prettier; auto-discovers files with fd or formats given .md/.markdown files
 # --- DEPENDENCIES --- #
-# - fd
+# - fd | fdfind (fd-find)
 # - awk
 # - prettier
 # --- END SIGNATURE --- #

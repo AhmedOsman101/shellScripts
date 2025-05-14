@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Searches for a font in the list of installed fonts
 # --- DEPENDENCIES --- #
-# - rg ripgrep
+# - rg (ripgrep)
 # --- END SIGNATURE --- #
 
 set -euo pipefail

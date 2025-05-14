@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Prints the distro's pretty name from `/etc/os-release`.
 # --- DEPENDENCIES --- #
-# - rg ripgrep
+# - rg (ripgrep)
 # --- END SIGNATURE --- #
 
 set -euo pipefail

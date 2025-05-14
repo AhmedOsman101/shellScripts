@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Compiles and optionally runs C++ files with customizable compiler arguments
 # --- DEPENDENCIES --- #
-# - g++ gcc
+# - g++ (gcc)
 # --- END SIGNATURE --- #
 
 set -eo pipefail

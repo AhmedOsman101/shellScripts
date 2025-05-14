@@ -15,7 +15,7 @@
 # Toggle keyboard layout between us and eg
 # --- DEPENDENCIES --- #
 # - setxkbmap
-# - notify-send
+# - notify-send (libnotify)
 # --- END SIGNATURE --- #
 
 set -uo pipefail

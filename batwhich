@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Displays the source of a script using bat, if it exists
 # --- DEPENDENCIES --- #
-# - bat
+# - bat | batcat (bat)
 # --- END SIGNATURE --- #
 
 set -euo pipefail

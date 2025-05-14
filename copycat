@@ -31,4 +31,5 @@ file=$1
 
 # shellcheck disable=2002
 cat "${file}" |
-  clipcopy && log-success "Copied file ${file} contents successfully"
+  clipcopy &&
+  log-success "Copied file ${file} contents successfully"
