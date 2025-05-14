@@ -165,3 +165,9 @@ getPackageManager() {
 
   echo "${pkgManager}:${installCmd}"
 }
+
+Trim() {
+  str=$(cat)
+  [[ -z ${str} ]] && printf '' && exit 0
+  echo "${str}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
