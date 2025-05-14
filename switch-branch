@@ -42,12 +42,23 @@ is-git-repo
 
 current=$(git_current_branch) || log-error "Cannot find current branch"
 
+listBranches() {
+  git branch --list --format='%(refname:short)' --remote
+
+  git branch --list --format='%(refname:short)'
+}
+
+terminate() {
+  log-info "Program terminated!"
+  exit 0
+}
+
 branchList=$(
-  git branch --list \
-    --format='%(refname:short)' \
-    --remote |
+  listBranches |
     replace "origin" '' |
-    tr -d "/" | trim | remove-blanks
+    tr -d "/" |
+    no-dups | trim |
+    remove-blanks
 )
 
 branchesString="$(
@@ -81,7 +92,7 @@ switchBranch() {
         --limit=1 \
         --select-if-one \
         "${branches[@]}"
-    )
+    ) || terminate
   fi
 
   for branch in "${branches[@]}"; do
@@ -95,10 +106,8 @@ switchBranch() {
     log-warning "No branch with the name '${branchName}' was found!"
     if gum confirm "Do you want to create it?"; then
       createBranch "${branchName}"
-      exit 0
-    else
-      exit 1
     fi
+    exit 0
   fi
 
   [[ "${branchName}" == "${current}" ]] && {

@@ -17,8 +17,6 @@
 #
 # --- END SIGNATURE --- #
 
-set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 source utils.sh
@@ -43,7 +41,7 @@ checkDeps() {
 
   deps=$(getDeps "${file}")
 
-  [[ "${deps}" == "x-none" ]] && exit 0
+  [[ "${deps}" == "x-none" ]] && return 0
 
   mapfile -t depsArray < <(getDeps "${file}")
 
