@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#                         ▄▄▄▄      ██               ▄▄▄▄         ██
+#                        ██▀▀▀      ▀▀               ▀▀██         ▀▀                 ██
+#   ██▄████   ▄████▄   ███████    ████                 ██       ████     ▄▄█████▄  ███████
+#   ██▀      ██▀  ▀██    ██         ██                 ██         ██     ██▄▄▄▄ ▀    ██
+#   ██       ██    ██    ██         ██      █████      ██         ██      ▀▀▀▀██▄    ██
+#   ██       ▀██▄▄██▀    ██      ▄▄▄██▄▄▄              ██▄▄▄   ▄▄▄██▄▄▄  █▄▄▄▄▄██    ██▄▄▄
+#   ▀▀         ▀▀▀▀      ▀▀      ▀▀▀▀▀▀▀▀               ▀▀▀▀   ▀▀▀▀▀▀▀▀   ▀▀▀▀▀▀      ▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+#
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+OLD_IFS=${IFS}
+
+# Import Current Theme
+RASI="$(dirname $0)/list.rasi"
+# declare -A scripts
+declare -a scripts
+
+scriptPaths=$(fd . -t f -t l -t x --full-path ${SCRIPTS_DIR} | awk -F '/' '{print $NF}')
+
+IFS=$'\n'
+
+for script in ${scriptPaths}; do
+  desc=$(get-desc ${script})
+  # log-debug "${script} - ${desc}"
+  [[ -n ${desc} ]] && desc=" - ${desc}"
+  scripts+=("$(basename ${script})${desc}")
+done
+
+IFS=${OLD_IFS}
+
+choice=$(
+  printf '%s\n' "${scripts[@]}" |
+    sort |
+    # idk why these keep appearing in the choices array
+    grep -v 'echo "${desc}"' |
+    grep -v 'replace "" ""' |
+    rofi -dmenu \
+      -i \
+      -show run \
+      -p "scripts" \
+      -theme "${RASI}" |
+    awk '{print $1}'
+) || {
+  log-info "Program terminated"
+  exit 0
+}
+
+if [[ -n ${choice} ]]; then
+  echo "${choice}" | clipcopy
+  log-success "Copied command: '${choice}' to clipboard"
+else
+  log-info "Program terminated"
+  exit 0
+fi
