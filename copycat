@@ -12,7 +12,7 @@
 #                      ██         ███
 #
 # --- DESCRIPTION --- #
-#
+# Copies the contents of a file to the clipboard.
 # --- DEPENDENCIES --- #
 # - cat
 # --- END SIGNATURE --- #
@@ -24,7 +24,6 @@ trap 'exit 1' SIGUSR1
 source check-deps
 checkDeps "$0"
 # ---  Main script logic --- #
-
 file=$1
 
 [[ -z ${file} || ! -f ${file} ]] && log-error "File ${file} not found"

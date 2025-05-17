@@ -116,4 +116,3 @@ done
 # If script is run with NO argument, it will use 'dmenu'
 [[ "${no_opt}" = 1 ]] && [[ "${BASH_SOURCE[0]}" == "${0}" ]] && mainfzf "$@"
 
-# TODO: for some reason dm-template is broken with this script, needs investigating

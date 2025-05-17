@@ -17,7 +17,7 @@
 #
 # --- END SIGNATURE --- #
 
-source "$(dirname $0)/utils.sh"
+source "${HOME}/scripts/utils.sh"
 
 # ---  Main script logic --- #
 
