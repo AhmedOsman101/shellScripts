@@ -37,6 +37,13 @@ else
   [[ ! -f ${file} ]] && log-error "Script '${file}' was not found"
 fi
 
-sed -n '/# --- DESCRIPTION --- #/,/# --- DEPENDENCIES --- #/ {/\# /p;}' "${file}" |
-  replace "# " "" |
-  grep -v " --- " || printf ""
+desc=$(
+  sed -n '/# --- DESCRIPTION --- #/,/# --- DEPENDENCIES --- #/ {/\# /p;}' "${file}" |
+    replace "# " ""
+)
+
+if echo "${desc}" | grep -v " --- " -q; then
+  echo "${desc}" | grep -v " --- "
+else
+  printf ''
+fi
