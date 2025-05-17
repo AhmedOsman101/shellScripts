@@ -12,9 +12,10 @@
 #
 #
 # --- DESCRIPTION --- #
-#
+# List all scripts in the scripts directory and copy the selected script to the clipboard
 # --- DEPENDENCIES --- #
-#
+# - rofi
+# - fd
 # --- END SIGNATURE --- #
 
 set -eo pipefail
