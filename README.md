@@ -19,10 +19,10 @@ Add the repository to your `PATH` for easy access to all scripts:
 # 1. Clone repository
 git clone https://github.com/yourusername/scripts.git $HOME/scripts
 
-# 2. Add to PATH (add to your .bashrc/zshrc)
-echo 'export PATH="$HOME/scripts:$PATH"' >> ~/.bashrc  # or ~/.zshrc
+# 2. Run the init script
+./init.sh
 
-# 3. Refresh shell
+# 3. Refresh shell (if needed)
 source ~/.bashrc  # or source ~/.zshrc
 ```
 
