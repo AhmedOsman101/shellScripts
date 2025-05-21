@@ -25,5 +25,5 @@ trap 'exit 1' SIGUSR1
 source check-deps
 checkDeps "$0"
 # ---  Main script logic --- #
-mkdir -p "$(dirname "$2")" 2>/dev/null
-mv -i "$1" "$2"
+sudo mkdir -p "$(dirname "$2")" 2>/dev/null
+sudo mv -i "$1" "$2"
