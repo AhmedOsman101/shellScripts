@@ -20,7 +20,7 @@ Add the repository to your `PATH` for easy access to all scripts:
 git clone https://github.com/yourusername/scripts.git $HOME/scripts
 
 # 2. Run the init script
-./init.sh
+$HOME/scripts/init.sh
 
 # 3. Refresh shell (if needed)
 source ~/.bashrc  # or source ~/.zshrc
