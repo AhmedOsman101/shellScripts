@@ -42,7 +42,11 @@ if ! command -v fd &>/dev/null; then
   logError "${error}"
 fi
 
-SCRIPTS_DIR="$(dirname $0)"
+SCRIPTS_DIR="${HOME}/scripts"
+
+if [[ ! -d "${SCRIPTS_DIR}" ]]; then
+  logError "The scripts must be installed at ${HOME}/scripts"
+fi
 
 sudo rm -rf "${HOME}/.local/bin/scripts" || printf ''
 sudo mkdir -p "${HOME}/.local/bin/scripts" || printf ''
@@ -79,7 +83,7 @@ if [[ -d "${SCRIPTS_DIR}" ]]; then
       fi
     done
     if ! ${exclude}; then
-      sudo ln -sf "${SCRIPTS_DIR}/${script}" "${HOME}/.local/bin/scripts" 2>/dev/null && ((count = count + 1))
+      sudo ln -sf "${script}" "${HOME}/.local/bin/scripts" 2>/dev/null && ((count = count + 1))
     fi
   done
 fi
