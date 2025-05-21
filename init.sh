@@ -79,7 +79,7 @@ if [[ -d "${SCRIPTS_DIR}" ]]; then
       fi
     done
     if ! ${exclude}; then
-      sudo ln -sf "${script}" "${HOME}/.local/bin/scripts" 2>/dev/null && ((count = count + 1))
+      sudo ln -sf "${SCRIPTS_DIR}/${script}" "${HOME}/.local/bin/scripts" 2>/dev/null && ((count = count + 1))
     fi
   done
 fi
