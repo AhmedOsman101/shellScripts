@@ -66,5 +66,5 @@ while true; do
   fi
 
   [[ "${preserve}" != true ]] && clear
-  counter=$((counter + 1))
+  ((counter++))
 done
