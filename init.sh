@@ -60,11 +60,13 @@ fi
 # Create destination directory with correct permissions
 if [[ ! -d "${DESTINATION_DIR}" ]]; then
   sudo mkdir -p "${DESTINATION_DIR}" || logError "Failed to create ${DESTINATION_DIR}"
+else
+  sudo chown -R ${USER}:${USER} "${DESTINATION_DIR}" || logError "Failed to make ${USER} the owner of ${DESTINATION_DIR}"
 fi
 
 # Ensure DESTINATION_DIR is user-writable
 if [[ ! -w "${DESTINATION_DIR}" ]]; then
-  logError "${DESTINATION_DIR} is not writable by user $(whoami)"
+  logError "${DESTINATION_DIR} is not writable by user ${USER}"
 fi
 
 # Remove existing symlinks
