@@ -21,9 +21,15 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source "$(dirname $0)/check-deps"
-checkDeps "$0"
 # ---  Main script logic --- #
+file="$(dirname $0)/check-deps"
+if [[ -f "${file}" ]]; then
+  source "${file}"
+  checkDeps "$0"
+else
+  echo "fuck me" 1>&2
+  exit 1
+fi
 
 error=$(
   cat <<END
