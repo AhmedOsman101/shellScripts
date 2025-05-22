@@ -41,8 +41,8 @@ checkDep() {
 
   exeName=$(echo "${line}" | awk -F "|" '{print $1}' | Trim | awk '{print $1}')
 
-  if echo "${exeName}" | grep -oP '\(\K[^)]*(?=\))' -q; then
-    pkgName=$(echo "${exeName}" | grep -oP '\(\K[^)]*(?=\))')
+  if echo "${line}" | grep -oP '\(\K[^)]*(?=\))' -q; then
+    pkgName=$(echo "${line}" | grep -oP '\(\K[^)]*(?=\))')
   fi
 
   if [[ -n ${pkgName} ]]; then
