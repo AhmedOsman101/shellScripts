@@ -15,9 +15,10 @@
 # Links all executable scripts (excluding specified paths) into ~/.local/bin/scripts
 # --- DEPENDENCIES --- #
 # - fd | fdfind (fd-find)
+# - realpath
 # --- END SIGNATURE --- #
 
-set -euo pipefail
+set -uo pipefail
 
 trap 'exit 1' SIGUSR1
 
@@ -27,8 +28,14 @@ if [[ -f "${file}" ]]; then
   source "${file}"
   checkDeps "$0"
 else
-  echo "fuck me" 1>&2
+  echo "Dependency check script not found at ${file}" 1>&2
   exit 1
+fi
+
+# For debian-based distros fd package is named fdfind
+if command -v fdfind &>/dev/null; then
+  logInfo "Creating a symlink from fdfind to /usr/bin/fd"
+  sudo ln -sf "$(which fdfind)" /usr/bin/fd 2>/dev/null
 fi
 
 error=$(
@@ -39,32 +46,39 @@ Please install it by following the instructions here:
 END
 )
 
-# For debian-based distros fd package is named fdfind
-if command -v fdfind &>/dev/null; then
-  sudo ln -sf "$(which fdfind)" /usr/bin/fd 2>/dev/null
-fi
-
 if ! command -v fd &>/dev/null; then
   logError "${error}"
 fi
 
 SCRIPTS_DIR="${HOME}/scripts"
+DESTINATION_DIR="${HOME}/.local/bin/scripts"
 
 if [[ ! -d "${SCRIPTS_DIR}" ]]; then
-  logError "The scripts must be installed at ${HOME}/scripts"
+  logError "The scripts directory must exist at ${SCRIPTS_DIR}"
 fi
 
-sudo rm -rf "${HOME}/.local/bin/scripts" || printf ''
-sudo mkdir -p "${HOME}/.local/bin/scripts" || printf ''
+# Create destination directory with correct permissions
+if [[ ! -d "${DESTINATION_DIR}" ]]; then
+  sudo mkdir -p "${DESTINATION_DIR}" || logError "Failed to create ${DESTINATION_DIR}"
+fi
+
+# Ensure DESTINATION_DIR is user-writable
+if [[ ! -w "${DESTINATION_DIR}" ]]; then
+  logError "${DESTINATION_DIR} is not writable by user $(whoami)"
+fi
+
+# Remove existing symlinks
+fd . -t l -t x "${DESTINATION_DIR}" -x sudo rm 2>/dev/null || true
 
 # Create symlinks
-sudo ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${HOME}/.local/bin/scripts" 2>/dev/null
-sudo ln -sf "${SCRIPTS_DIR}/clipcopy" "${HOME}/.local/bin/scripts/copyclip" 2>/dev/null
-ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${SCRIPTS_DIR}/cmdarg.sh" 2>/dev/null
-ln -sf "${SCRIPTS_DIR}/clipcopy" "${SCRIPTS_DIR}/copyclip" 2>/dev/null
+sudo ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${DESTINATION_DIR}/cmdarg.sh" || logError "Failed to link cmdarg.sh"
+ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${SCRIPTS_DIR}/cmdarg.sh" || logError "Failed to link cmdarg.sh"
 
-if ! echo ${PATH} | grep "${HOME}/.local/bin/scripts" -q; then
-  echo "Add this line to your .$(basename ${SHELL})rc file to make the scripts globally available"
+sudo ln -sf "${SCRIPTS_DIR}/clipcopy" "${DESTINATION_DIR}/copyclip" || logError "Failed to link copyclip"
+ln -sf "${SCRIPTS_DIR}/clipcopy" "${SCRIPTS_DIR}/copyclip" || logError "Failed to link copyclip"
+
+if ! echo ${PATH} | grep "${DESTINATION_DIR}" -q; then
+  echo "Add this to your .$(basename "${SHELL}")rc file to make scripts globally available:"
   printf 'export PATH="$PATH:$HOME/.local/bin/scripts"\n\n'
 fi
 
@@ -76,22 +90,20 @@ EXCLUDE_DIRS=(
   "${SCRIPTS_DIR}/cpp/release.sh"
 )
 
-# Dynamically add subdirectories of $HOME/scripts containing executables to PATH
-# excluding specified directories and their subdirectories
-if [[ -d "${SCRIPTS_DIR}" ]]; then
-  count=0
-  for script in $(fd . -t x "${SCRIPTS_DIR}"); do
-    exclude=false
-    for excluded in "${EXCLUDE_DIRS[@]}"; do
-      if [[ "$(dirname "${script}")" == "${excluded}"* || "${script}" == "${excluded}"* ]]; then
-        exclude=true
-        break
-      fi
-    done
-    if ! ${exclude}; then
-      sudo ln -sf "${script}" "${HOME}/.local/bin/scripts" 2>/dev/null && ((count++))
-    fi
-  done
-fi
+# Create symlinks for all executable scripts, excluding specified paths
+count=0
+while IFS= read -r script; do
+  if sudo ln -sf "${script}" "${DESTINATION_DIR}/$(basename "${script}")" 2>/dev/null; then
+    ((count++))
+  else
+    logInfo "Failed to link ${script}"
+  fi
+done < <(
+  fd . -t x "${SCRIPTS_DIR}" \
+    -E ".git" \
+    -E "python/.venv" \
+    -E "init.sh" \
+    -E "cpp/release.sh"
+)
 
-log-success "Linked ${count} scripts to ${HOME}/.local/bin/scripts"
+log-success "Linked ${count} scripts to ${DESTINATION_DIR}"

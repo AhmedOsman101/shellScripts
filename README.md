@@ -17,7 +17,7 @@ Add the repository to your `PATH` for easy access to all scripts:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/yourusername/scripts.git $HOME/scripts
+git clone https://github.com/AhmedOsman101/shellScripts.git $HOME/scripts
 
 # 2. Run the init script
 $HOME/scripts/init.sh
