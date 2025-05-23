@@ -66,8 +66,9 @@ if ! git status --porcelain | grep -q '^'; then
   exit 0
 fi
 
-if ! git status --porcelain | rg -q '^[MAD]'; then
+if ! git status --porcelain | rg -q '^[A-Z]'; then
   log-info "No staged changes found\n"
+
   output=$(
     git status --porcelain |
       rg -v '^[MAD]' |
@@ -80,7 +81,11 @@ if ! git status --porcelain | rg -q '^[MAD]'; then
   ) || terminate
 
   # Parse output to extract file names, preserving spaces
-  mapfile -t files < <(echo "${output}" | cut -d " " -f 2- | sed 's|"||g' | sed -E 's/^[?[:space:]]{3}//') || terminate
+  mapfile -t files < <(
+    echo "${output}" |
+      cut -d " " -f 2- | tr -d '"' |
+      sed -E 's/^[?[:space:]]{3}//'
+  ) || terminate
 
   for file in "${files[@]}"; do
     git add "${repoPath}/${file}"
@@ -88,24 +93,21 @@ if ! git status --porcelain | rg -q '^[MAD]'; then
 fi
 
 if [[ "${useAi}" == true ]]; then
-  # file=$(mktemp -t XXXXX.md)
-  # if ! gum spin \
-  #   --title "Generating..." \
-  #   --show-error \
-  #   --show-output \
-  #   -- commit-sage; then
-  #   exit 1
-  # fi
+  logFile=$(mktemp -t commit-sage-XXXXX.log)
+  trap 'rm -f $logFile' EXIT
 
-  commitMessage=$(
-    gum spin \
-      --title "Generating..." \
-      --show-error \
-      --show-output \
-      -- commit-sage
-  )
+  cmdArray=(bash -c "commit-sage > ${logFile} 2>&1")
 
-  transformed=$(echo "${commitMessage}" | tr "\n" "#")
+  if ! gum spin --title "Generating..." -- "${cmdArray[@]}"; then
+    log-error "$(sed 's/\[ERROR\] //' ${logFile})"
+  fi
+
+  # Check for [ERROR] lines after execution
+  if rg -q '\[ERROR\].' ${logFile}; then
+    log-error "$(sed 's/\[ERROR\] //' ${logFile})"
+  fi
+
+  transformed=$(cat ${logFile} | tr "\n" "#")
 
   summary=$(echo "${transformed}" | tr "\n" "#" | awk -F "##" '{print $1}')
   details=$(echo "${transformed}" | awk -F "##" '{print $2}' | tr "#" "\n")
