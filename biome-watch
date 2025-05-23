@@ -31,10 +31,12 @@ checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "p?" "preset" "The files preset to watch" "std"
+cmdarg "d?" "debounce" "Time to wait for new events before taking action" "5s"
 
 cmdarg_parse "$@"
 
 preset=${cmdarg_cfg['preset']}
+debounce=${cmdarg_cfg['debounce']}
 
 # Function to display help text
 print_help() {
@@ -47,7 +49,7 @@ EOF
 }
 
 if [[ -z "${preset}" ]]; then
-  presets=('std' 'vue' 'react')
+  presets=(std vue react)
   preset="$(gum choose --header "Choose a preset: " "${presets[@]}")"
 fi
 
@@ -68,16 +70,9 @@ case "${preset}" in
 esac
 
 # Build a comma-separated string of extensions
-extensions=$(
-  IFS=,
-  echo "${extensionsArray[*]}"
-)
+extensions=$(joinarr ',' "${extensionsArray[@]}")
 
-watchexec -c --timings \
-  --delay-run 1s \
-  --debounce 5s \
-  --exts "${extensions}" \
-  biome check --fix \
-  --reporter=summary \
-  --config-path="${BIOME_CONFIG_PATH}" . &&
-  exit 0 || exit $?
+watch.sh "${extensionsArray[@]}" \
+  -d "${debounce}" \
+  -c "biome check --fix --reporter=summary --config-path=\"${BIOME_CONFIG_PATH}\" ." &&
+  exit $?
