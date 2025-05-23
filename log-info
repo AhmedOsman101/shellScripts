@@ -28,6 +28,6 @@ fi
 
 tput setaf 4
 
-echo -e "[INFO]: ${str}"
+echo -e "[INFO] ${str}"
 
 tput sgr0

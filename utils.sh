@@ -2,13 +2,13 @@
 
 logInfo() {
   tput setaf 4
-  echo -e "[INFO]: $*"
+  echo -e "[INFO] $*"
   tput sgr0
 }
 
 logWarning() {
   tput setaf 3
-  echo -e "[INFO]: $*"
+  echo -e "[WARNING] $*"
   tput sgr0
 }
 
@@ -16,7 +16,7 @@ logError() {
   # Print error message in red
   tput setaf 1
 
-  echo -e "[ERROR]: $*" 1>&2
+  echo -e "[ERROR] $*" 1>&2
   tput sgr0
 
   # Exit with failure code

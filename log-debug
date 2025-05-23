@@ -12,7 +12,7 @@
 #                       ▀████▀▀                                                     ▀████▀▀
 #
 # --- DESCRIPTION --- #
-# Prints debug messages in magenta with a '[DEBUG]:' prefix; reads from stdin or arguments
+# Prints debug messages in magenta with a '[DEBUG] ' prefix; reads from stdin or arguments
 # --- DEPENDENCIES --- #
 # - tput
 # --- END SIGNATURE --- #
@@ -32,6 +32,6 @@ fi
 
 tput setaf 5
 
-echo -e "[DEBUG]: ${str}"
+echo -e "[DEBUG] ${str}"
 
 tput sgr0

@@ -12,7 +12,7 @@
 #                       ▀████▀▀                                                             
 #                                                                                           
 # --- DESCRIPTION --- #
-# Prints error messages in red with a '[ERROR]:' prefix to stderr, signals parent with SIGUSR1, and exits with failure
+# Prints error messages in red with a '[ERROR] ' prefix to stderr, signals parent with SIGUSR1, and exits with failure
 # --- DEPENDENCIES --- #
 # - tput
 # - ps
@@ -35,7 +35,7 @@ fi
 # Print error message in red
 tput setaf 1
 
-echo -e "[ERROR]: ${str}" 1>&2
+echo -e "[ERROR] ${str}" 1>&2
 tput sgr0
 
 # Get parent PID (script that called log-error) and send SIGUSR1

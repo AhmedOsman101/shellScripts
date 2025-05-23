@@ -12,7 +12,7 @@
 #                       ▀████▀▀                                                                                 
 #                                                                                                               
 # --- DESCRIPTION --- #
-# Prints success messages in green with a '[SUCCESS]:' prefix; reads from stdin or arguments
+# Prints success messages in green with a '[SUCCESS] ' prefix; reads from stdin or arguments
 # --- DEPENDENCIES --- #
 # - tput
 # --- END SIGNATURE --- #
@@ -31,6 +31,6 @@ fi
 
 tput setaf 2
 
-echo -e "[SUCCESS]: ${str}"
+echo -e "[SUCCESS] ${str}"
 
 tput sgr0
