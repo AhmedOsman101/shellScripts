@@ -14,17 +14,15 @@ This repository is a curated collection of scripts that help us in:
 ## Installation:
 
 Add the repository to your `PATH` for easy access to all scripts:
-
 ```bash
 # 1. Clone repository
 git clone https://github.com/AhmedOsman101/shellScripts.git $HOME/scripts
 
-# 2. Run the init script
-$HOME/scripts/init.sh
+# 2. Add the following line to your shell configuration file (~/.bashrc or ~/.zshrc)
+export PATH=$PATH:$HOME/.local/bin/scripts
 
 # 3. Refresh shell (if needed)
 source ~/.bashrc  # or source ~/.zshrc
-```
 
 **Benefits:**
 
