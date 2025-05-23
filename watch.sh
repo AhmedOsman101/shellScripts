@@ -18,41 +18,47 @@
 # - gum
 # --- END SIGNATURE --- #
 
-set -euo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
+
+source cmdarg.sh
 
 source check-deps
 checkDeps "$0"
 # ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc "$0")"
+
+cmdarg "d?" "debounce" "Time to wait for new events before taking action" "5s"
+cmdarg "c?" "command" "The command to run" ""
+
+cmdarg_parse "$@"
+
+cmd=${cmdarg_cfg['command']}
+debounce=${cmdarg_cfg['debounce']}
+exts=${cmdarg_argv[*]}
+
 # Get the extensions string
 # Prompt user for extensions if not provided as arguments
-if [[ -z "$1" ]]; then
+if [[ -z "${exts}" ]]; then
   extensions_str=$(gum input --header="Enter file extensions (space-separated, e.g., ts js md):")
+  # Convert extensions string to array
+  extensionsArray=("${extensions_str}")
+  extensions=$(joinarr ',' "${extensionsArray[@]}")
 else
-  extensions_str="$1"
+  # Build a comma-separated string of extensions
+  extensions=$(joinarr ',' "${exts[@]}")
 fi
 
-# Convert extensions string to array
-extensionsArray=("${extensions_str}")
-
-# Build a comma-separated string of extensions
-extensions=$(
-  IFS=,
-  echo "${extensionsArray[*]}"
-)
-
 # Prompt user for the command to run if not provided
-if [[ -z "$2" ]]; then
-  command_to_run=$(gum input --header="Enter the command to execute on changes:")
-else
-  shift
-  command_to_run="$*"
+if [[ -z "${cmd}" ]]; then
+  cmd=$(gum input --header="Enter the command to execute on changes:")
 fi
 
 # Run watchexec with the provided command
 watchexec -c --timings \
   --delay-run 1s \
-  --debounce 5s \
+  --debounce "${debounce}" \
   --exts "${extensions}" \
-  -- "${command_to_run}"
+  -- "${cmd}" &&
+  exit $?
