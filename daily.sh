@@ -15,7 +15,7 @@
 # Creates daily Timeshift backup, exports installed packages, VS Code extensions, and unique pnpm global packages
 # --- DEPENDENCIES --- #
 # - timeshift
-# - doas (opendoas)
+# - sudo
 # --- END SIGNATURE --- #
 
 set -euo pipefail
@@ -26,7 +26,6 @@ source check-deps
 checkDeps "$0"
 # ---  Main script logic --- #
 DOTFILES="${HOME}/dotfiles"
-DOAS_CONFIG=${DOAS_NOPASS:-"${HOME}/.config/doas.conf"}
 
 chassis=$(hostnamectl chassis)
 
@@ -37,11 +36,7 @@ else
 fi
 
 # ---- Timeshift ---- #
-if [[ -f ${DOAS_CONFIG} ]]; then
-  doas -C ${DOAS_CONFIG} -- timeshift --create --comments "Daily backup $(now)"
-else
-  doas -- timeshift --create --comments "Daily backup $(now)"
-fi
+SUDO_ASKPASS="$(which echopass)" sudo -A timeshift --create --comments "Daily backup $(now)"
 
 # --- Installed packages --- #
 paru -Qqe >"${DOTFILES}/${device}_packages.txt"
