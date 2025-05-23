@@ -126,4 +126,7 @@ fi
 
 "${EDITOR}" "${file}"
 
+init.sh &>/dev/null &
+
 log-success "Script '$(basename "${file}")' created succefully!"
+
