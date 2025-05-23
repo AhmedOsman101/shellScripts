@@ -77,6 +77,9 @@ getAskPass() {
     # Check for x11-ssh-askpass (alternative askpass tool)
     elif command -v x11-ssh-askpass >/dev/null 2>&1; then
       askpass="$(command -v x11-ssh-askpass)"
+    else
+      # Fallback for non-graphical environments (e.g., terminal prompt)
+      askpass="/bin/cat"
     fi
   else
     # Fallback for non-graphical environments (e.g., terminal prompt)
@@ -111,7 +114,7 @@ installDep() {
 
 checkDeps() {
   local file completed item line
-  local -a depsArray
+  local -a depsArray failed
 
   if [[ $# -ne 1 ]]; then
     logError "Invalid arguments, only a script name is accepted"
@@ -133,10 +136,12 @@ checkDeps() {
   for line in "${depsArray[@]}"; do
     item=$(checkDep "${line}")
     if [[ -n "${item}" ]]; then
-      installDep "${item}" || completed=1
+      installDep "${item}" || {
+        completed=1
+        failed+=("${item}")
+      }
     fi
   done
-
-  [[ ${completed} == 1 ]] && logError "Failed to install all dependencies"
+  [[ ${completed} == 1 ]] && logError "Failed to install all dependencies ($(joinarr ', ' "${failed[@]}"))"
   return 0
 }
