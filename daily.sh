@@ -26,7 +26,10 @@ trap 'exit 1' SIGUSR1
 SCRIPTS_DIR="$(dirname $0)"
 DOTFILES="${HOME}/dotfiles"
 
-source "${SCRIPTS_DIR}/check-deps"
+export PATH="${PATH}:${SCRIPTS_DIR}:${HOME}/.local/share/pnpm"
+export TERM=xterm
+
+source "check-deps"
 checkDeps "$0"
 
 chassis=$(hostnamectl chassis)
@@ -44,8 +47,9 @@ SUDO_ASKPASS="${SCRIPTS_DIR}/echopass" sudo -A timeshift --create --comments "Da
 paru -Qqe >"${DOTFILES}/${device}_packages.txt"
 
 # --- VS Code Extenstions--- #
-"${SCRIPTS_DIR}/get-ext" --overwrite "${DOTFILES}/${device}_extensions.json"
+get-ext --overwrite "${DOTFILES}/${device}_extensions.json"
 
 # --- PNPM --- #
-"${SCRIPTS_DIR}/pnpm-ls" >>"${DOTFILES}/pnpm_global_packages.txt"
-"${SCRIPTS_DIR}/no-dups" --force "${DOTFILES}/pnpm_global_packages.txt"
+pnpm-ls >>"${DOTFILES}/pnpm_global_packages.txt"
+
+no-dups --force "${DOTFILES}/pnpm_global_packages.txt"
