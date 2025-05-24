@@ -22,10 +22,12 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
-checkDeps "$0"
 # ---  Main script logic --- #
+SCRIPTS_DIR="$(dirname $0)"
 DOTFILES="${HOME}/dotfiles"
+
+source "${SCRIPTS_DIR}/check-deps"
+checkDeps "$0"
 
 chassis=$(hostnamectl chassis)
 
@@ -36,14 +38,14 @@ else
 fi
 
 # ---- Timeshift ---- #
-SUDO_ASKPASS="$(which echopass)" sudo -A timeshift --create --comments "Daily backup $(now)"
+SUDO_ASKPASS="${SCRIPTS_DIR}/echopass" sudo -A timeshift --create --comments "Daily backup $(now)"
 
 # --- Installed packages --- #
 paru -Qqe >"${DOTFILES}/${device}_packages.txt"
 
 # --- VS Code Extenstions--- #
-get-ext --overwrite "${DOTFILES}/${device}_extensions.json"
+"${SCRIPTS_DIR}/get-ext" --overwrite "${DOTFILES}/${device}_extensions.json"
 
 # --- PNPM --- #
-pnpm-ls >>"${DOTFILES}/pnpm_global_packages.txt"
-no-dups --force "${DOTFILES}/pnpm_global_packages.txt"
+"${SCRIPTS_DIR}/pnpm-ls" >>"${DOTFILES}/pnpm_global_packages.txt"
+"${SCRIPTS_DIR}/no-dups" --force "${DOTFILES}/pnpm_global_packages.txt"
