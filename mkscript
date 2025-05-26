@@ -126,7 +126,7 @@ fi
 
 "${EDITOR}" "${file}"
 
-init.sh &>/dev/null &
-
 log-success "Script '$(basename "${file}")' created succefully!"
+
+log-info "Run ${SCRIPTS_DIR}/init.sh script to refresh"
 
