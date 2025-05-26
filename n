@@ -12,9 +12,10 @@
 #
 #
 # --- DESCRIPTION --- #
-#
+# Runs a single command in nu shell
 # --- DEPENDENCIES --- #
-#
+# - nu (nushell)
+# - gum
 # --- END SIGNATURE --- #
 
 set -eo pipefail
