@@ -67,7 +67,7 @@ if ! git status --porcelain | grep -q '^'; then
 fi
 
 if ! git status --porcelain | rg -q '^[A-Z]'; then
-  log-info "No staged changes found\n"
+  # log-info "No staged changes found\n"
 
   output=$(
     git status --porcelain |
@@ -109,7 +109,7 @@ if [[ "${useAi}" == true ]]; then
 
   transformed=$(cat ${logFile} | tr "\n" "#")
 
-  summary=$(echo "${transformed}" | tr "\n" "#" | awk -F "##" '{print $1}')
+  summary=$(echo "${transformed}" | awk -F "##" '{print $1}')
   details=$(echo "${transformed}" | awk -F "##" '{print $2}' | tr "#" "\n")
 else
   type=$(
