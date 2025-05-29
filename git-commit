@@ -109,7 +109,7 @@ if [[ "${useAi}" == true ]]; then
 
   transformed=$(cat ${logFile} | tr "\n" "#")
 
-  summary=$(echo "${transformed}" | awk -F "##" '{print $1}')
+  summary=$(echo "${transformed}" | awk -F "##" '{print $1}' | sed 's|#$||g')
   details=$(echo "${transformed}" | awk -F "##" '{print $2}' | tr "#" "\n")
 else
   type=$(
