@@ -15,6 +15,7 @@
 # Run a Python script from $SCRIPTS_DIR/python with optional venv
 # --- DEPENDENCIES --- #
 # - python3
+# - fd | fdfind (fd-find)
 # --- END SIGNATURE --- #
 
 set -euo pipefail
@@ -25,21 +26,28 @@ source check-deps
 checkDeps "$0"
 # ---  Main script logic --- #
 dir="${SCRIPTS_DIR}/python"
-venv="${dir}/.venv/bin/activate"
-file="${dir}/$(basename $1).py"
+
+pattern="/$(strip-ext "$1" sh zsh fish bash).py\$"
+file=$(fd "${pattern}" -p "${dir}")
+
+venv=$(fd 'venv$' -t d -p "$(dirname ${file})" --no-ignore)
+activateVenv="${venv}bin/activate" # fd output adds a trailing /
 
 # remove the script name from arguments and pass them to the target script
 shift
 
-withVenv() {
-  source "${venv}" || exit
-
-  python3 "${file}" "$@"
-  deactivate && exit
+terminate() {
+  deactivate && exit $1
 }
 
-if [[ -f "${venv}" ]]; then
+withVenv() {
+  source "${activateVenv}" || log-error "Couldn't execute the activate file: ${activateVenv}"
+  python3 "${file}" "$@"
+  terminate $?
+}
+
+if [[ -f "${activateVenv}" ]]; then
   withVenv "$@"
 else
-  python3 "${file}" "$@" && exit 0
+  python3 "${file}" "$@" && exit $?
 fi
