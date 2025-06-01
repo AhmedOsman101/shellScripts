@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#                                                                       
+#                                ▄▄           ██               ▄▄       
+#                                ██           ▀▀               ██       
+#   ██▄████  ████▄██▄ ██      ██ ██▄████▄   ████      ▄█████▄  ██▄████▄ 
+#   ██▀      ██ ██ ██ ▀█  ██  █▀ ██▀   ██     ██     ██▀    ▀  ██▀   ██ 
+#   ██       ██ ██ ██  ██▄██▄██  ██    ██     ██     ██        ██    ██ 
+#   ██       ██ ██ ██  ▀██  ██▀  ██    ██  ▄▄▄██▄▄▄  ▀██▄▄▄▄█  ██    ██ 
+#   ▀▀       ▀▀ ▀▀ ▀▀   ▀▀  ▀▀   ▀▀    ▀▀  ▀▀▀▀▀▀▀▀    ▀▀▀▀▀   ▀▀    ▀▀ 
+#                                                                       
+#                                                                       
+# --- DESCRIPTION --- #
+# Deletes the source of a script, if it exists
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+[[ -z $1 ]] && log-error "No valid input was given!"
+
+if path=$(which "$1" 2>/dev/null); then
+  rm -i "${path}"
+else
+  log-error "Script $1 doesn't exist!"
+fi
