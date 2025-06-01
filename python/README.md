@@ -14,25 +14,36 @@ Before running this project, ensure the following requirements are met:
 #### Linux
 
 ```bash
+mkdir "your_script_name" && cd "your_script_name"
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
+Run this command `mkscript "your_script_name"` then add the following line:
+
+```bash
+runpy "$0" "$@"
+```
+
 #### Windows
+
+Create a new folder with the name of your script then run the following commands:
 
 ```shell
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
-### Step 3: Install Dependencies
+### Step 3 (optional): Install Dependencies if any
 
 Run the following command to install the required Python packages:
 
-```bash
+```shell
 pip install -r requirements.txt
 ```
 
-## Troubleshooting
+To list your existing packages run the following inside your script directory:
 
-- **Dependencies Missing:** Ensure you have installed all the required packages using `pip install -r requirements.txt`.
+```shell
+pip freeze > requirements.txt
+```
