@@ -38,6 +38,10 @@ else
   done
 fi
 
+for file in "${files[@]}"; do
+  sed "s|’|'|g" -i "${file}"
+done
+
 if [[ ${#files[@]} -eq 0 ]]; then
   log-error "No valid markdown file were passed"
 else
