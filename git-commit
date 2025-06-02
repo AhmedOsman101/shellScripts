@@ -120,7 +120,7 @@ else
 
   summary=$(
     gum input \
-      --value "(${type}): " \
+      --value "${type}: " \
       --placeholder "Summary of this change"
   )
 
