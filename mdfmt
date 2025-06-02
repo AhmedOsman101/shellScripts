@@ -39,7 +39,7 @@ else
 fi
 
 for file in "${files[@]}"; do
-  sed "s|’|'|g" -i "${file}"
+  sed -e "s|’|'|g" -e 's|“|"|g' -i "${file}"
 done
 
 if [[ ${#files[@]} -eq 0 ]]; then
