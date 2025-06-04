@@ -42,7 +42,7 @@ copyToClipboard() {
   elif command -v xclip >/dev/null 2>&1; then
     printf '%s' "${str}" | xclip -selection clipboard
   else
-    log-error 'No clipboard tool (copq, wl-copy or xclip) found' >&2
+    log-error "No clipboard tool (copq, wl-copy or xclip) found"
   fi
 }
 
