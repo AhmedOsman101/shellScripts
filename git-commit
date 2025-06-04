@@ -42,16 +42,17 @@ is-git-repo
 repoPath=$(git-root)
 
 choices=(
-  "feat: Introduce a new feature."
-  "fix: Patching a bug."
-  "revert: Reverting a previous commit."
-  "docs: Updates to documentation."
-  "style: Changes not affecting the code, e.g. formatting."
+  "docs: ANY changes to documentation files (*.md, docs/*, etc.)"
+  "feat: New features or significant functional changes"
+  "fix: Bug fixes and error corrections"
+  "style: Changes not affecting the code, e.g. formatting, semicolons, etc."
   "refactor: Code changes, neither fix a bug nor add a feature."
-  "perf: Improveing performance."
-  "test: Adding/Correcting tests."
+  "perf: Performance improvements"
+  "test: Adding or updating tests"
   "build: Changes affecting the build system or external dependencies."
-  "chore: Updates to build configuration, auxiliary tools, and libraries."
+  "ci: CI/CD changes"
+  "chore: Updates to build configuration, libraries, and other maintenance tasks."
+  "revert: Reverting a previous commit."
 )
 
 terminate() {
