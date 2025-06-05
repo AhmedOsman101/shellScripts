@@ -30,18 +30,22 @@ cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "s" "summary" "Change the reporter type to summary"
 cmdarg "u" "unsafe" "Apply unsafe fixes"
+cmdarg "m" "max-diagnostics" "Limit the amount of diagnostics displayed. When 'none' is provided, the limit is lifted." 20
 
 cmdarg_parse "$@"
 
 summary=${cmdarg_cfg["summary"]}
 unsafe=${cmdarg_cfg["unsafe"]}
+maxDiagnostics=${cmdarg_cfg["max-diagnostics"]}
 
-if [[ ${summary} == true ]]; then
-  cmdArray=(biome check --fix --config-path="${BIOME_CONFIG_PATH}" --reporter=summary "${cmdarg_argv[@]}")
-else
-  cmdArray=(biome check --fix --config-path="${BIOME_CONFIG_PATH}" "${cmdarg_argv[@]}")
-fi
+cmdArray=(
+  biome check --fix
+  --config-path="${BIOME_CONFIG_PATH}"
+  --max-diagnostics "${maxDiagnostics}"
+)
 
+[[ ${summary} == true ]] && cmdArray+=(--reporter=summary)
 [[ ${unsafe} == true ]] && cmdArray+=(--unsafe)
+cmdArray+=("${cmdarg_argv[@]}")
 
 "${cmdArray[@]}"
