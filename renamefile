@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#                                                                 ▄▄▄▄      ██     ▄▄▄▄
+#                                                                ██▀▀▀      ▀▀     ▀▀██
+#   ██▄████   ▄████▄   ██▄████▄   ▄█████▄  ████▄██▄   ▄████▄   ███████    ████       ██       ▄████▄
+#   ██▀      ██▄▄▄▄██  ██▀   ██   ▀ ▄▄▄██  ██ ██ ██  ██▄▄▄▄██    ██         ██       ██      ██▄▄▄▄██
+#   ██       ██▀▀▀▀▀▀  ██    ██  ▄██▀▀▀██  ██ ██ ██  ██▀▀▀▀▀▀    ██         ██       ██      ██▀▀▀▀▀▀
+#   ██       ▀██▄▄▄▄█  ██    ██  ██▄▄▄███  ██ ██ ██  ▀██▄▄▄▄█    ██      ▄▄▄██▄▄▄    ██▄▄▄   ▀██▄▄▄▄█
+#   ▀▀         ▀▀▀▀▀   ▀▀    ▀▀   ▀▀▀▀ ▀▀  ▀▀ ▀▀ ▀▀    ▀▀▀▀▀     ▀▀      ▀▀▀▀▀▀▀▀     ▀▀▀▀     ▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Renames a file
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source cmdarg.sh
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc "$0")"
+
+cmdarg "f" "force" "Don't ask for confirmation"
+
+cmdarg_parse "$@"
+
+force=${cmdarg_cfg["force"]}
+old=${cmdarg_argv[0]}
+new=${cmdarg_argv[1]}
+
+if [[ -z ${old} ]]; then
+  log-error "Missing source file"
+elif [[ -z ${new} ]]; then
+  log-error "Missing target file"
+elif [[ ! -f ${old} ]]; then
+  log-error "Source file ${old} doesn't exist"
+fi
+
+declare -a cmdArray
+oldDir=$(dirname ${old})
+newDir=$(dirname ${new})
+oldBase=$(basename ${old})
+newBase=$(basename ${new})
+
+if [[ ${force} == true ]]; then
+  cmdArray=(mv -f "${old}")
+else
+  cmdArray=(mv -i "${old}")
+fi
+
+if [[ "${oldBase}" == "${newBase}" ]]; then
+  log-info "${old} and ${new} are the same file"
+  exit 0
+elif [[ "${oldDir}" != '.' && "${newDir}" == '.' ]]; then
+  # if oldDir is a full path and newDir is the empty
+  # renamefile /tmp/test/file.js file.ts
+  cmdArray+=("${oldDir}/$(basename ${new})")
+elif [[ "${oldDir}" == "${newDir}" ]]; then
+  # if oldDir matches newDir
+  # renamefile /tmp/test/file.js /tmp/test/file.ts
+  cmdArray+=("${new}")
+else
+  # renamefile is not intended to act like the mv command
+  # renamefile file.js /tmp/test/file.ts (wrong usage)
+  log-warning "The source directory doesn't match the target directory."
+  log-info "Use the mv command instead."
+  exit 1
+fi
+
+"${cmdArray[@]}" && log-success "Renamed $(basename ${old}) to $(basename ${new}) successfully"
