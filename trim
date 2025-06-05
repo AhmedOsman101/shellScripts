@@ -11,7 +11,7 @@
 #
 #
 # --- DESCRIPTION --- #
-# Trims leading and trailing whitespace from a file or input string, with optional backup
+# Trims leading and trailing string (default: whitespace) from a file or stdin, with optional backup.
 # --- DEPENDENCIES --- #
 # - sed
 # --- END SIGNATURE --- #
@@ -28,27 +28,31 @@ checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "b" "backup" "Creates a backup .bak file of the original file"
+cmdarg "s?" "str" "The string to trim" " "
 
 cmdarg_parse "$@"
 
 useBackup=${cmdarg_cfg['backup']}
+trimStr=${cmdarg_cfg['str']}
+trimStrEscaped=$(printf '%s' "${trimStr}" | sed 's|[[\\|.*^$/]|\\&|g')
+
 file=${cmdarg_argv[0]}
 
 if [[ ${#cmdarg_argv[@]} -eq 0 || ${file} == "-" ]]; then
-  str=$(cat)
-  [[ -z ${str} ]] && printf '' && exit 0
-  echo "${str}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+  input=$(cat)
+  [[ -z ${input} ]] && printf '' && exit 0
+  echo "${input}" | sed -e "s|^${trimStrEscaped}*||" -e "s|${trimStrEscaped}*$||"
 elif [[ -f ${file} ]]; then
   if [[ ${useBackup} == true ]]; then
     cp -i "${file}" "${file}.bak"
-    sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -i "${file}"
-    log-success "Trimmed whitespaces from '${file}'. Backup created at '${file}.bak'."
+    sed -e "s|^${trimStrEscaped}*||" -e "s|${trimStrEscaped}*$||" -i "${file}"
+    log-success "Trimmed '${trimStr}' from '${file}'. Backup created at '${file}.bak'."
   else
-    sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -i "${file}"
-    log-success "Trimmed whitespaces from ${file}"
+    sed -e "s|^${trimStrEscaped}*||" -e "s|${trimStrEscaped}*$||" -i "${file}"
+    log-success "Trimmed '${trimStr}' from ${file}"
   fi
 else
-  str="$*"
-  [[ -z ${str} ]] && printf '' && exit 0
-  echo "${str}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+  input="$*"
+  [[ -z ${input} ]] && printf '' && exit 0
+  echo "${input}" | sed -e "s|^${trimStrEscaped}*||" -e "s|${trimStrEscaped}*$||"
 fi
