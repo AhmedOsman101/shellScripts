@@ -18,6 +18,7 @@
 # - gum
 # - mdcat
 # - commit-sage
+# - sponge (moreutils)
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -32,10 +33,18 @@ checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "a" "ai" "Use AI to generate the message"
+cmdarg "y" "yes" "Answer yes to all the prompts"
+cmdarg "l" "local" "Commit changes without confirmation (no push)"
+cmdarg "p" "push" "Commit and push without confirmation"
+cmdarg "e" "edit" "Edit the commit message after generation (used with --ai)"
 
 cmdarg_parse "$@"
 
 useAi=${cmdarg_cfg['ai']}
+noConfirm=${cmdarg_cfg['yes']}
+local=${cmdarg_cfg['local']}
+push=${cmdarg_cfg['push']}
+edit=${cmdarg_cfg['edit']}
 
 is-git-repo
 
@@ -68,8 +77,6 @@ if ! git status --porcelain | grep -q '^'; then
 fi
 
 if ! git status --porcelain | rg -q '^[A-Z]'; then
-  # log-info "No staged changes found\n"
-
   output=$(
     git status --porcelain |
       rg -v '^[MAD]' |
@@ -100,12 +107,20 @@ if [[ "${useAi}" == true ]]; then
   cmdArray=(bash -c "commit-sage > ${logFile} 2>&1")
 
   if ! gum spin --title "Generating..." -- "${cmdArray[@]}"; then
-    log-error "$(sed 's/\[ERROR\] //' ${logFile})"
+    log-error "$(sed 's|\[ERROR\] ||' ${logFile})"
   fi
 
   # Check for [ERROR] lines after execution
   if rg -q '\[ERROR\].' ${logFile}; then
-    log-error "$(sed 's/\[ERROR\] //' ${logFile})"
+    log-error "$(sed 's|\[ERROR\] ||' ${logFile})"
+  fi
+
+  if [[ "${edit}" == true ]]; then
+    gum write \
+      --placeholder "Write the commit message..." \
+      --strip-ansi \
+      --value="$(cat ${logFile})" |
+      sponge ${logFile} || terminate
   fi
 
   transformed=$(cat ${logFile} | tr "\n" "#")
@@ -131,12 +146,16 @@ fi
 echo -e "${summary}\n\n${details}\n" | mdcat
 echo ""
 
-gum confirm "Commit changes?" || terminate
+if [[ "${noConfirm}" != true ]]; then
+  gum confirm "Commit changes?" || terminate
+fi
 
 git commit -m "${summary}" -m "${details}"
 
-if [[ -n "$(git remote -v)" ]]; then
-  gum confirm "Push changes?" || terminate
+if [[ -n "$(git remote -v)" && "${local}" != true ]]; then
+  if [[ "${noConfirm}" != true ]]; then
+    gum confirm "Push changes?" || terminate
+  fi
 
   branch="$(git_current_branch)"
   if git push origin "${branch}"; then
