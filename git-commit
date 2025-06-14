@@ -115,18 +115,11 @@ if [[ "${useAi}" == true ]]; then
     log-error "$(sed 's|\[ERROR\] ||' ${logFile})"
   fi
 
-  if [[ "${edit}" == true ]]; then
-    gum write \
-      --placeholder "Write the commit message..." \
-      --strip-ansi \
-      --value="$(cat ${logFile})" |
-      sponge ${logFile} || terminate
-  fi
-
   transformed=$(cat ${logFile} | tr "\n" "#")
 
   summary=$(echo "${transformed}" | awk -F "##" '{print $1}' | sed 's|#$||g')
   details=$(echo "${transformed}" | awk -F "##" '{print $2}' | tr "#" "\n")
+
 else
   type=$(
     gum filter \
@@ -143,14 +136,28 @@ else
   details=$(gum write --placeholder "Details of this change") || terminate
 fi
 
-echo -e "${summary}\n\n${details}\n" | mdcat
-echo ""
+if [[ "${useAi}" == true && "${edit}" == true ]]; then
+  if git commit -m "${summary}" -m "${details}" -e; then
+    log-success "Committed Changes Locally!"
+  else
+    # Commit failed (e.g., due to pre-commit hook)
+    log-error "Commit failed!"
+  fi
+else
 
-if [[ "${noConfirm}" != true ]]; then
-  gum confirm "Commit changes?" || terminate
+  echo -e "${summary}\n\n${details}\n\n" | mdcat
+
+  if [[ "${noConfirm}" != true ]]; then
+    gum confirm "Commit changes?" || terminate
+  fi
+
+  if git commit -m "${summary}" -m "${details}"; then
+    log-success "Committed Changes Locally!"
+  else
+    # Commit failed (e.g., due to pre-commit hook)
+    log-error "Commit failed!"
+  fi
 fi
-
-git commit -m "${summary}" -m "${details}"
 
 if [[ -n "$(git remote -v)" && "${local}" != true ]]; then
   if [[ "${noConfirm}" != true ]]; then
