@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄                     ▄▄▄▄
+#            ██                    ██▀▀▀               ██
+#  ██▄███▄   ██▄████▄  ██▄███▄   ███████   ████▄██▄  ███████
+#  ██▀  ▀██  ██▀   ██  ██▀  ▀██    ██      ██ ██ ██    ██
+#  ██    ██  ██    ██  ██    ██    ██      ██ ██ ██    ██
+#  ███▄▄██▀  ██    ██  ███▄▄██▀    ██      ██ ██ ██    ██▄▄▄
+#  ██ ▀▀▀    ▀▀    ▀▀  ██ ▀▀▀      ▀▀      ▀▀ ▀▀ ▀▀     ▀▀▀▀
+#  ██                  ██
+#
+# --- DESCRIPTION --- #
+# Formats php files using php-codesniffer via stdin
+# --- DEPENDENCIES --- #
+# - phpcbf (php-codesniffer)
+# - diff
+# --- END SIGNATURE --- #
+
+# set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+code=$(cat)
+
+file="/tmp/php-fmt-input.php"
+formattedFile="/tmp/php-fmt-result.php"
+
+[[ ! -f "${file}" ]] && touch "${file}"
+[[ ! -f "${formattedFile}" ]] && touch "${formattedFile}"
+
+echo "${code}" >"${file}"
+
+diff=$(diff "${file}" "${formattedFile}")
+
+if [[ -n "${diff}" ]]; then
+  cat "${file}" | phpcbf --stdin-path="file.php" - >"${formattedFile}"
+fi
+
+cat "${formattedFile}"
+
+exit 0
