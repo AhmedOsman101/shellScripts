@@ -34,8 +34,8 @@ otfDir="/usr/local/share/fonts/OTF"
 
 [[ ! -d "${otfDir}" ]] && sudo mkdir -p "${otfDir}"
 
-sudo mv -i ./*.ttf "${ttfDir}" >/dev/null 2>&1 || printf ''
-sudo mv -i ./*.otf "${otfDir}" >/dev/null 2>&1 || printf ''
+sudo mv -i ./*.ttf "${ttfDir}" >/dev/null 2>&1 || true
+sudo mv -i ./*.otf "${otfDir}" >/dev/null 2>&1 || true
 
 fd . -t d -d 1 | while read -r dir; do
   ttfDirs=($(fd . -e ttf "${dir}" -x dirname {} | no-dups -a))
