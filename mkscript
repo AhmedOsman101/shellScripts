@@ -42,7 +42,7 @@ file=""
 [[ ${isTemp} != true && -z ${filename} ]] && no_flags=true
 
 scriptContent=$(
-  cat <<EOF
+  cat <<'EOF'
 #!/usr/bin/env bash
 
 set -euo pipefail
