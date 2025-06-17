@@ -148,11 +148,11 @@ class PlayerManager:
         players = [
             {
                 "number": int(owner.split(".")[-1]),
-                "status": 2
-                if player.status == "playing"
-                else 1
-                if player.status == "paused"
-                else 0,
+                "status": (
+                    2
+                    if player.status == "playing"
+                    else 1 if player.status == "paused" else 0
+                ),
                 "owner": owner,
             }
             for owner, player in self.players.items()
@@ -336,11 +336,11 @@ class Player:
         self.icon = (
             ICON_PLAYING
             if self.status == "playing"
-            else ICON_PAUSED
-            if self.status == "paused"
-            else ICON_STOPPED
-            if self.status == "stopped"
-            else ICON_NONE
+            else (
+                ICON_PAUSED
+                if self.status == "paused"
+                else ICON_STOPPED if self.status == "stopped" else ICON_NONE
+            )
         )
         self.icon_reversed = ICON_PAUSED if self.status == "playing" else ICON_PLAYING
 
