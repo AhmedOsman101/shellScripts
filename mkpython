@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄                                      ▄▄
+#            ██                              ██      ██
+#  ████▄██▄  ██ ▄██▀   ██▄███▄   ▀██  ███  ███████   ██▄████▄   ▄████▄   ██▄████▄
+#  ██ ██ ██  ██▄██     ██▀  ▀██   ██▄ ██     ██      ██▀   ██  ██▀  ▀██  ██▀   ██
+#  ██ ██ ██  ██▀██▄    ██    ██    ████▀     ██      ██    ██  ██    ██  ██    ██
+#  ██ ██ ██  ██  ▀█▄   ███▄▄██▀     ███      ██▄▄▄   ██    ██  ▀██▄▄██▀  ██    ██
+#  ▀▀ ▀▀ ▀▀  ▀▀   ▀▀▀  ██ ▀▀▀       ██        ▀▀▀▀   ▀▀    ▀▀    ▀▀▀▀    ▀▀    ▀▀
+#                      ██         ███
+#
+# --- DESCRIPTION --- #
+# Creates a Python project using `uv` with a corresponding shell script wrapper.
+# --- DEPENDENCIES --- #
+# - fd | fdfind (fd-find)
+# - uv
+# - nano
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+dir="${SCRIPTS_DIR}/python"
+name="$1"
+
+
+if echo "${name}" | grep -vq ".py"; then
+  name="${name}.py"
+fi
+
+nameNoExt="$(strip-ext "${name}" py)"
+fileExists=$(fd "${nameNoExt}" -e py -p "${dir}" --no-ignore)
+scriptExists=$(fd "${nameNoExt}" -p "${SCRIPTS_DIR}" --no-ignore -d 1)
+
+if [[ -n "${fileExists}" ]]; then
+  log-error "File ${name} already exists at ${fileExists}"
+elif [[ -n "${scriptExists}" ]]; then
+  log-error "Script ${nameNoExt} already exists at ${scriptExists}"
+fi
+
+projectDir="${dir}/${nameNoExt}"
+mkdir -p "${projectDir}"
+cd "${projectDir}"
+uv init --name "${nameNoExt}" --no-description --no-readme --no-pin-python --no-workspace
+
+scriptContent=$(
+  cat <<'EOF'
+#!/usr/bin/env bash
+
+runpy "$0" "$@"
+EOF
+)
+
+scriptPath="${SCRIPTS_DIR}/${nameNoExt}"
+
+touch "${scriptPath}" || log-error "Failed to create file '${scriptPath}'"
+
+echo "${scriptContent}" >"${scriptPath}" || log-error "Failed to write to file '${scriptPath}'"
+
+chmod u+x "${scriptPath}" || log-error "Failed to make '${scriptPath}' executable"
+
+"${EDITOR:-nano}" "${name}"
+
+log-success "Script '${scriptPath}' created succefully!"
