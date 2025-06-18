@@ -65,7 +65,7 @@ echo "${scriptContent}" >"${scriptPath}" || log-error "Failed to write to file '
 
 chmod u+x "${scriptPath}" || log-error "Failed to make '${scriptPath}' executable"
 
-renamefile "main.py" "${nameNoExt}"
+renamefile "main.py" "${name}"
 
 "${EDITOR:-nano}" "${name}"
 
