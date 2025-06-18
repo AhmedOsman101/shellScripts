@@ -23,6 +23,7 @@ export PATH=$PATH:$HOME/.local/bin/scripts
 
 # 3. Refresh shell (if needed)
 source ~/.bashrc  # or source ~/.zshrc
+```
 
 **Benefits:**
 
