@@ -1,0 +1,9 @@
+[project]
+name = "clean-url"
+version = "0.1.0"
+description = "Cleans any given URL or fail on invalid URLs"
+requires-python = ">=3.13"
+dependencies = [
+  "cleanurl>=0.1.15",
+  "validators>=0.35.0"
+]
