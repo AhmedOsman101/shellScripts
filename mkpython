@@ -29,7 +29,6 @@ checkDeps "$0"
 dir="${SCRIPTS_DIR}/python"
 name="$1"
 
-
 if echo "${name}" | grep -vq ".py"; then
   name="${name}.py"
 fi
@@ -45,9 +44,12 @@ elif [[ -n "${scriptExists}" ]]; then
 fi
 
 projectDir="${dir}/${nameNoExt}"
+
 mkdir -p "${projectDir}"
 cd "${projectDir}"
-uv init --name "${nameNoExt}" --no-description --no-readme --no-pin-python --no-workspace
+
+uv init --name "${nameNoExt}" --no-readme --no-workspace
+uv venv # creates the venv
 
 scriptContent=$(
   cat <<'EOF'
