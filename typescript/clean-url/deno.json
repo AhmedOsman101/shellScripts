@@ -1,0 +1,6 @@
+{
+  "tasks": {
+    "dev": "deno run --watch clean-url.ts",
+    "compile": "deno compile --allow-env clean-url.ts -o clean-url.out"
+  }
+}
