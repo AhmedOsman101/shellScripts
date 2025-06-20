@@ -116,8 +116,8 @@ function proccessUrl(url: string) {
 }
 
 async function main() {
-  // Get command-line arguments, shifted when compiled
-  const url = Deno.args.at(2) || (await input("Enter a URL to clean: "));
+  // Get command-line arguments
+  const url = Deno.args.at(0) || (await input("Enter a URL to clean: "));
 
   if (!url.trim()) printRed("Error: No URL provided. Usage: cleanurl <URL>");
   if (url.trim() === "--test") testUrls();
