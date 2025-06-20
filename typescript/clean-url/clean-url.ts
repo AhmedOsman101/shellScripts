@@ -30,7 +30,7 @@ function printRed(message: string): never {
 }
 
 // Function to clean the URL
-function cleanUrl(url: string): CleanedUrl | null {
+function cleanUrl(url: string): CleanedUrl {
   try {
     // Check for Google search URL (e.g., http://google.com/search?q=query)
     if (/^http[^?]*\/search\?/.test(url)) {
@@ -84,7 +84,6 @@ function cleanUrl(url: string): CleanedUrl | null {
     printRed(
       `Error cleaning URL: ${error instanceof Error ? error.message : "Unknown error"}`
     );
-    return null;
   }
 }
 
@@ -94,7 +93,6 @@ function validateUrl(url: unknown): void {
       new URL(url);
       return;
     }
-
     printRed("URL must be string");
   } catch {
     printRed("Invalid URL");
@@ -106,24 +104,20 @@ function proccessUrl(url: string) {
   const disallowedCharPattern = /[<>"]/;
   const httpFtpPattern = /^(http:\/\/|https:\/\/|ftp:\/\/).*$/;
 
-  const result = cleanUrl(url);
+  const { cleanedUrl, furtherCleanedUrl } = cleanUrl(url);
   if (
-    result &&
-    httpFtpPattern.test(result.cleanedUrl) &&
-    !disallowedCharPattern.test(result.cleanedUrl)
+    httpFtpPattern.test(cleanedUrl) &&
+    !disallowedCharPattern.test(cleanedUrl)
   ) {
-    console.log(`Cleaned URL: ${result.cleanedUrl}`);
-    if (result.furtherCleanedUrl) {
-      console.log(`Further cleaned URL: ${result.furtherCleanedUrl}`);
-    }
+    console.log(furtherCleanedUrl ?? cleanedUrl);
   } else {
     printRed("Sorry, URL Clean couldn't extract the link.");
   }
 }
 
 async function main() {
-  // Get command-line arguments
-  const url = Deno.args.at(0) || (await input("Enter a URL to clean: "));
+  // Get command-line arguments, shifted when compiled
+  const url = Deno.args.at(2) || (await input("Enter a URL to clean: "));
 
   if (!url.trim()) printRed("Error: No URL provided. Usage: cleanurl <URL>");
   if (url.trim() === "--test") testUrls();
