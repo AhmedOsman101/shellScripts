@@ -1,2 +1,4 @@
 bin
 dmscripts
+*.out
+*.exe
