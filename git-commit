@@ -18,7 +18,6 @@
 # - gum
 # - mdcat
 # - commit-sage
-# - sponge (moreutils)
 # --- END SIGNATURE --- #
 
 set -eo pipefail

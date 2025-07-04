@@ -26,7 +26,7 @@ trap 'exit 1' SIGUSR1
 SCRIPTS_DIR="$(dirname $0)"
 DOTFILES="${HOME}/dotfiles"
 
-export PATH="${PATH}:${SCRIPTS_DIR}:${HOME}/.local/share/pnpm"
+export PATH="${PATH}:${SCRIPTS_DIR}:/mnt/main/pnpm"
 export TERM=xterm
 
 source "check-deps"
