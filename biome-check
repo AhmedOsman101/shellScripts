@@ -30,7 +30,7 @@ cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "s" "summary" "Change the reporter type to summary"
 cmdarg "u" "unsafe" "Apply unsafe fixes"
-cmdarg "m" "max-diagnostics" "Limit the amount of diagnostics displayed. When 'none' is provided, the limit is lifted." 20
+cmdarg "m?" "max-diagnostics" "Limit the amount of diagnostics displayed. When 'none' is provided, the limit is lifted." "20"
 
 cmdarg_parse "$@"
 
