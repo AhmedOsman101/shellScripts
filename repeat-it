@@ -62,6 +62,12 @@ while true; do
     --spinner.foreground="${U_GREEN}" \
     -- sleep ${delay}; then
     # If gum spin fails (e.g., due to Ctrl+C), exit
+    if [[ ! ${counter} -eq 1 ]]; then
+      log-info "\nProgram terminated after ${counter} retries"
+    else
+      log-info "\nProgram terminated"
+    fi
+
     exit 0
   fi
 
