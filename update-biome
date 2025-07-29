@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#                            ▄▄                                          ▄▄           ██
+#                            ██              ██                          ██           ▀▀
+#  ██    ██  ██▄███▄    ▄███▄██   ▄█████▄  ███████    ▄████▄             ██▄███▄    ████      ▄████▄   ████▄██▄   ▄████▄
+#  ██    ██  ██▀  ▀██  ██▀  ▀██   ▀ ▄▄▄██    ██      ██▄▄▄▄██            ██▀  ▀██     ██     ██▀  ▀██  ██ ██ ██  ██▄▄▄▄██
+#  ██    ██  ██    ██  ██    ██  ▄██▀▀▀██    ██      ██▀▀▀▀▀▀   █████    ██    ██     ██     ██    ██  ██ ██ ██  ██▀▀▀▀▀▀
+#  ██▄▄▄███  ███▄▄██▀  ▀██▄▄███  ██▄▄▄███    ██▄▄▄   ▀██▄▄▄▄█            ███▄▄██▀  ▄▄▄██▄▄▄  ▀██▄▄██▀  ██ ██ ██  ▀██▄▄▄▄█
+#   ▀▀▀▀ ▀▀  ██ ▀▀▀      ▀▀▀ ▀▀   ▀▀▀▀ ▀▀     ▀▀▀▀     ▀▀▀▀▀             ▀▀ ▀▀▀    ▀▀▀▀▀▀▀▀    ▀▀▀▀    ▀▀ ▀▀ ▀▀    ▀▀▀▀▀
+#            ██
+#
+# --- DESCRIPTION --- #
+#
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+
+source cmdarg.sh
+# ---  Main script logic --- #
+cmdarg_parse "$@"
+
+version="${cmdarg_argv[0]}"
+[[ -z "${version}" ]] && log-error "No valid version was provided!"
+
+url="https://github.com/biomejs/biome/releases/download/%40biomejs%2Fbiome%40${version}/biome-linux-x64"
+tempPath="/tmp/biome-download"
+wget -O "${tempPath}" "${url}"
+
+chmod +x "${tempPath}"
+
+sudo mv "${tempPath}" "$(which biome)"

@@ -40,7 +40,7 @@ maxDiagnostics=${cmdarg_cfg["max-diagnostics"]}
 
 cmdArray=(
   biome check --fix
-  --config-path="${BIOME_CONFIG_PATH}"
+  # --config-path="${BIOME_CONFIG_PATH}"
   --max-diagnostics "${maxDiagnostics}"
 )
 
