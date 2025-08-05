@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#    ██                                      ██                            ██
+#  ███████   ▄▄█████▄            ▄▄█████▄  ███████    ▄█████▄   ██▄████  ███████    ▄████▄    ██▄████
+#    ██      ██▄▄▄▄ ▀            ██▄▄▄▄ ▀    ██       ▀ ▄▄▄██   ██▀        ██      ██▄▄▄▄██   ██▀
+#    ██       ▀▀▀▀██▄   █████     ▀▀▀▀██▄    ██      ▄██▀▀▀██   ██         ██      ██▀▀▀▀▀▀   ██
+#    ██▄▄▄   █▄▄▄▄▄██            █▄▄▄▄▄██    ██▄▄▄   ██▄▄▄███   ██         ██▄▄▄   ▀██▄▄▄▄█   ██
+#     ▀▀▀▀    ▀▀▀▀▀▀              ▀▀▀▀▀▀      ▀▀▀▀    ▀▀▀▀ ▀▀   ▀▀          ▀▀▀▀     ▀▀▀▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Starter kit for typescript projects with formatter, editorconfig, and pre-commit hooks
+# --- DEPENDENCIES --- #
+# - npm | pnpm | bun | deno | yarn
+# - gum
+# - wget | curl
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+terminate() {
+  log-info "Program terminated" && exit 0
+}
+
+handleNpm() {
+  npm install -D -E '@biomejs/biome@2.0.5' &&
+    npm install --save-dev husky &&
+    npx husky init
+}
+
+handlePnpm() {
+  pnpm add -D -E '@biomejs/biome@2.0.5' &&
+    pnpm add --save-dev husky &&
+    pnpm exec husky init
+}
+
+handleYarn() {
+  yarn add -D -E '@biomejs/biome@2.0.5' &&
+    yarn add --dev husky && {
+    npx husky init || log-error "See the docs for husky at https://typicode.github.io/husky/get-started.html"
+  }
+}
+
+handleDeno() {
+  deno add -D 'npm:@biomejs/biome@2.0.5' &&
+    deno add --dev npm:husky
+  if [[ ! -f "package.json" ]]; then
+    touch "package.json"
+    deno run -A husky init
+    rm "package.json"
+  else
+    deno run -A husky init
+  fi
+}
+
+handleBun() {
+  bun add -D -E '@biomejs/biome@2.0.5' &&
+    bun add --dev husky &&
+    bunx husky init
+}
+
+fetchRaw() {
+  local repo="$1" file="$2" dest="$3" branch="${4:-main}"
+  if command -v wget >/dev/null 2>&1; then
+    wget -O - "https://raw.githubusercontent.com/${repo}/${branch}/${file}" >>"${dest}"
+  else
+    curl -sL "https://raw.githubusercontent.com/${repo}/${branch}/${file}" >>"${dest}"
+  fi
+}
+
+if [[ -n "$1" ]]; then
+  cmd="$1"
+else
+  cmd=$(gum input --placeholder="Enter your starter command...")
+  cmd=$(eval echo "${cmd}")
+fi
+
+[[ -z "${cmd}" ]] && log-error "Empty commands aren't allowed"
+
+pkgMgr=$(echo "${cmd}" | awk '{print $1}')
+
+if ! command -v "${pkgMgr}" >/dev/null 2>&1; then
+  log-error "The package manager '${pkgMgr}' is not installed"
+fi
+
+eval "${cmd}" || terminate
+
+case "${pkgMgr}" in
+npm) handleNpm ;;
+pnpm) handlePnpm ;;
+yarn) handleYarn ;;
+deno) handleDeno ;;
+bun) handleBun ;;
+? | *) log-error "The package manager '${pkgMgr}' is not recognized" ;;
+esac
+
+echo "" >".husky/pre-commit"
+
+fetchRaw "AhmedOsman101/dotfiles" "Configs/biome/.config/biome.json" "biome.json"
+fetchRaw "AhmedOsman101/dotfiles" "Configs/editorconfig/.config/.editorconfig" ".editorconfig"
+fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
