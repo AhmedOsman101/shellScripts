@@ -12,7 +12,8 @@
 #
 #
 # --- DESCRIPTION --- #
-# Starter kit for typescript projects with formatter, editorconfig, and pre-commit hooks
+# Starter kit for typescript projects with formatter, editorconfig, and pre-commit hooks.
+# Bootstrap typescript projects quickly, installs biome, husky, and editorconfig
 # --- DEPENDENCIES --- #
 # - npm | pnpm | bun | deno | yarn
 # - gum
