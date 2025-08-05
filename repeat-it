@@ -63,9 +63,11 @@ while true; do
     -- sleep ${delay}; then
     # If gum spin fails (e.g., due to Ctrl+C), exit
     if [[ ! ${counter} -eq 1 ]]; then
-      log-info "\nProgram terminated after ${counter} retries"
+      echo ""
+      log-info "Program terminated after ${counter} retries"
     else
-      log-info "\nProgram terminated"
+      echo ""
+      log-info "Program terminated"
     fi
 
     exit 0
