@@ -95,6 +95,7 @@ handlePnpm() {
   fi
 
   addScripts
+  pnpm approve-builds
 }
 
 handleYarn() {
