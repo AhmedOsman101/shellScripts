@@ -185,6 +185,6 @@ fetchRaw "AhmedOsman101/dotfiles" "Configs/biome/.config/biome.json" "biome.json
 fetchRaw "AhmedOsman101/dotfiles" "Configs/editorconfig/.config/.editorconfig" ".editorconfig"
 fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
 
-fetchGist "https://gist.githubusercontent.com/AhmedOsman101/5254232eb2c72a626cf798002d16a255/raw/f9bd818e99ed9279f39b2ae5e0f1ad04aa47e180" "settings.json" ".vscode/settings.json"
-fetchGist "https://gist.githubusercontent.com/AhmedOsman101/5254232eb2c72a626cf798002d16a255/raw/f9bd818e99ed9279f39b2ae5e0f1ad04aa47e180" "extensions.json" ".vscode/extensions.json"
+fetchGist "https://gist.githubusercontent.com/AhmedOsman101/5254232eb2c72a626cf798002d16a255/raw/ace64049d276de197887b65bbd9484f2fed710a1" "settings.json" ".vscode/settings.json"
+fetchGist "https://gist.githubusercontent.com/AhmedOsman101/5254232eb2c72a626cf798002d16a255/raw/ace64049d276de197887b65bbd9484f2fed710a1" "extensions.json" ".vscode/extensions.json"
 fetchGist "https://gist.githubusercontent.com/AhmedOsman101/8617796a7f3ee422b095179621a3ba83/raw/afde6c65d797fc19cfadbd3999f8d9ba26ec8aa2" "languages.toml" ".helix/languages.toml"
