@@ -29,7 +29,7 @@ checkDeps "$0"
 # ---  Main script logic --- #
 declare -a vars
 
-output=$(env | fzf | awk -F = '{print $1}')
+output=$(printenv | fzf | awk -F = '{print $1}')
 
 if [[ $(echo ${output} | wc -w) == 1 ]]; then
   clipcopy "unset ${output}" && log-success "Copied output to clipboard"

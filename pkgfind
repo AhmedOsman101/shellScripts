@@ -15,10 +15,9 @@
 # Searches for packages (installed and online)
 # --- DEPENDENCIES --- #
 # - rg (ripgrep)
-# - paru
+# - paru|pacman|yay
 # --- END SIGNATURE --- #
 
-# - paru|pacman|yay
 set -eo pipefail
 
 trap 'exit 1' SIGUSR1

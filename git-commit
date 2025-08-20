@@ -105,6 +105,18 @@ if [[ "${useAi}" == true ]]; then
 
   cmdArray=(bash -c "commit-sage > ${logFile} 2>&1")
 
+  # Another implementation
+  # gum spin --title "Generating..." -- yes &
+  # # Capture the PID immediately after launching
+  # pid=$!
+
+  # if ! commit-sage >"${logFile}" 2>&1; then
+  #   kill "${pid}"
+  #   log-error "$(sed 's|\[ERROR\] ||' ${logFile})"
+  # else
+  #   kill "${pid}"
+  # fi
+
   if ! gum spin --title "Generating..." -- "${cmdArray[@]}"; then
     log-error "$(sed 's|\[ERROR\] ||' ${logFile})"
   fi
