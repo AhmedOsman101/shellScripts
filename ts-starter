@@ -179,7 +179,7 @@ esac
 mkdir -p .helix
 mkdir -p .vscode
 mkdir -p .husky
-echo "" >".husky/pre-commit"
+touch ".husky/pre-commit"
 
 fetchRaw "AhmedOsman101/dotfiles" "Configs/biome/.config/biome.json" "biome.json"
 fetchRaw "AhmedOsman101/dotfiles" "Configs/editorconfig/.config/.editorconfig" ".editorconfig"
