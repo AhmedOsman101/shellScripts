@@ -34,18 +34,33 @@ cmdarg "m?" "max-diagnostics" "Limit the amount of diagnostics displayed. When '
 
 cmdarg_parse "$@"
 
+declare result
 summary=${cmdarg_cfg["summary"]}
 unsafe=${cmdarg_cfg["unsafe"]}
 maxDiagnostics=${cmdarg_cfg["max-diagnostics"]}
 
+configFile="${BIOME_CONFIG_PATH}"
+
+if is-git-repo --safe; then
+  result=$(fd-by-depth biome.json "$(git-root)")
+else
+  result=$(fd-by-depth biome.json .)
+fi
+
+# Take the one at top-level
+[[ -n "${result}" ]] && configFile="$(echo ${result} | head -n 1)"
+
 cmdArray=(
-  biome check --fix
-  # --config-path="${BIOME_CONFIG_PATH}"
+  biome
+  check
+  --fix
+  --config-path="${BIOME_CONFIG_PATH}"
   --max-diagnostics "${maxDiagnostics}"
 )
 
-[[ ${summary} == true ]] && cmdArray+=(--reporter=summary)
-[[ ${unsafe} == true ]] && cmdArray+=(--unsafe)
+[[ ${summary} == 'true' ]] && cmdArray+=(--reporter=summary)
+[[ ${unsafe} == 'true' ]] && cmdArray+=(--unsafe)
+
 cmdArray+=("${cmdarg_argv[@]}")
 
 "${cmdArray[@]}"

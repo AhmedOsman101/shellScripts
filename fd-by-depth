@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#     ▄▄▄▄         ▄▄            ▄▄                                  ▄▄                                ▄▄
+#    ██▀▀▀         ██            ██                                  ██                        ██      ██
+#  ███████    ▄███▄██            ██▄███▄   ▀██  ███             ▄███▄██   ▄████▄   ██▄███▄   ███████   ██▄████▄
+#    ██      ██▀  ▀██            ██▀  ▀██   ██▄ ██             ██▀  ▀██  ██▄▄▄▄██  ██▀  ▀██    ██      ██▀   ██
+#    ██      ██    ██   █████    ██    ██    ████▀    █████    ██    ██  ██▀▀▀▀▀▀  ██    ██    ██      ██    ██
+#    ██      ▀██▄▄███            ███▄▄██▀     ███              ▀██▄▄███  ▀██▄▄▄▄█  ███▄▄██▀    ██▄▄▄   ██    ██
+#    ▀▀        ▀▀▀ ▀▀            ▀▀ ▀▀▀       ██                 ▀▀▀ ▀▀    ▀▀▀▀▀   ██ ▀▀▀       ▀▀▀▀   ▀▀    ▀▀
+#                                           ███                                    ██
+#
+# --- DESCRIPTION --- #
+# Wrapper script for fd which sorts results by depth
+# --- DEPENDENCIES --- #
+# - fd | fdfind (fd-find)
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+if [[ $# -eq 0 ]]; then
+  log-error "Usage: fd-by-depth [fd arguments...]"
+fi
+
+# Run fd with whatever args you pass
+fd "$@" |
+  awk -F/ '{ print NF, $0 }' |
+  sort -n |
+  cut -d' ' -f2-
