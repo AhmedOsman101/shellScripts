@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#                      ▄▄                                                ▄▄
+#                      ██                                                ██
+#   ██▄████  ████▄██▄  ██▄███▄    ██▄████   ▄█████▄  ██▄████▄   ▄█████▄  ██▄████▄
+#   ██▀      ██ ██ ██  ██▀  ▀██   ██▀       ▀ ▄▄▄██  ██▀   ██  ██▀    ▀  ██▀   ██
+#   ██       ██ ██ ██  ██    ██   ██       ▄██▀▀▀██  ██    ██  ██        ██    ██
+#   ██       ██ ██ ██  ███▄▄██▀   ██       ██▄▄▄███  ██    ██  ▀██▄▄▄▄█  ██    ██
+#   ▀▀       ▀▀ ▀▀ ▀▀  ▀▀ ▀▀▀     ▀▀        ▀▀▀▀ ▀▀  ▀▀    ▀▀    ▀▀▀▀▀   ▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+#  Removes a branch locally and remotely
+# --- DEPENDENCIES --- #
+# - git
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+source check-deps
+checkDeps "$0"
+# ---  Main script logic --- #
+is-git-repo
+
+targetBranch="$1"
+deleteRemote="false"
+currentBranch="$(git_current_branch)"
+found=0
+declare -a branches
+
+listBranches() {
+  git branch --list --format='%(refname:short)' --remote
+
+  git branch --list --format='%(refname:short)'
+}
+
+branchList=$(
+  listBranches |
+    replace "origin/" '' |
+    no-dups |
+    trim |
+    remove-blanks
+)
+
+branchesString="$(printf '%s\n' "${branchList}" | rg -v "${currentBranch}")" || log-error "No branches can be deleted"
+
+mapfile -t branches <<<${branchesString}
+
+if [[ -z "${targetBranch}" ]]; then
+  mapfile -t targetBranches < <(
+    gum choose --no-limit "${branches[@]}"
+  ) || log-error "Program terminated!"
+
+  found=1
+fi
+
+if echo "${targetBranch}" | rg -i "origin"; then
+  targetBranch=$(echo "${targetBranch}" | replace "origin/" '' | trim)
+  deleteRemote="true"
+fi
+
+for branch in "${branches[@]}"; do
+  if [[ "${targetBranch}" == "${branch}" || "${targetBranch}" == "${currentBranch}" ]]; then
+    found=1
+    break
+  fi
+done
+
+if [[ ${found} -eq 0 ]]; then
+  log-error "No branch with the name '${targetBranch}' was found!"
+fi
+
+if [[ "${targetBranch}" == "${currentBranch}" ]]; then
+  log-error "Cannot delete current branch, switch to another branch then try again"
+fi
+
+if [[ "${deleteRemote}" == "false" && -n "$(git remote -v)" && -n "${targetBranch}" ]]; then
+  gum confirm "Delete remote as well?" && deleteRemote="true"
+fi
+
+if [[ ${#targetBranches[@]} == 0 ]]; then
+  git branch --delete --force "${targetBranch}"
+else
+  git branch --delete --force "${targetBranches[@]}"
+fi
+
+if [[ "${deleteRemote}" == "true" && -n "${targetBranch}" ]]; then
+  git branch --delete --force "origin/${targetBranch}" --remote
+fi
+
+exit 0
