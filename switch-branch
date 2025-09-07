@@ -42,19 +42,18 @@ is-git-repo
 
 current=$(git_current_branch) || log-error "Cannot find current branch"
 
-listBranches() {
-  git branch --list --format='%(refname:short)' --remote
-
-  git branch --list --format='%(refname:short)'
-}
-
 terminate() {
   log-info "Program terminated!"
   exit 0
 }
 
 branchList=$(
-  listBranches |
+  git branch --list --format='%(refname:short)' --remote
+  git branch --list --format='%(refname:short)'
+)
+
+branchList=$(
+  printf '%s\n' "${branchList}" |
     replace "origin" '' |
     tr -d "/" |
     no-dups | trim |
@@ -67,7 +66,7 @@ branchesString="$(
 )" || branchesString="${current}"
 
 declare -a branches
-mapfile -t branches <<<${branchesString}
+mapfile -t branches <<<"${branchesString}"
 
 file=$(mktemp -t XXXXX-"$(basename $0)")
 trap 'rm -f $file' EXIT
@@ -128,8 +127,7 @@ createBranch() {
 
   if [[ "${branchName}" == "#-none-#" ]]; then
     branchName=$(
-      gum input \
-        --placeholder "Enter the branch name: "
+      gum input --placeholder "Enter the branch name: "
     ) || log-error "Failed to capture the branch name"
   fi
 
