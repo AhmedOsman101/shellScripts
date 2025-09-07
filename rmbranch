@@ -26,20 +26,18 @@ checkDeps "$0"
 # ---  Main script logic --- #
 is-git-repo
 
-targetBranch="$1"
 deleteRemote="false"
 currentBranch="$(git_current_branch)"
 found=0
-declare -a branches
-
-listBranches() {
-  git branch --list --format='%(refname:short)' --remote
-
-  git branch --list --format='%(refname:short)'
-}
+declare -a branches targetBranches
 
 branchList=$(
-  listBranches |
+  git branch --list --format='%(refname:short)' --remote
+  git branch --list --format='%(refname:short)'
+)
+
+branchList=$(
+  printf '%s\n' "${branchList}" |
     replace "origin/" '' |
     no-dups |
     trim |
@@ -48,48 +46,42 @@ branchList=$(
 
 branchesString="$(printf '%s\n' "${branchList}" | rg -v "${currentBranch}")" || log-error "No branches can be deleted"
 
-mapfile -t branches <<<${branchesString}
+mapfile -t branches <<<"${branchesString}"
 
-if [[ -z "${targetBranch}" ]]; then
+if [[ -n "$1" ]]; then
+  targetBranches=("$1")
+else
   mapfile -t targetBranches < <(
     gum choose --no-limit "${branches[@]}"
   ) || log-error "Program terminated!"
-
-  found=1
 fi
 
-if echo "${targetBranch}" | rg -i "origin"; then
-  targetBranch=$(echo "${targetBranch}" | replace "origin/" '' | trim)
-  deleteRemote="true"
-fi
+# Normalize `origin/` input
+for i in "${!targetBranches[@]}"; do
+  targetBranches[i]=$(echo "${targetBranches[${i}]}" | replace "origin/" '' | trim)
+done
 
-for branch in "${branches[@]}"; do
-  if [[ "${targetBranch}" == "${branch}" || "${targetBranch}" == "${currentBranch}" ]]; then
-    found=1
-    break
+for branch in "${targetBranches[@]}"; do
+  if [[ "${branch}" == "${currentBranch}" ]]; then
+    log-error "Cannot delete current branch: '${branch}'"
+  fi
+
+  if ! printf '%s\n' "${branches[@]}" | rg -qx "${branch}"; then
+    log-error "No branch with the name '${branch}' was found!"
   fi
 done
 
-if [[ ${found} -eq 0 ]]; then
-  log-error "No branch with the name '${targetBranch}' was found!"
-fi
-
-if [[ "${targetBranch}" == "${currentBranch}" ]]; then
-  log-error "Cannot delete current branch, switch to another branch then try again"
-fi
-
-if [[ "${deleteRemote}" == "false" && -n "$(git remote -v)" && -n "${targetBranch}" ]]; then
+if [[ -n "$(git remote -v)" ]]; then
   gum confirm "Delete remote as well?" && deleteRemote="true"
 fi
 
-if [[ ${#targetBranches[@]} == 0 ]]; then
-  git branch --delete --force "${targetBranch}"
-else
-  git branch --delete --force "${targetBranches[@]}"
-fi
+git branch -D "${targetBranches[@]}"
 
-if [[ "${deleteRemote}" == "true" && -n "${targetBranch}" ]]; then
-  git branch --delete --force "origin/${targetBranch}" --remote
+if [[ "${deleteRemote}" == "true" ]]; then
+  for branch in "${targetBranches[@]}"; do
+    git branch -D --remote "origin/${branch}" 2>/dev/null ||
+      log-warning "Branch '${branch}' doesn't have a remote"
+  done
 fi
 
 exit 0
