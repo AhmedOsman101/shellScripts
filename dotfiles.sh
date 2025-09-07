@@ -46,8 +46,7 @@ else
   app=$1
 fi
 
-fullpath="${TUCKR_DIR}/${app}/.config"
-
-[[ -d "${fullpath}/${app}" ]] && fullpath="${fullpath}/${app}"
+fullpath=$(fd-by-depth "${app}" -t d "${TUCKR_DIR}/${app}" | tail -n 1)
+[[ -z "${fullpath}" ]] && fullpath="${TUCKR_DIR}/${app}"
 
 echo ${fullpath}
