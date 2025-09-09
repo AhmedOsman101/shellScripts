@@ -59,13 +59,12 @@ fi
 # Check for changes before attempting to commit
 if git status --porcelain | grep -q '^'; then
 
-  timestamp="$(now)"
   if [[ ${hasMsg} == true ]]; then
     msg=$(gum write --placeholder "Write the commit message...")
-    gum confirm "Add timestamps?" && msg="${msg} ${timestamp}"
+    gum confirm "Add timestamps?" && msg="${msg} $(now)"
   else
     # Set default message if unset or empty
-    msg="Updated Files ${timestamp}"
+    msg="Updated Files $(now)"
   fi
 
   # There are changes, so attempt the commit
