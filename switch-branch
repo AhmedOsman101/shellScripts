@@ -54,7 +54,7 @@ branchList=$(
 
 branchList=$(
   printf '%s\n' "${branchList}" |
-    replace "origin" '' |
+    sed -e 's|^origin/||g' -e 's|^origin$||g' |
     tr -d "/" |
     no-dups | trim |
     remove-blanks

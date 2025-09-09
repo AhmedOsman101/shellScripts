@@ -26,6 +26,11 @@ checkDeps "$0"
 # ---  Main script logic --- #
 is-git-repo
 
+terminate() {
+  log-info "Program terminated!"
+  exit 0
+}
+
 deleteRemote="false"
 currentBranch="$(git_current_branch)"
 found=0
@@ -38,7 +43,7 @@ branchList=$(
 
 branchList=$(
   printf '%s\n' "${branchList}" |
-    replace "origin/" '' |
+    sed -e 's|^origin/||g' -e 's|^origin$||g' |
     no-dups |
     trim |
     remove-blanks
@@ -51,9 +56,10 @@ mapfile -t branches <<<"${branchesString}"
 if [[ -n "$1" ]]; then
   targetBranches=("$1")
 else
-  mapfile -t targetBranches < <(
-    gum choose --no-limit "${branches[@]}"
-  ) || log-error "Program terminated!"
+  if ! output=$(gum choose --no-limit "${branches[@]}"); then
+    terminate
+  fi
+  mapfile -t targetBranches <<<"${output}"
 fi
 
 # Normalize `origin/` input
