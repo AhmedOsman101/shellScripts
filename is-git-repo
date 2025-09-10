@@ -21,36 +21,22 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
+eval "$(include "lib/helpers.sh")"
+
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
-logRed() {
-  # read from stdin
-  if [[ $# -eq 0 || $1 == "-" ]]; then
-    str=$(cat)
-  else
-    str="$*"
-  fi
 
-  # Print error message in red
-  tput setaf 1
-
-  echo -e "[ERROR] ${str}" 1>&2
-  tput sgr0
-
-  # Exit with failure code
-  exit 1
-}
 
 if [[ "${1:-none}" == "--safe" ]]; then
   # returns true if it's a git repo and false otherwise
-  isGitRepo=$(git rev-parse --is-inside-work-tree 2>/dev/null) || logRed "${PWD} is not a git repository."
+  isGitRepo=$(git rev-parse --is-inside-work-tree 2>/dev/null) || logError "$(pwd) is not a git repository."
 
   # check if the user is inside .git directory
-  [[ ${isGitRepo} != true ]] && logRed "Not in a work tree."
+  [[ ${isGitRepo} != true ]] && logError "Not in a work tree."
 else
   # returns true if it's a git repo and false otherwise
-  isGitRepo=$(git rev-parse --is-inside-work-tree 2>/dev/null) || log-error "${PWD} is not a git repository."
+  isGitRepo=$(git rev-parse --is-inside-work-tree 2>/dev/null) || log-error "$(pwd) is not a git repository."
 
   # check if the user is inside .git directory
   [[ ${isGitRepo} != true ]] && log-error "Not in a work tree."
