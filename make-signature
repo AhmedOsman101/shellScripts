@@ -23,21 +23,22 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 name="$1"
 desc="$2"
 deps="$3"
 
-printf "#!/usr/bin/env bash\n\n"
-echo "# --- SCRIPT SIGNATURE --- #"
-
-toilet --font mono12 --termwidth --width 190 "${name}" | sed 's/^/# /'
-
-echo "# --- DESCRIPTION --- #"
-echo "# ${desc}"
-echo "# --- DEPENDENCIES --- #"
+cat <<EOF
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+$(toilet --font mono12 --termwidth --width 190 "${name}" | sed 's/^/# /')
+# --- DESCRIPTION --- #
+# ${desc}
+# --- DEPENDENCIES --- #
+EOF
 
 if [[ -z "${deps}" ]]; then
   echo "#"
@@ -47,13 +48,19 @@ else
   done
 fi
 
-printf "# --- END SIGNATURE --- #\n\n"
+cat <<'EOF'
+# --- END SIGNATURE --- #
 
-printf "set -eo pipefail\n\n"
+set -eo pipefail
 
-printf "trap 'exit 1' SIGUSR1\n\n"
+trap 'exit 1' SIGUSR1
 
-echo 'source check-deps'
-echo 'checkDeps "$0"'
+eval "$(include "lib/helpers.sh")"
 
-printf "# ---  Main script logic --- #\n\n"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# ---  Main script logic --- #
+
+
+EOF
