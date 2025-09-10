@@ -21,14 +21,13 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 file=$1
 
 [[ -z ${file} || ! -f ${file} ]] && log-error "File ${file} not found"
 
-# shellcheck disable=2002
 cat "${file}" |
   clipcopy &&
   log-success "Copied file ${file} contents successfully"

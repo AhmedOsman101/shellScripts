@@ -21,10 +21,9 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 cd "${HOME}/.local/share/rustup/toolchains/stable-x86_64-unknown-linux-gnu/share/doc/rust/html/book" || log-error "Cannot find the book"
 
 vite --config "${HOME}/.config/vite/vite.config.js" --port 9001 --open
-

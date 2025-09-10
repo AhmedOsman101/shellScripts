@@ -21,7 +21,7 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 date +"%Y-%m-%d@%I:%M%p"

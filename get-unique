@@ -21,9 +21,9 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source cmdarg.sh
+eval "$(include "lib/cmdarg.sh")"
 
-source check-deps
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc $0)"
@@ -39,6 +39,7 @@ useBackup=${cmdarg_cfg['backup']}
 force=${cmdarg_cfg['force']}
 useArray=${cmdarg_cfg['array']}
 quiet=${cmdarg_cfg['quiet']}
+file=${cmdarg_argv[0]}
 
 # Function to process input and remove duplicates
 remove_duplicates() {
@@ -69,8 +70,6 @@ remove_duplicates() {
   '
   fi
 }
-
-file=${cmdarg_argv[0]}
 
 if [[ -z ${file} || ${file} == "-" ]]; then
   # Read from stdin

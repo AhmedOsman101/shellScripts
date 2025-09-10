@@ -29,7 +29,7 @@ DOTFILES="${HOME}/dotfiles"
 export PATH="${PATH}:${SCRIPTS_DIR}:/mnt/main/pnpm"
 export TERM=xterm
 
-source "check-deps"
+eval "$(include "check-deps")"
 checkDeps "$0"
 
 chassis=$(hostnamectl chassis)

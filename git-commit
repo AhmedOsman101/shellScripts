@@ -24,9 +24,10 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source cmdarg.sh
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
 
-source check-deps
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
@@ -47,7 +48,7 @@ edit=${cmdarg_cfg['edit']}
 
 is-git-repo
 
-repoPath=$(git-root)
+repoPath="$(git-root)"
 
 choices=(
   "docs: ANY changes to documentation files (*.md, docs/*, etc.)"
@@ -62,11 +63,6 @@ choices=(
   "chore: Updates to build configuration, libraries, and other maintenance tasks."
   "revert: Reverting a previous commit."
 )
-
-terminate() {
-  log-info "Program terminated!"
-  exit 0
-}
 
 declare -a files
 

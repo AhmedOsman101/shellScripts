@@ -21,10 +21,10 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
-checkDeps "$0"
+eval "$(include "lib/cmdarg.sh")"
 
-source cmdarg.sh
+eval "$(include "check-deps")"
+checkDeps "$0"
 # ---  Main script logic --- #
 cmdarg_parse "$@"
 

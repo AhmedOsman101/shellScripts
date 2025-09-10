@@ -13,11 +13,9 @@
 #
 # --- DESCRIPTION --- #
 # Checks a script's dependencies and installs them
-# --- DEPENDENCIES --- #
-#
 # --- END SIGNATURE --- #
 
-source "$(dirname $0)/utils.sh" || exit 1
+eval "$(include "lib/helpers.sh")"
 
 # ---  Main script logic --- #
 
