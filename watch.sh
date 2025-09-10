@@ -41,7 +41,7 @@ exts=${cmdarg_argv[*]}
 # Get the extensions string
 # Prompt user for extensions if not provided as arguments
 if [[ -z "${exts}" ]]; then
-  extensions_str=$(gum input --header="Enter file extensions (space-separated, e.g., ts js md):")
+  extensions_str=$(gum input --header="Enter file extensions (space-separated, e.g., ts js md)" --placeholder="...")
   # Convert extensions string to array
   extensionsArray=("${extensions_str}")
   extensions=$(joinarr ',' "${extensionsArray[@]}")
@@ -52,7 +52,7 @@ fi
 
 # Prompt user for the command to run if not provided
 if [[ -z "${cmd}" ]]; then
-  cmd=$(gum input --header="Enter the command to execute on changes:")
+  cmd=$(gum input --placeholder="Enter the command to execute on changes...")
 fi
 
 # Run watchexec with the provided command
