@@ -25,14 +25,11 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
+eval "$(include "lib/helpers.sh")"
+
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
-
-# --- Utils --- #
-terminate() {
-  log-info "Program terminated" && exit 0
-}
 
 fetchRaw() {
   local repo="$1" file="$2" dest="$3" branch="${4:-main}"
@@ -82,6 +79,7 @@ handleNpm() {
   if is-git-repo --safe >/dev/null 2>&1; then
     npm install --save-dev husky &&
       npx husky init
+    fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
   fi
 
   addScripts
@@ -92,6 +90,7 @@ handlePnpm() {
   if is-git-repo --safe >/dev/null 2>&1; then
     pnpm add --save-dev husky &&
       pnpm exec husky init
+    fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
   fi
 
   addScripts
@@ -104,6 +103,7 @@ handleYarn() {
     yarn add --dev husky && {
       npx husky init || log-error "See the docs for husky at https://typicode.github.io/husky/get-started.html"
     }
+    fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
   fi
 
   addScripts
@@ -114,6 +114,7 @@ handleBun() {
   if is-git-repo --safe >/dev/null 2>&1; then
     bun add --dev husky &&
       bunx husky init
+    fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
   fi
 
   addScripts
@@ -130,6 +131,7 @@ handleDeno() {
     else
       deno run -A husky init
     fi
+    fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
   fi
 
   if [[ -f "deno.json" ]]; then
@@ -176,15 +178,12 @@ bun | bunx)
 ? | *) log-error "The package manager '${pkgMgr}' is not recognized" ;;
 esac
 
-mkdir -p .helix
+# mkdir -p .helix
 mkdir -p .vscode
-mkdir -p .husky
-touch ".husky/pre-commit"
 
 fetchRaw "AhmedOsman101/dotfiles" "Configs/biome/.config/biome.json" "biome.json"
 fetchRaw "AhmedOsman101/dotfiles" "Configs/editorconfig/.config/.editorconfig" ".editorconfig"
-fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
 
 fetchGist "https://gist.githubusercontent.com/AhmedOsman101/5254232eb2c72a626cf798002d16a255/raw/ace64049d276de197887b65bbd9484f2fed710a1" "settings.json" ".vscode/settings.json"
 fetchGist "https://gist.githubusercontent.com/AhmedOsman101/5254232eb2c72a626cf798002d16a255/raw/ace64049d276de197887b65bbd9484f2fed710a1" "extensions.json" ".vscode/extensions.json"
-fetchGist "https://gist.githubusercontent.com/AhmedOsman101/8617796a7f3ee422b095179621a3ba83/raw/afde6c65d797fc19cfadbd3999f8d9ba26ec8aa2" "languages.toml" ".helix/languages.toml"
+# fetchGist "https://gist.githubusercontent.com/AhmedOsman101/8617796a7f3ee422b095179621a3ba83/raw/afde6c65d797fc19cfadbd3999f8d9ba26ec8aa2" "languages.toml" ".helix/languages.toml"
