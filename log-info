@@ -16,18 +16,10 @@
 # - tput
 # --- END SIGNATURE --- #
 
-# black: 0, red: 1, green: 2, yellow: 3,
-# blue: 4, magenta: 5, cyan: 6, white: 7
+eval "$(include "lib/helpers.sh")"
+# ---  Main script logic --- #
 
 # read from stdin
-if [[ $# -eq 0 || $1 == "-" ]]; then
-  str=$(cat)
-else
-  str="$*"
-fi
+str="$(input "$@")"
 
-tput setaf 4
-
-echo -e "[INFO] ${str}"
-
-tput sgr0
+printBlue "[INFO] ${str}"

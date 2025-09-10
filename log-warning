@@ -21,16 +21,10 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/helpers.sh")"
 # ---  Main script logic --- #
+
 # read from stdin
-if [[ $# -eq 0 || $1 == "-" ]]; then
-  str=$(cat)
-else
-  str="$*"
-fi
+str="$(input "$@")"
 
-tput setaf 3
-
-echo -e "[WARNING] ${str}"
-
-tput sgr0
+printYellow "[WARNING] ${str}"

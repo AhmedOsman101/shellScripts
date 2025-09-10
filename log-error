@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
 # --- SCRIPT SIGNATURE --- #
-#                                                                                           
-#  ▄▄▄▄                                                                                     
-#  ▀▀██                                                                                     
-#    ██       ▄████▄    ▄███▄██             ▄████▄    ██▄████   ██▄████   ▄████▄    ██▄████ 
-#    ██      ██▀  ▀██  ██▀  ▀██            ██▄▄▄▄██   ██▀       ██▀      ██▀  ▀██   ██▀     
-#    ██      ██    ██  ██    ██   █████    ██▀▀▀▀▀▀   ██        ██       ██    ██   ██      
-#    ██▄▄▄   ▀██▄▄██▀  ▀██▄▄███            ▀██▄▄▄▄█   ██        ██       ▀██▄▄██▀   ██      
-#     ▀▀▀▀     ▀▀▀▀     ▄▀▀▀ ██              ▀▀▀▀▀    ▀▀        ▀▀         ▀▀▀▀     ▀▀      
-#                       ▀████▀▀                                                             
-#                                                                                           
+#
+#  ▄▄▄▄
+#  ▀▀██
+#    ██       ▄████▄    ▄███▄██             ▄████▄    ██▄████   ██▄████   ▄████▄    ██▄████
+#    ██      ██▀  ▀██  ██▀  ▀██            ██▄▄▄▄██   ██▀       ██▀      ██▀  ▀██   ██▀
+#    ██      ██    ██  ██    ██   █████    ██▀▀▀▀▀▀   ██        ██       ██    ██   ██
+#    ██▄▄▄   ▀██▄▄██▀  ▀██▄▄███            ▀██▄▄▄▄█   ██        ██       ▀██▄▄██▀   ██
+#     ▀▀▀▀     ▀▀▀▀     ▄▀▀▀ ██              ▀▀▀▀▀    ▀▀        ▀▀         ▀▀▀▀     ▀▀
+#                       ▀████▀▀
+#
 # --- DESCRIPTION --- #
 # Prints error messages in red with a '[ERROR] ' prefix to stderr, signals parent with SIGUSR1, and exits with failure
 # --- DEPENDENCIES --- #
@@ -24,19 +24,14 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/helpers.sh")"
 # ---  Main script logic --- #
+
 # read from stdin
-if [[ $# -eq 0 || $1 == "-" ]]; then
-  str=$(cat)
-else
-  str="$*"
-fi
+str="$(input "$@")"
 
 # Print error message in red
-tput setaf 1
-
-echo -e "[ERROR] ${str}" 1>&2
-tput sgr0
+printRed "[ERROR] ${str}" 1>&2
 
 # Get parent PID (script that called log-error) and send SIGUSR1
 PARENT_PID=$(ps -o ppid= $$ | xargs)
