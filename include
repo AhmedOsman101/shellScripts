@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+# --- SCRIPT SIGNATURE --- #
+#
+#     ██                         ▄▄▄▄                      ▄▄
+#     ▀▀                         ▀▀██                      ██
+#   ████     ██▄████▄   ▄█████▄    ██      ██    ██   ▄███▄██   ▄████▄
+#     ██     ██▀   ██  ██▀    ▀    ██      ██    ██  ██▀  ▀██  ██▄▄▄▄██
+#     ██     ██    ██  ██          ██      ██    ██  ██    ██  ██▀▀▀▀▀▀
+#  ▄▄▄██▄▄▄  ██    ██  ▀██▄▄▄▄█    ██▄▄▄   ██▄▄▄███  ▀██▄▄███  ▀██▄▄▄▄█
+#  ▀▀▀▀▀▀▀▀  ▀▀    ▀▀    ▀▀▀▀▀      ▀▀▀▀    ▀▀▀▀ ▀▀    ▀▀▀ ▀▀    ▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Utility script to include other bash files safely
+# --- END SIGNATURE --- #
+
+# ---  Main script logic --- #
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+file="$(realpath -m "${script_dir}/$1")"
+
+[[ -f "${file}" ]] && echo "source '${file}'"
