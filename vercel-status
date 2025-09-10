@@ -24,9 +24,11 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source cmdarg.sh
+eval "$(include "lib/cmdarg.sh")"
 
-source check-deps
+eval "$(include "lib/helpers.sh")"
+
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc $0)"
@@ -37,14 +39,9 @@ cmdarg_parse "$@"
 
 limit=${cmdarg_cfg['limit']}
 
-RED='\e[31m'
-GREEN='\e[32m'
-YELLOW='\e[33m'
-RESET='\e[0m'
-
-READY="${GREEN}●${RESET} Ready"
-ERROR="${RED}●${RESET} Error"
-BUILDING="${YELLOW}●${RESET} Building"
+READY="$(printGreen -n '●') Ready"
+ERROR="$(printRed -n '●') Error"
+BUILDING="$(printYellow -n '●') Building"
 
 AUTH_HEADER="Authorization: Bearer ${VERCEL_TOKEN}"
 
@@ -116,10 +113,10 @@ if ((limit > 0)); then
 
     if [[ ${count} -eq 1 ]]; then
       # escape all ansi characters in status, show no index
-      nu --config "${NU_CONFIG}" -c "echo '${arr}' | from json | update Status { |row| \$row.Status | str replace -a '\e' (char -u '001b') } | ansi link Url --text 'Inspect' | table --index false --expand"
+      n "echo '${arr}' | from json | update Status { |row| \$row.Status | str replace -a '\e' (char -u '001b') } | ansi link Url --text 'Inspect' | table --index false --expand"
     else
       # escape all ansi characters in status
-      nu --config "${NU_CONFIG}" -c "echo '${arr}' | from json | update Status { |row| \$row.Status | str replace -a '\e' (char -u '001b') } | ansi link Url --text 'Inspect' | table --expand"
+      n "echo '${arr}' | from json | update Status { |row| \$row.Status | str replace -a '\e' (char -u '001b') } | ansi link Url --text 'Inspect' | table --expand"
     fi
   else
     log-error "No deployment data processed or appended."
