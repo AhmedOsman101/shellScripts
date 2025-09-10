@@ -21,9 +21,11 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source cmdarg.sh
+eval "$(include "lib/cmdarg.sh")"
 
-source check-deps
+eval "$(include "lib/helpers.sh")"
+
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc $0)"
@@ -51,10 +53,10 @@ fi
 # Infinite loop: repeat until success or interruption
 while true; do
   if eval "${cmd}"; then
-    [[ ! ${counter} -eq 1 ]] && {
+    if [[ ${counter} -ne 1 ]]; then
       echo ""
       log-success "Done after ${counter} retries 🚀!"
-    }
+    fi
     break
   fi
 
@@ -65,15 +67,13 @@ while true; do
     --spinner.foreground="${U_GREEN}" \
     -- sleep ${delay}; then
     # If gum spin fails (e.g., due to Ctrl+C), exit
-    if [[ ! ${counter} -eq 1 ]]; then
+    if [[ ${counter} -ne 1 ]]; then
       echo ""
-      log-info "Program terminated after ${counter} retries"
+      terminate "Program terminated after ${counter} retries"
     else
       echo ""
-      log-info "Program terminated"
+      terminate
     fi
-
-    exit 0
   fi
 
   [[ "${preserve}" != true ]] && clear

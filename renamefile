@@ -21,9 +21,11 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source cmdarg.sh
+eval "$(include "lib/cmdarg.sh")"
 
-source check-deps
+eval "$(include "lib/helpers.sh")"
+
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
@@ -71,7 +73,7 @@ else
   # renamefile is not intended to act like the mv command
   # renamefile file.js /tmp/test/file.ts (wrong usage)
   log-warning "The source directory doesn't match the target directory."
-  log-info "Use the mv command instead."
+  printGreen "HINT: Use the mv command instead."
   exit 1
 fi
 

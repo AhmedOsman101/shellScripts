@@ -22,7 +22,9 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
+eval "$(include "lib/helpers.sh")"
+
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 app=$1
@@ -41,20 +43,18 @@ if [[ ! -d "${source}" ]]; then
     if [[ ${createDist} -eq 0 ]]; then # 0 means yes
       mkdir -p "${target}"
     else
-      log-info "No changes were made!" && exit 0
+      terminate "No changes were made!"
     fi
   else # if !from && to: do nothing
-    log-info "Directory '${target}' already exists!" && exit 0
+    terminate "Directory '${target}' already exists!"
   fi
 else
   if [[ ! -d "${target}" ]]; then # if from && !to: mkdir to
     mkdir -p "${target}"
     log-info "'${target}' directory created!"
   fi
-  moveSource=$(gum confirm "Do you want to move exsiting files to the target directory?") || {
-    log-info "No changes were made!"
-    exit 0
-  }
+  moveSource=$(gum confirm "Do you want to move exsiting files to the target directory?") ||
+    terminate "No changes were made!"
   if [[ ${moveSource} -eq 0 ]]; then # 0 means yes
     target="$(dirname "${target}")"
     gum spin \

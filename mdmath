@@ -21,6 +21,8 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/helpers.sh")"
+
 # ---  Main script logic --- #
 # Check if the correct number of arguments is passed
 if [[ -z $1 || $# -gt 1 ]]; then
@@ -50,8 +52,7 @@ fi
 count=$((count_display + count_inline))
 
 if [[ ${count} -eq 0 ]]; then
-  log-info "Nothing to do"
-  exit 0
+  terminate "Nothing to do"
 fi
 
 # Perform the replacements
