@@ -23,13 +23,13 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
-ip="$(ip a | rg "$(net-interface)" | rg inet)"
+IP="$(ip a | rg "$(net-interface)" | rg inet)"
 
-if [[ -n "${ip}" ]]; then
-  echo "${ip}" | awk '{print $2;exit}'
+if [[ -n "${IP}" ]]; then
+  echo "${IP}" | awk '{print $2;exit}'
 else
   log-error "No IP found"
 fi

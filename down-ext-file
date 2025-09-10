@@ -22,7 +22,7 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 file="${1:-'extensions.json'}"
@@ -48,11 +48,11 @@ for extension in ${extensions}; do
   filename="${extensionName}.vsix"
 
   # Check if the file already exists in the directory
-  if [[ -f "${PWD}/extensions/${filename}" ]]; then
+  if [[ -f "$(pwd)/extensions/${filename}" ]]; then
     log-warning "Skipping ${filename}. File already exists."
   else
     # Download the .vsix file with only the progress bar shown
-    if ! wget -q --show-progress -O "${PWD}/extensions/${filename}" "${url}"; then
+    if ! wget -q --show-progress -O "$(pwd)/extensions/${filename}" "${url}"; then
       log-error "Failed to download ${filename}."
     fi
     log-info "Downloaded ${filename}"

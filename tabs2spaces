@@ -12,7 +12,7 @@
 #                                                              ██
 #
 # --- DESCRIPTION --- #
-#
+# Converts tabs into 2 spaces
 # --- DEPENDENCIES --- #
 #
 # --- END SIGNATURE --- #
@@ -21,7 +21,7 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 if [[ $# -eq 0 || $1 == "-" ]]; then
@@ -33,9 +33,9 @@ else
   str="$*"
 fi
 
-[[ -z ${str} ]] && {
+if [[ -z ${str} ]]; then
   printf ""
   exit 0
-}
+fi
 
 echo "${str}" | sed 's|\t|  |g'

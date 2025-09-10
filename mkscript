@@ -21,9 +21,9 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source cmdarg.sh
+eval "$(include "lib/cmdarg.sh")"
 
-source check-deps
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
@@ -89,7 +89,7 @@ elif [[ "${no_flags}" == true ]]; then
 
 elif [[ -z "${filename}" ]]; then
   name=$(gum input --placeholder "Enter Script's name: ") || log-error "Failed to capture the script name"
-  file="${PWD}/${name}"
+  file="$(pwd)/${name}"
 
   validateAndCreateFile "${file}"
 
@@ -101,13 +101,13 @@ elif [[ -z "${filename}" ]]; then
   if [[ "${name}" != *.sh ]]; then
     gum confirm "Do you want to add .sh extension to your script?" && {
       rm -f "${file}"
-      file="${PWD}/${name}.sh"
+      file="$(pwd)/${name}.sh"
       validateAndCreateFile "${file}"
     }
   fi
 
 elif [[ -n "${filename}" ]]; then
-  file="${PWD}/${filename}"
+  file="$(pwd)/${filename}"
 
   validateAndCreateFile "${file}"
 
@@ -117,7 +117,7 @@ elif [[ -n "${filename}" ]]; then
   if [[ "${name}" != *.sh ]]; then
     gum confirm "Do you want to add .sh extension to your script?" && {
       rm -f "${file}"
-      file="${PWD}/${name}.sh"
+      file="$(pwd)/${name}.sh"
       validateAndCreateFile "${file}"
     }
   fi
@@ -129,4 +129,3 @@ fi
 log-success "Script '$(basename "${file}")' created succefully!"
 
 log-info "Run ${SCRIPTS_DIR}/init.sh script to refresh"
-
