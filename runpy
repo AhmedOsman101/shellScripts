@@ -22,7 +22,7 @@ set -euo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source check-deps
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 dir="${SCRIPTS_DIR}/python"
@@ -36,14 +36,10 @@ activateVenv="${venv}bin/activate" # fd output adds a trailing /
 # remove the script name from arguments and pass them to the target script
 shift
 
-terminate() {
-  deactivate && exit $1
-}
-
 withVenv() {
   source "${activateVenv}" || log-error "Couldn't execute the activate file: ${activateVenv}"
   python3 "${file}" "$@"
-  terminate $?
+  deactivate && exit $?
 }
 
 if [[ -f "${activateVenv}" ]]; then

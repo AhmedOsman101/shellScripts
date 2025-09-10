@@ -23,9 +23,11 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
-source cmdarg.sh
+eval "$(include "lib/cmdarg.sh")"
 
-source check-deps
+eval "$(include "lib/helpers.sh")"
+
+eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
@@ -40,12 +42,7 @@ branchParam=${cmdarg_argv[0]:-"#-none-#"}
 
 is-git-repo
 
-current=$(git_current_branch) || log-error "Cannot find current branch"
-
-terminate() {
-  log-info "Program terminated!"
-  exit 0
-}
+current="$(git_current_branch)" || log-error "Cannot find current branch"
 
 branchList=$(
   git branch --list --format='%(refname:short)' --remote
