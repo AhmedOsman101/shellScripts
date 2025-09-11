@@ -33,10 +33,12 @@ checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "n" "new" "Create a new branch and switch to it"
+cmdarg "o" "orphan" "Create a new orphan branch (no parent history) and switch to it"
 
 cmdarg_parse "$@"
 
 createNew=${cmdarg_cfg['new']}
+createOrphan=${cmdarg_cfg['orphan']}
 
 branchParam=${cmdarg_argv[0]:-"#-none-#"}
 
@@ -121,6 +123,7 @@ switchBranch() {
 
 createBranch() {
   local branchName=$1
+  local isOrphan="${2:-false}"
 
   if [[ "${branchName}" == "#-none-#" ]]; then
     branchName=$(
@@ -136,8 +139,20 @@ createBranch() {
     fi
   done
 
-  if git checkout -b "${branchName}" &>${file}; then
+  local cmd=('git' 'checkout')
+  local clearPrev=0
+  if [[ "${isOrphan}" == true ]]; then
+    cmd+=('--orphan' "${branchName}")
+    gum confirm "Do you want to remove all tracked files from index?" || clearPrev=$?
+  else
+    cmd+=('-b' "${branchName}")
+  fi
+
+  if "${cmd[@]}" &>${file}; then
     log-success "$(cat ${file})"
+    if [[ "${clearPrev}" == 0 ]]; then
+      git rm -rf . &>/dev/null || true
+    fi
   else
     log-warning "$(cat ${file})"
     log-error "Failed to create branch '${branch}'"
@@ -146,6 +161,8 @@ createBranch() {
 
 if [[ "${createNew}" == true ]]; then
   createBranch "${branchParam}"
+elif [[ "${createOrphan}" == true ]]; then
+  createBranch "${branchParam}" true
 else
   switchBranch "${branchParam}"
 fi
