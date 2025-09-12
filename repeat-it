@@ -35,16 +35,21 @@ cmdarg "d?" "delay" "Delay in seconds between retries" "5"
 
 cmdarg_parse "$@"
 
-preserve=${cmdarg_cfg['preserve']}
-delay=${cmdarg_cfg['delay']}
-cmd=${cmdarg_argv[*]}
+preserve="${cmdarg_cfg['preserve']}"
+delay="${cmdarg_cfg['delay']}"
+cmd="${cmdarg_argv[*]}"
+
+# validate the delay if defined
+if [[ -n "${delay}" ]]; then
+  isPositive "${delay}" || log-error "Delay must be a positive number"
+fi
 
 counter=1
 
-if [[ -z ${cmd} ]]; then
-  cmd=$(gum write --placeholder "enter a command to repeat...")
+if [[ -z "${cmd}" ]]; then
+  cmd="$(gum write --placeholder "enter a command to repeat...")"
   # Evaluate the command to parse variables
-  cmd=$(eval echo "${cmd}")
+  cmd="$(eval echo "${cmd}")"
 fi
 
 # Check if the command is empty
@@ -53,8 +58,8 @@ fi
 # Infinite loop: repeat until success or interruption
 while true; do
   if eval "${cmd}"; then
-    if [[ ${counter} -ne 1 ]]; then
-      echo ""
+    if [[ "${counter}" -gt 1 ]]; then
+      printf '\n'
       log-success "Done after ${counter} retries 🚀!"
     fi
     break
@@ -67,11 +72,11 @@ while true; do
     --spinner.foreground="${U_GREEN}" \
     -- sleep ${delay}; then
     # If gum spin fails (e.g., due to Ctrl+C), exit
-    if [[ ${counter} -ne 1 ]]; then
-      echo ""
+    if [[ "${counter}" -gt 1 ]]; then
+      printf '\n'
       terminate "Program terminated after ${counter} retries"
     else
-      echo ""
+      printf '\n'
       terminate
     fi
   fi
