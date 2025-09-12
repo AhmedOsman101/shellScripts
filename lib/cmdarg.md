@@ -125,15 +125,19 @@ my_validator hashvalue hashkey
 
 This function sets up information about your program for use when printing the help/usage message. Again, see cmdarg.sh for the latest syntax.
 
-    cmdarg_info "header" "Some script that needed argument parsing"
-    cmdarg_info "author" "Some Poor Bastard <somepoorbastard@hell.com>"
-    cmdarg_info "copyright" "(C) 2013"
+```bash
+cmdarg_info "header" "Some script that needed argument parsing"
+cmdarg_info "author" "Some Poor Bastard <somepoorbastard@hell.com>"
+cmdarg_info "copyright" "(C) 2013"
+```
 
 # cmdarg_parse
 
 This command does what you expect, parsing your command line arguments. However you must pass your command line arguments to it. Generally this means:
 
-    cmdarg_parse "$@"
+```bash
+cmdarg_parse "$@"
+```
 
 ... Beware that "$@" will change depending on your context. So if you have a main() function called in your script, you need to make sure that you pass "$@" from the toplevel script in to it, otherwise the options will be blank when you pass them to cmdarg_parse.
 
@@ -141,49 +145,57 @@ Any argument parsed that has a validator assigned, and whose validator returns n
 
 For every argument integer, boolean or string argument, a global associative array "cmdarg_cfg" is populated with the long version of the option. E.g., in the example above, '-c' would become ${cmdarg_cfg['groupmap']}, for friendlier access during scripting.
 
-    cmdarg 'x:' 'some required thing'
-    cmdarg_parse "$@"
-    echo ${cmdarg_cfg['x']}
+```bash
+cmdarg 'x:' 'some required thing'
+cmdarg_parse "$@"
+echo ${cmdarg_cfg['x']}
+```
 
 For array and hash arguments, you must declare the hash or array beforehand for population:
 
-    declare -a myarray
-    cmdarg 'a?[]' 'myarray' 'Some array of stuff'
-    cmdarg_parse "$@"
-    # Now you will be able to access ${myarray[0]}, ${myarray[1]}, etc. Similarly with hashes, just use declare -A and {}.
+```bash
+declare -a myarray
+cmdarg 'a?[]' 'myarray' 'Some array of stuff'
+cmdarg_parse "$@"
+# Now you will be able to access ${myarray[0]}, ${myarray[1]}, etc. Similarly with hashes, just use declare -A and {}.
+```
 
 # Automatic help messages
 
 cmdarg takes the pain out of creating your --help messages. For example, consider you had this script:
 
-    #!/bin/bash
-    source /usr/lib/cmdarg.sh
-    declare -a myarray
+```bash
+#!/bin/bash
+source /usr/lib/cmdarg.sh
+declare -a myarray
 
-    cmdarg_info "header" "Some script that needed argument parsing"
-    cmdarg_info "author" "Some Poor Bastard <somepoorbastard@hell.com>"
-    cmdarg_info "copyright" "(C) 2013"
-    cmdarg 'R:' 'required-thing' 'Some thing I REALLY require'
-    cmdarg 'r:' 'required-thing-with-default' 'Some thing I require' 'Some default'
-    cmdarg 'o?' 'optional-thing' 'Some optional thing'
-    cmdarg 'b' 'boolean-thing' 'Some boolean thing'
-    cmdarg 'a?[]' 'myarray' 'Some array of stuff'
-    cmdarg_parse "$@"
+cmdarg_info "header" "Some script that needed argument parsing"
+cmdarg_info "author" "Some Poor Bastard <somepoorbastard@hell.com>"
+cmdarg_info "copyright" "(C) 2013"
+cmdarg 'R:' 'required-thing' 'Some thing I REALLY require'
+cmdarg 'r:' 'required-thing-with-default' 'Some thing I require' 'Some default'
+cmdarg 'o?' 'optional-thing' 'Some optional thing'
+cmdarg 'b' 'boolean-thing' 'Some boolean thing'
+cmdarg 'a?[]' 'myarray' 'Some array of stuff'
+cmdarg_parse "$@"
+```
 
 ... And you ran it with '--help', you would get a nice preformatted help message:
 
-    test.sh (C) 2013 : Some Poor Bastard <somepoorbastard@hell.com>
+```
+test.sh (C) 2013 : Some Poor Bastard <somepoorbastard@hell.com>
 
-    Some script that needed argument parsing
+Some script that needed argument parsing
 
-    Required Arguments:
-        -R,--required-thing v : String. Some thing I REALLY require
+Required Arguments:
+-R,--required-thing v : String. Some thing I REALLY require
 
-    Optional Arguments:
-        -r,--required-thing-with-default v : String. Some thing I require (Default "Some default")
-        -o,--optional-thing v : String. Some optional thing
-        -b,--boolean-thing : Boolean. Some boolean thing
-        -a,--myarray v[, ...] : Array. Some array of stuff. Pass this argument multiple times for multiple values.
+Optional Arguments:
+-r,--required-thing-with-default v : String. Some thing I require (Default "Some default")
+-o,--optional-thing v : String. Some optional thing
+-b,--boolean-thing : Boolean. Some boolean thing
+-a,--myarray v[, ...] : Array. Some array of stuff. Pass this argument multiple times for multiple values.
+```
 
 You can change the formatting of help messages with helper functions. (see Helpers, below).
 
@@ -191,19 +203,19 @@ You can change the formatting of help messages with helper functions. (see Helpe
 
 You can use the cmdarg function to accept arrays and hashes from the command line as well. Consider:
 
-    declare -a array
-    declare -A hash
-    cmdarg 'a?[]' 'array' 'Some array you can set indexes in'
-    cmdarg 'H?{}' 'hash' 'Some hash you can set keys in'
+```bash
+declare -a array
+declare -A hash
+cmdarg 'a?[]' 'array' 'Some array you can set indexes in'
+cmdarg 'H?{}' 'hash' 'Some hash you can set keys in'
 
+your_script -a 32 --array something -H key=value --hash other_key=value
 
-    your_script -a 32 --array something -H key=value --hash other_key=value
-
-
-    echo ${array[0]}
-    echo ${array[1]}
-    echo ${hash['key']}
-    echo ${hash['other_key']}
+echo ${array[0]}
+echo ${array[1]}
+echo ${hash['key']}
+echo ${hash['other_key']}
+```
 
 The long option names in this form must equal the name of a previously declared array or hash, appropriately. Cmdarg populates that variable directly with options for these arguments. Remember, arrays and hashes must be declared beforehand and must have the same name as the long argument given to their cmdarg option.
 
@@ -211,13 +223,17 @@ The long option names in this form must equal the name of a previously declared 
 
 Like any good option parsing framework, cmdarg understands '--' and positional arguments that are meant to be provided without any kind of option parsing applied to them. So if you have:
 
-    myscript.sh -x 0 --longopt thingy file1 file2
+```bash
+myscript.sh -x 0 --longopt thingy file1 file2
+```
 
 ... It would seem reasonable to assume that -x and --longopt would be parsed as expected; with arguments of 0 and thingy. But what to do with file1 and file2? cmdarg puts those into a bash indexed array called cmdarg_argv.
 
 Similarly, cmdarg understands '--' which means "stop processing arguments, the rest of this stuff is just to be passed to the program directly". So in this case:
 
-    myscript.sh -x 0 --longopt thingy -- --some-thing-with-dashes
+```bash
+myscript.sh -x 0 --longopt thingy -- --some-thing-with-dashes
+```
 
 ... Cmdarg would parse -x and --longopt as expected, and then ${cmdarg_argv[0]} would hold "--some-thing-with-dashes", for your program to do with what it will.
 
@@ -225,10 +241,12 @@ Similarly, cmdarg understands '--' which means "stop processing arguments, the r
 
 cmdarg is meant to be extensible by default, so there are some places where you can hook into it to change cmdarg's behavior. By changing the members of the cmdarg_helpers hash, like this:
 
-    # Change the way arguments are described in --help
-    cmdarg_helpers['describe']=my_description_function
-    # Completely replace cmdarg's builtin --help message generator with your own
-    cmdarg_helpers['usage']=my_usage_function
+```bash
+# Change the way arguments are described in --help
+cmdarg_helpers['describe']=my_description_function
+# Completely replace cmdarg's builtin --help message generator with your own
+cmdarg_helpers['usage']=my_usage_function
+```
 
 ## Description Helper
 
@@ -260,11 +278,15 @@ By default, whenever something happens that cmdarg doesn't like, it will 'return
 
 To get the old v1.0 behavior back, you can, before calling any cmdarg functions:
 
-    CMDARG_ERROR_BEHAVIOR=exit
+```bash
+CMDARG_ERROR_BEHAVIOR=exit
+```
 
 If you want cmdarg to call some function of your own when it encounters an error, you could:
 
-    CMDARG_ERROR_BEHAVIOR=my_error_function
+```bash
+CMDARG_ERROR_BEHAVIOR=my_error_function
+```
 
 CMDARG_ERROR_BEHAVIOR is treated as a function call (e.g. return or exit) with one argument, the value to return. You will be given no more context regarding the error (and, in fact, you should not expect this to be called unless a fatal error has been encountered, whether during setup or parsing).
 

@@ -14,6 +14,7 @@ This repository is a curated collection of scripts that help us in:
 ## Installation:
 
 Add the repository to your `PATH` for easy access to all scripts:
+
 ```bash
 # 1. Clone repository
 git clone https://github.com/AhmedOsman101/shellScripts.git $HOME/scripts
