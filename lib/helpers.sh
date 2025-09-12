@@ -212,3 +212,23 @@ Trim() {
   [[ -z ${str} ]] && printf '' && exit 0
   echo "${str}" | sed -e "s|^[[:space:]]*||" -e "s|[[:space:]]*$||"
 }
+
+isInt() { [[ $1 =~ ^[+-]?[0-9]+$ ]]; }
+isUnsignedInt() { [[ "$1" != -* && "$1" =~ ^[0-9]+$ ]]; }
+
+isFloat() { [[ $1 =~ ^[+-]?([0-9]*\.[0-9]+|[0-9]+)$ ]]; }
+isUnsignedFloat() { [[ "$1" != -* && $1 =~ ^([0-9]*\.[0-9]+|[0-9]+)$ ]]; }
+
+# NOTE: zero is considered positive
+isPositive() {
+  local num="$1"
+  [[ -z "${num}" ]] && return 1
+  isUnsignedFloat "${num}" || return 1
+}
+
+isNegative() {
+  local num="$1"
+  [[ -z "${num}" ]] && return 1
+  isFloat "${num}" || return 1
+  [[ $(echo "${num} < 0" | bc -l) -eq 1 ]]
+}
