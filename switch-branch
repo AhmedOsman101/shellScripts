@@ -143,14 +143,15 @@ createBranch() {
   local clearPrev=0
   if [[ "${isOrphan}" == true ]]; then
     cmd+=('--orphan' "${branchName}")
-    gum confirm "Do you want to remove all tracked files from index?" || clearPrev=$?
+    gum confirm "Do you want to remove all tracked files from index?" || clearPrev=1
   else
+    clearPrev=1
     cmd+=('-b' "${branchName}")
   fi
 
   if "${cmd[@]}" &>${file}; then
     log-success "$(cat ${file})"
-    if [[ "${clearPrev}" == 0 ]]; then
+    if [[ "${clearPrev}" -eq 0 ]]; then
       git rm -rf . &>/dev/null || true
     fi
   else
