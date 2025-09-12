@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄▄▄
+#  ▀▀██
+#    ██       ▄████▄    ▄████▄   ██▄███▄
+#    ██      ██▀  ▀██  ██▀  ▀██  ██▀  ▀██
+#    ██      ██    ██  ██    ██  ██    ██
+#    ██▄▄▄   ▀██▄▄██▀  ▀██▄▄██▀  ███▄▄██▀
+#     ▀▀▀▀     ▀▀▀▀      ▀▀▀▀    ██ ▀▀▀
+#                                ██
+#
+# --- DESCRIPTION --- #
+#
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+
+eval "$(include "lib/helpers.sh")"
+
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc $0)"
+
+cmdarg "c" "clear" "Clear the output after each iteration"
+cmdarg "d?" "delay" "Delay in seconds between iterations" "0"
+cmdarg "n:" "iterations" "Number of iterations"
+
+cmdarg_parse "$@"
+
+clear="${cmdarg_cfg['clear']}"
+delay="${cmdarg_cfg['delay']}"
+iterations="${cmdarg_cfg['iterations']}"
+
+cmd="${cmdarg_argv[*]}"
+# ---  Main script logic --- #
+# validate the iterations
+isUnsignedInt "${iterations}" || log-error "Number of iterations must be a valid integer."
+isPositive "${iterations}" || log-error "Number of iterations must be at least 1."
+
+# validate the delay if defined
+if [[ -n "${delay}" ]]; then
+  isPositive "${delay}" || log-error "Delay must be a positive number"
+fi
+
+# Get and parse the command
+if [[ -z "${cmd}" ]]; then
+  cmd="$(gum write --placeholder "enter a command to repeat...")"
+fi
+
+# Evaluate the command to parse variables
+cmd="$(eval echo "${cmd}")"
+
+# Check if the command is empty
+[[ -z "${cmd}" ]] && log-error "No command entered."
+
+eval "${cmd}"
+
+for ((count = 1; count < iterations; count++)); do
+  [[ -n "${delay}" ]] && sleep "${delay}"
+  [[ "${clear}" == true ]] && clear
+  eval "${cmd}"
+done
