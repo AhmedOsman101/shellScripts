@@ -123,13 +123,14 @@ handleBun() {
 handleDeno() {
   deno add -D 'npm:@biomejs/biome@2.0.5'
   if is-git-repo --safe >/dev/null 2>&1; then
-    deno add --dev npm:husky
+    deno add --dev npm:husky || true
     if [[ ! -f "package.json" ]]; then
-      touch "package.json"
-      deno run -A husky init
+      pnpm init
+      pnpm dlx husky init || true
+      printf '' >'.husky/pre-commit'
       rm "package.json"
     else
-      deno run -A husky init
+      pnpm dlx husky init || true
     fi
     fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
   fi
@@ -178,7 +179,6 @@ bun | bunx)
 ? | *) log-error "The package manager '${pkgMgr}' is not recognized" ;;
 esac
 
-# mkdir -p .helix
 mkdir -p .vscode
 
 fetchRaw "AhmedOsman101/dotfiles" "Configs/biome/.config/biome.json" "biome.json"

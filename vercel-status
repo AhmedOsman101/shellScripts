@@ -43,7 +43,7 @@ READY="$(printGreen -n '●') Ready"
 ERROR="$(printRed -n '●') Error"
 BUILDING="$(printYellow -n '●') Building"
 
-AUTH_HEADER="Authorization: Bearer ${VERCEL_TOKEN}"
+AUTH_HEADER="Authorization: Bearer $(pass show vercel/token)"
 
 response=$(
   gum spin \

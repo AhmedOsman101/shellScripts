@@ -24,6 +24,8 @@ trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
 
+eval "$(include "lib/helpers.sh")"
+
 eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
@@ -34,8 +36,6 @@ cmdarg "o" "overwrite" "Overwrite the file if it exists"
 cmdarg_parse "$@"
 
 overwrite=${cmdarg_cfg['overwrite']}
-frame=${cmdarg_cfg['frame']}
-
 file=${cmdarg_argv[0]:-extensions.json}
 
 getExtensions() {
@@ -60,8 +60,7 @@ if [[ -f "${file}" ]]; then
       getExtensions >"${file}"
       log-info "${file} has been overwritten."
     else
-      log-info "No changes made"
-      exit 0
+      terminate "No changes made"
     fi
   fi
 else
