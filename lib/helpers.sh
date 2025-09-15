@@ -213,6 +213,13 @@ Trim() {
   echo "${str}" | sed -e "s|^[[:space:]]*||" -e "s|[[:space:]]*$||"
 }
 
+killwait() {
+  pid="$1"
+  kill "${pid}" 2>/dev/null
+  wait "${pid}" 2>/dev/null
+  return 0
+}
+
 isInt() { [[ $1 =~ ^[+-]?[0-9]+$ ]]; }
 isUnsignedInt() { [[ "$1" != -* && "$1" =~ ^[0-9]+$ ]]; }
 
