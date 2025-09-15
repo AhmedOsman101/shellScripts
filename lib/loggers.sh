@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 # ---  Main script logic --- #
-
 printer() {
   local color="$1"
   local str="$2"
