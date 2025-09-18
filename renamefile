@@ -34,47 +34,44 @@ cmdarg "f" "force" "Don't ask for confirmation"
 
 cmdarg_parse "$@"
 
-force=${cmdarg_cfg["force"]}
-old=${cmdarg_argv[0]}
-new=${cmdarg_argv[1]}
+force="${cmdarg_cfg["force"]}"
+old="${cmdarg_argv[0]}"
+new="${cmdarg_argv[1]}"
 
-if [[ -z ${old} ]]; then
+if [[ -z "${old}" ]]; then
   log-error "Missing source file"
-elif [[ -z ${new} ]]; then
+elif [[ -z "${new}" ]]; then
   log-error "Missing target file"
-elif [[ ! -f ${old} ]]; then
+elif [[ ! -f "${old}" ]]; then
   log-error "Source file ${old} doesn't exist"
 fi
 
 declare -a cmdArray
-oldDir=$(dirname ${old})
-newDir=$(dirname ${new})
-oldBase=$(basename ${old})
-newBase=$(basename ${new})
+oldDir="$(dirname "${old}")"
+newDir="$(dirname "${new}")"
+oldBase="$(basename "${old}")"
+newBase="$(basename "${new}")"
 
-if [[ ${force} == true ]]; then
-  cmdArray=(mv -f "${old}")
+if [[ "${force}" == "true" ]]; then
+  cmdArray=(mvp -f "${old}")
 else
-  cmdArray=(mv -i "${old}")
+  cmdArray=(mvp -i "${old}")
 fi
 
-if [[ "${oldBase}" == "${newBase}" ]]; then
-  log-info "${old} and ${new} are the same file"
-  exit 0
-elif [[ "${oldDir}" != '.' && "${newDir}" == '.' ]]; then
+if [[ "${oldDir}" != '.' && "${newDir}" == '.' ]]; then
   # if oldDir is a full path and newDir is the empty
   # renamefile /tmp/test/file.js file.ts
-  cmdArray+=("${oldDir}/$(basename ${new})")
+  cmdArray+=("${oldDir}/${newBase}")
 elif [[ "${oldDir}" == "${newDir}" ]]; then
   # if oldDir matches newDir
   # renamefile /tmp/test/file.js /tmp/test/file.ts
   cmdArray+=("${new}")
+elif [[ "${old}" == "${new}" ]]; then
+  log-info "${old} and ${new} are the same file"
+  log-debug "${oldBase} == ${newBase}"
+  exit 0
 else
-  # renamefile is not intended to act like the mv command
-  # renamefile file.js /tmp/test/file.ts (wrong usage)
-  log-warning "The source directory doesn't match the target directory."
-  printGreen "HINT: Use the mv command instead."
-  exit 1
+  cmdArray+=("${new}")
 fi
 
-"${cmdArray[@]}" && log-success "Renamed $(basename ${old}) to $(basename ${new}) successfully"
+"${cmdArray[@]}" && log-success "Renamed ${oldBase} to ${newBase} successfully"
