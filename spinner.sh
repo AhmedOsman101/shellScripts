@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#
+# shellcheck disable=2317
 # --- SCRIPT SIGNATURE --- #
 #
 #                         ██                                                                 ▄▄
@@ -19,14 +19,14 @@
 
 set -o pipefail
 shopt checkwinsize &>/dev/null
-(:)
+(:) # A little hack to trigger checkwinsize to work
 
 trap 'exit 1' SIGUSR1
+
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "lib/helpers.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
 # ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
@@ -39,21 +39,35 @@ color=${cmdarg_cfg['color']}
 msg=${cmdarg_argv[*]:-Loading...}
 [[ -z ${msg} ]] && log-error "Message is required"
 
-# shellcheck disable=2317
+trapsig=0
+
+onkill() {
+  trapsig="${BASH_TRAPSIG}"
+  if ((trapsig != 2)); then
+    printf '\r'      # return to start
+    printf '\e[2K'   # erase whole line
+    printf '\e[?25h' # show cursor
+    printf '\e[2K'   # erase whole line
+  fi
+  exit 0
+}
+
 # make sure we restore cursor on exit or Ctrl-C
 cleanup() {
-  printf '\r'                                       # return to start
-  printf '\e[2K'                                    # erase whole line
-  printf '\e[?25h'                                  # show cursor
-  tput setaf "${colorCode}"                         # set the foreground color
-  printf '%s %s' "${currentSpinner}" "${msg%$'\n'}" # print the progress bar
-  tput sgr0                                         # reset the foreground color
-  printf '\r\e[3C'                                  # depends on the terminal prompt width
-  printf '\e[1F'                                    # erase whole line
+  trapsig="${trapsig:-${BASH_TRAPSIG}}"
+  if ((trapsig == 0)) || ((trapsig == 2)); then
+    printf '\r'                                       # return to start
+    printf '\e[2K'                                    # erase whole line
+    printf '\e[?25h'                                  # show cursor
+    tput setaf "${colorCode}"                         # set the foreground color
+    printf '%s %s' "${currentSpinner}" "${msg%$'\n'}" # print the progress bar
+    tput sgr0                                         # reset the foreground color
+  fi
+  return 0
 }
 
 trap 'cleanup' EXIT
-trap 'exit 0' INT TERM SIGUSR1
+trap 'onkill' INT TERM SIGUSR1
 
 sp='⣾⣽⣻⢿⡿⣟⣯⣷'
 msgLength=$((${#msg} + 2))
