@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄           ██     ▄▄▄▄      ▄▄▄▄                             ██
+#  ██           ▀▀     ▀▀██      ▀▀██                             ▀▀       ██
+#  ██ ▄██▀    ████       ██        ██     ██      ██  ▄█████▄   ████     ███████
+#  ██▄██        ██       ██        ██     ▀█  ██  █▀  ▀ ▄▄▄██     ██       ██
+#  ██▀██▄       ██       ██        ██      ██▄██▄██  ▄██▀▀▀██     ██       ██
+#  ██  ▀█▄   ▄▄▄██▄▄▄    ██▄▄▄     ██▄▄▄   ▀██  ██▀  ██▄▄▄███  ▄▄▄██▄▄▄    ██▄▄▄
+#  ▀▀   ▀▀▀  ▀▀▀▀▀▀▀▀     ▀▀▀▀      ▀▀▀▀    ▀▀  ▀▀    ▀▀▀▀ ▀▀  ▀▀▀▀▀▀▀▀     ▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Kills and waits a proccess to finish
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+trap 'exit 1' SIGUSR1
+# ---  Main script logic --- #
+pid="$1"
+
+kill "${pid}" 2>/dev/null || true
+wait "${pid}" 2>/dev/null || true
+
+exit 0
