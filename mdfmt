@@ -30,7 +30,7 @@ declare -a files
 
 if [[ $# -eq 0 || $1 == "." ]]; then
   # Populate the array directly from fd output
-  mapfile -t files < <(fd . -e md -e markdown --unrestricted)
+  mapfile -t files < <(fd . -e md -e markdown --hidden)
 else
   for file in "$@"; do
     ext=$(echo "${file}" | awk -F. '{print $NF}')

@@ -18,12 +18,35 @@
 # - mv
 # --- END SIGNATURE --- #
 
-set -euo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
 
 eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
-sudo mkdir -p "$(dirname "$2")" 2>/dev/null
-sudo mv -i "$1" "$2"
+cmdarg_info "header" "$(get-desc "$0")"
+
+cmdarg "f" "force" "Do not prompt before overwriting"
+cmdarg "i" "interactive" "Prompt before overwrite"
+
+cmdarg_parse "$@"
+
+force="${cmdarg_cfg["force"]}"
+interactive="${cmdarg_cfg["interactive"]}"
+old="${cmdarg_argv[0]}"
+new="${cmdarg_argv[1]}"
+
+sudo mkdir -p "$(dirname "${new}")" 2>/dev/null
+cmdArray=(sudo mv)
+
+if [[ "${force}" == "true" ]]; then
+  cmdArray+=(-f "${old}" "${new}")
+elif [[ "${interactive}" == "true" ]]; then
+  cmdArray+=(-f "${old}" "${new}")
+fi
+
+# log-error "${cmdArray[@]}"
+"${cmdArray[@]}"
