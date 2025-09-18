@@ -19,7 +19,7 @@
 trap 'exit 1' SIGUSR1
 # ---  Main script logic --- #
 pid="$1"
-
+set +e
 kill "${pid}" 2>/dev/null || true
 wait "${pid}" 2>/dev/null || true
 
