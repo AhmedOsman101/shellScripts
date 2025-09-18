@@ -45,8 +45,11 @@ cleanup() {
   printf '\r'                                       # return to start
   printf '\e[2K'                                    # erase whole line
   printf '\e[?25h'                                  # show cursor
+  tput setaf "${colorCode}"                         # set the foreground color
   printf '%s %s' "${currentSpinner}" "${msg%$'\n'}" # print the progress bar
   tput sgr0                                         # reset the foreground color
+  printf '\r\e[3C'                                  # depends on the terminal prompt width
+  printf '\e[1F'                                    # erase whole line
 }
 
 trap 'cleanup' EXIT
@@ -75,9 +78,6 @@ gray | grey) colorCode=8 ;;
 *) log-error "Invalid color '${color}'" ;;
 esac
 
-# set the foreground color
-tput setaf "${colorCode}"
-
 # hide cursor
 printf '\e[?25l'
 
@@ -91,7 +91,9 @@ while true; do
 
   printf '\e7'                                # save the cursor location
   printf '\e[2K'                              # clear the line
+  tput setaf "${colorCode}"                   # set the foreground color
   printf '%s %s' "${currentSpinner}" "${msg}" # print the progress bar
+  tput sgr0                                   # reset the foreground color
   printf '\e8'                                # restore the cursor location
 
   sleep 0.1
