@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "workspace.library": [
+    "${addons}/love2d/module/library",
+    "${addons}/lua-cjson/module/library"
+  ],
+  "runtime.version": "LuaJIT",
+  "runtime.special": {
+    "love.filesystem.load": "loadfile"
+  },
+  "workspace.checkThirdParty": false,
+    "diagnostics.disable": [
+        "lowercase-global",
+        "unused-function",
+        "unused-local"
+    ]
+}
