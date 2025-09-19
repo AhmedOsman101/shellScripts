@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#
+#   ██▄████   ▄████▄   ██▄████▄   ▄█████▄  ████▄██▄   ▄████▄             ▄▄█████▄  ██▄███▄    ▄█████▄   ▄█████▄   ▄████▄   ▄▄█████▄
+#   ██▀      ██▄▄▄▄██  ██▀   ██   ▀ ▄▄▄██  ██ ██ ██  ██▄▄▄▄██            ██▄▄▄▄ ▀  ██▀  ▀██   ▀ ▄▄▄██  ██▀    ▀  ██▄▄▄▄██  ██▄▄▄▄ ▀
+#   ██       ██▀▀▀▀▀▀  ██    ██  ▄██▀▀▀██  ██ ██ ██  ██▀▀▀▀▀▀   █████     ▀▀▀▀██▄  ██    ██  ▄██▀▀▀██  ██        ██▀▀▀▀▀▀   ▀▀▀▀██▄
+#   ██       ▀██▄▄▄▄█  ██    ██  ██▄▄▄███  ██ ██ ██  ▀██▄▄▄▄█            █▄▄▄▄▄██  ███▄▄██▀  ██▄▄▄███  ▀██▄▄▄▄█  ▀██▄▄▄▄█  █▄▄▄▄▄██
+#   ▀▀         ▀▀▀▀▀   ▀▀    ▀▀   ▀▀▀▀ ▀▀  ▀▀ ▀▀ ▀▀    ▀▀▀▀▀              ▀▀▀▀▀▀   ██ ▀▀▀     ▀▀▀▀ ▀▀    ▀▀▀▀▀     ▀▀▀▀▀    ▀▀▀▀▀▀
+#                                                                                  ██
+#
+# --- DESCRIPTION --- #
+# Replaces all spaces in file names to underscores (_)
+# --- DEPENDENCIES --- #
+# - fd | fdfind (fd-find)
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/helpers.sh")"
+
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# ---  Main script logic --- #
+mapfile -t arr < <(fd ' ' -t f -p "${PWD}")
+
+for file in "${arr[@]}"; do
+  renamefile "${file}" "${file// /_}"
+done
