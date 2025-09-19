@@ -29,7 +29,7 @@ eval "$(include "check-deps")"
 checkDeps "$0"
 
 # --- cmdarg setup --- #
-cmdarg_info "header" "$(get-desc $0)"
+cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "c" "clear" "Clear the output after each iteration"
 cmdarg "d?" "delay" "Delay in seconds between iterations" "0"

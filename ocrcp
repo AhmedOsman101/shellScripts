@@ -28,7 +28,7 @@ file="$1"
 
 [[ -f "${file}" ]] || log-error "file '${file}' was not found!"
 
-text=$(ocr ${file})
+text=$(ocr "${file}")
 
 if [[ -z "${text}" ]]; then
   log-warning "Tesseract produced no output for '${file}'."

@@ -28,7 +28,7 @@ eval "$(include "lib/helpers.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
-cmdarg_info "header" "$(get-desc $0)"
+cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "p" "preserve" "Preserve output between retries (don't clear the screen)"
 cmdarg "d?" "delay" "Delay in seconds between retries" "5"
@@ -68,9 +68,7 @@ while true; do
   # Run gum spin, and check its exit status
   if ! gum spin \
     --title "Retrying '${cmd}' in ${delay}s..." \
-    --title.foreground="${U_GREEN}" \
-    --spinner.foreground="${U_GREEN}" \
-    -- sleep ${delay}; then
+    -- sleep "${delay}"; then
     # If gum spin fails (e.g., due to Ctrl+C), exit
     if [[ "${counter}" -gt 1 ]]; then
       printf '\n'

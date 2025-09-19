@@ -30,7 +30,6 @@ is-git-repo
 
 deleteRemote="false"
 currentBranch="$(git_current_branch)"
-found=0
 declare -a branches targetBranches
 
 branchList=$(

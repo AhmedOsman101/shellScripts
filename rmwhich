@@ -26,7 +26,7 @@ checkDeps "$0"
 # ---  Main script logic --- #
 [[ -z $1 ]] && log-error "No valid input was given!"
 
-if path=$(which "$1" 2>/dev/null); then
+if path=$(command -v "$1" 2>/dev/null); then
   rm -i "${path}"
 else
   log-error "Script $1 doesn't exist!"

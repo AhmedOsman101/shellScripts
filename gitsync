@@ -27,7 +27,7 @@ eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
-cmdarg_info "header" "$(get-desc $0)"
+cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "b?" "branch" "Specify the branch to work on. Defaults to current branch." "#no-branch#"
 cmdarg "m" "message" "Opens an interactive model for adding a custom commit message"

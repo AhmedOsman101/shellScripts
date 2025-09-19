@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=2317
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                         ██                                                                 ▄▄

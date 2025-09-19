@@ -23,7 +23,7 @@ trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
 # Check for separator argument
-if [[ $# -lt 1 ]]; then
+if (($# < 1)); then
   log-error "Separator is required\nUsage: $0 <separator> <array...>"
 fi
 
@@ -32,10 +32,10 @@ separator="$1"
 shift
 
 # Join and output elements without trailing newline
-[[ $# -gt 0 ]] && {
+if (($# > 0)); then
   # Remove the last occurance of the separator
-  printf "%s${separator}" "${@}" | sed "s/\(.*\)${separator}/\1/"
+  printf "%s${separator}" "${@}" | sed "s|\(.*\)${separator}|\1|"
   printf '\n'
-}
+fi
 
 exit 0

@@ -23,8 +23,8 @@ trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
 # Parse /etc/os-release to determine the distribution
-if [[ -f /etc/os-release ]]; then
-  source /etc/os-release
+if [[ -f '/etc/os-release' ]]; then
+  source '/etc/os-release'
 else
   log-error "/etc/os-release not found."
 fi

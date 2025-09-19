@@ -22,50 +22,46 @@ set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/helpers.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 OLD_IFS=${IFS}
 
 # Import Current Theme
-RASI="$(dirname $0)/list.rasi"
+RASI="$(dirname "$0")/list.rasi"
 # declare -A scripts
 declare -a scripts
 
-scriptPaths=$(fd . -t f -t l -t x --full-path ${SCRIPTS_DIR} | awk -F '/' '{print $NF}')
+scriptPaths=$(fd . -t f -t l -t x --full-path "${SCRIPTS_DIR}" | awk -F '/' '{print $NF}')
 
 IFS=$'\n'
 
 for script in ${scriptPaths}; do
-  desc=$(get-desc ${script})
+  desc=$(get-desc "${script}")
   # log-debug "${script} - ${desc}"
   [[ -n ${desc} ]] && desc=" - ${desc}"
-  scripts+=("$(basename ${script})${desc}")
+  scripts+=("$(basename "${script}")${desc}")
 done
 
 IFS=${OLD_IFS}
 
+# shellcheck disable=2016 # idk why these keep appearing in the choices array
 choice=$(
   printf '%s\n' "${scripts[@]}" |
     sort |
-    # idk why these keep appearing in the choices array
     grep -v 'echo "${desc}"' |
     grep -v 'replace "" ""' |
-    rofi -dmenu \
-      -i \
+    rofi -dmenu -i \
       -show run \
       -p "scripts" \
       -theme "${RASI}" |
     awk '{print $1}'
-) || {
-  log-info "Program terminated"
-  exit 0
-}
+) || terminate
 
 if [[ -n ${choice} ]]; then
   echo "${choice}" | clipcopy
   log-success "Copied command: '${choice}' to clipboard"
 else
-  log-info "Program terminated"
-  exit 0
+  terminate
 fi

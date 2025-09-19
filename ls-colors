@@ -29,7 +29,7 @@ checkDeps "$0"
 # ---  Main script logic --- #
 declare -a colors
 
-mapfile -t colors < <(rg -N "export U_" ${TUCKR_DIR}/zsh/.config/zsh/variables.zsh)
+mapfile -t colors < <(rg -N "export U_" "${TUCKR_DIR}/zsh/.config/zsh/variables.zsh")
 
 for line in "${colors[@]}"; do
   var=$(echo "${line}" | awk '{print $2}')

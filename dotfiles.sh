@@ -51,4 +51,4 @@ fi
 fullpath=$(fd-by-depth "${app}" -t d "${TUCKR_DIR}/${app}" | tail -n 1)
 [[ -z "${fullpath}" ]] && fullpath="${TUCKR_DIR}/${app}"
 
-echo ${fullpath}
+echo "${fullpath}"

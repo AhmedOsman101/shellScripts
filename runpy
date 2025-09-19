@@ -30,7 +30,7 @@ dir="${SCRIPTS_DIR}/python"
 pattern="/$(strip-ext "$1" sh zsh fish bash).py\$"
 file=$(fd "${pattern}" -p "${dir}")
 
-venv=$(fd 'venv$' -t d -p "$(dirname ${file})" --no-ignore)
+venv=$(fd 'venv$' -t d -p "$(dirname "${file}")" --no-ignore)
 activateVenv="${venv}bin/activate" # fd output adds a trailing /
 
 # remove the script name from arguments and pass them to the target script

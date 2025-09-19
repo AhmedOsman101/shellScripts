@@ -31,9 +31,9 @@ declare -a vars
 
 output=$(printenv | fzf | awk -F = '{print $1}')
 
-if [[ $(echo ${output} | wc -w) == 1 ]]; then
+if [[ $(echo "${output}" | wc -w) == 1 ]]; then
   clipcopy "unset ${output}" && log-success "Copied output to clipboard"
 else
-  mapfile -t vars <<<${output}
+  mapfile -t vars <<<"${output}"
   clipcopy "unset ${vars[*]}" && log-success "Copied output to clipboard"
 fi

@@ -72,7 +72,7 @@ esac
 # Build a comma-separated string of extensions
 extensions=$(joinarr ',' "${extensionsArray[@]}")
 
-watch.sh "${extensionsArray[@]}" \
+watch.sh "${extensions}" \
   -d "${debounce}" \
   -c "biome check --fix --reporter=summary --config-path=\"${BIOME_CONFIG_PATH}\" ." &&
   exit $?

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Import Current Theme
-RASI="$(dirname $0)/askpass.rasi"
+RASI="$(dirname "$0")/askpass.rasi"
 
 # rofi text dialog to get password
 rofi -dmenu \

@@ -67,7 +67,7 @@ branchesString="$(
 declare -a branches
 mapfile -t branches <<<"${branchesString}"
 
-file=$(mktemp -t XXXXX-"$(basename $0)")
+file=$(mktemp -t XXXXX-"$(basename "$0")")
 trap 'rm -f $file' EXIT
 
 switchBranch() {
@@ -113,10 +113,10 @@ switchBranch() {
     exit 0
   }
 
-  if git checkout "${branchName}" &>${file}; then
-    log-success "$(cat ${file})"
+  if git checkout "${branchName}" &>"${file}"; then
+    log-success "$(cat "${file}")"
   else
-    log-warning "$(cat ${file})"
+    log-warning "$(cat "${file}")"
     log-error "Failed to switch to branch '${branchName}'"
   fi
 }
@@ -149,13 +149,13 @@ createBranch() {
     cmd+=('-b' "${branchName}")
   fi
 
-  if "${cmd[@]}" &>${file}; then
-    log-success "$(cat ${file})"
+  if "${cmd[@]}" &>"${file}"; then
+    log-success "$(cat "${file}")"
     if [[ "${clearPrev}" -eq 0 ]]; then
       git rm -rf . &>/dev/null || true
     fi
   else
-    log-warning "$(cat ${file})"
+    log-warning "$(cat "${file}")"
     log-error "Failed to create branch '${branch}'"
   fi
 }

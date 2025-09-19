@@ -23,7 +23,7 @@ set -euo pipefail
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
-SCRIPTS_DIR="$(dirname $0)"
+SCRIPTS_DIR="$(dirname "$0")"
 DOTFILES="${HOME}/dotfiles"
 
 export PATH="${PATH}:${SCRIPTS_DIR}:/mnt/main/pnpm"

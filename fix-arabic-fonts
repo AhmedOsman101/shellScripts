@@ -21,4 +21,4 @@ set -euo pipefail
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
-sudo cp -f ${HOME}/.config/fontconfig/65-nonlatin.conf /etc/fonts/conf.d/65-nonlatin.conf
+sudo cp -f "${HOME}/.config/fontconfig/65-nonlatin.conf /etc/fonts/conf.d/65-nonlatin.conf"

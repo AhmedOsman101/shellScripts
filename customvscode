@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-sudo chown -R "$(whoami)" "$(which code)"
+sudo chown -R "$(whoami)" "$(command -v code)"
 sudo chown -R "$(whoami)" /opt/visual-studio-code
 
-sudo chown -R "$(whoami)" "$(which cursor)"
+sudo chown -R "$(whoami)" "$(command -v cursor)"
 sudo chown -R "$(whoami)" /opt/cursor
 sudo chown -R "$(whoami)" /usr/lib/cursor

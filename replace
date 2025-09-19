@@ -26,7 +26,7 @@ checkDeps "$0"
 # ---  Main script logic --- #
 # Usage function
 usage() {
-  echo "Usage: $(basename $0) <search> <replace> [file...]"
+  echo "Usage: $(basename "$0") <search> <replace> [file...]"
   echo "  search:  string to find"
   echo "  replace: string to replace with"
   echo "  file:    optional file(s) to process (if omitted, reads from stdin)"

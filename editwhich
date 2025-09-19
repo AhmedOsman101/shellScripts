@@ -31,7 +31,7 @@ EDITOR=${EDITOR:-nano}
 
 oldDir=$(pwd)
 
-if path=$(which "$1" 2>/dev/null); then
+if path=$(command -v "$1" 2>/dev/null); then
   cd "$(dirname "${path}")" || log-error "Failed to change directory"
   ${EDITOR} "${path}"
   cd "${oldDir}"

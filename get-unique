@@ -26,7 +26,7 @@ eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
-cmdarg_info "header" "$(get-desc $0)"
+cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "b" "backup" "Creates a backup .bak file of the original file"
 cmdarg "f" "force" "Overwrite the original file without cofirmation"

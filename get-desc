@@ -31,7 +31,7 @@ else
   if [[ -f $1 ]]; then
     file=$1
   else
-    file=$(which $1)
+    file=$(command -v "$1")
   fi
 
   [[ ! -f ${file} ]] && log-error "Script '${file}' was not found"

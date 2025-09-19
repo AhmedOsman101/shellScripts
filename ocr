@@ -26,7 +26,7 @@ eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
-cmdarg_info "header" "$(get-desc $0)"
+cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "s" "save" "Save the result to a file"
 
@@ -39,7 +39,7 @@ image=${cmdarg_argv[0]}
 
 if [[ ${saveToFile} == true ]]; then
 
-  imgNameWithoutExt="$(strip-ext ${image} png jpg jpeg webp svg gif)"
+  imgNameWithoutExt="$(strip-ext "${image}" png jpg jpeg webp svg gif)"
 
   tesseract "${image}" "${imgNameWithoutExt}" 2 &>/dev/null ||
     log-error "Tesseract failed on '${image}'."

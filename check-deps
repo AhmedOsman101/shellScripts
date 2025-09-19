@@ -108,7 +108,7 @@ installDep() {
   pkg=$1
 
   pkgManager=$(getPackageManager)
-  installCmd=$(echo ${pkgManager} | awk -F ':' '{print $NF}')
+  installCmd=$(echo "${pkgManager}" | awk -F ':' '{print $NF}')
   read -ra cmdArray <<<"${installCmd} ${pkg}"
 
   logInfo "Attempting to install package: ${pkg}"
@@ -134,7 +134,7 @@ checkDeps() {
     if [[ -f $1 ]]; then
       file=$1
     else
-      file=$(which $1)
+      file=$(command -v "$1")
     fi
 
     [[ ! -f ${file} ]] && logError "Script '${file}' was not found"

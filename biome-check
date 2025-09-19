@@ -48,13 +48,13 @@ else
 fi
 
 # Take the one at top-level
-[[ -n "${result}" ]] && configFile="$(echo ${result} | head -n 1)"
+[[ -n "${result}" ]] && configFile="$(echo "${result}" | head -n 1)"
 
 cmdArray=(
   biome
   check
   --fix
-  --config-path="${BIOME_CONFIG_PATH}"
+  --config-path="${configFile}"
   --max-diagnostics "${maxDiagnostics}"
 )
 

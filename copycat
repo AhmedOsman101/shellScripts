@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #
@@ -28,6 +28,5 @@ file=$1
 
 [[ -z ${file} || ! -f ${file} ]] && log-error "File ${file} not found"
 
-cat "${file}" |
-  clipcopy &&
+clipcopy <"${file}" &&
   log-success "Copied file ${file} contents successfully"

@@ -38,6 +38,7 @@ echo "${code}" >"${file}"
 diff=$(diff "${file}" "${formattedFile}")
 
 if [[ -n "${diff}" ]]; then
+  # shellcheck disable=2002
   cat "${file}" | phpcbf --stdin-path="file.php" - >"${formattedFile}"
 fi
 

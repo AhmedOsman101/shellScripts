@@ -55,12 +55,8 @@ logSafeError() {
 }
 
 terminate() {
-  if [[ -n "$1" ]]; then
-    logInfo "$1"
-  else
-    logInfo "Program terminated!"
-  fi
-
+  local msg="${1:-Program terminated!}"
+  logInfo "${msg}"
   exit 0
 }
 
@@ -72,7 +68,7 @@ getDeps() {
     if [[ -f $1 ]]; then
       file=$1
     else
-      file=$(which $1)
+      file=$(command -v "$1")
     fi
 
     [[ ! -f ${file} ]] && logError "Script '${file}' was not found"
@@ -211,13 +207,6 @@ Trim() {
   local str="$(input "$@")"
   [[ -z ${str} ]] && printf '' && exit 0
   echo "${str}" | sed -e "s|^[[:space:]]*||" -e "s|[[:space:]]*$||"
-}
-
-killwait() {
-  pid="$1"
-  kill "${pid}" 2>/dev/null
-  wait "${pid}" 2>/dev/null
-  return 0
 }
 
 isInt() { [[ $1 =~ ^[+-]?[0-9]+$ ]]; }
