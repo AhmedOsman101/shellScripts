@@ -29,9 +29,9 @@ file="${1:-'extensions.json'}"
 
 if [[ -f "${file}" ]]; then
   # Attempt to read JSON file contents
-  extensions="$(jq -r '.[]' "${file}" 2>/dev/null)"
-
-  [[ $? -ne 0 ]] && log-error "Failed to parse '${file}'"
+  if ! extensions="$(jq -r '.[]' "${file}" 2>/dev/null)"; then
+    log-error "Failed to parse '${file}'"
+  fi
 
   # Create extensions directory if it does not exist
   [[ ! -d "extensions" ]] && mkdir "extensions"
