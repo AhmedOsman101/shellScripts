@@ -77,13 +77,13 @@ if [[ -n "$(git remote -v)" ]]; then
   gum confirm "Delete remote as well?" && deleteRemote="true"
 fi
 
-git branch -D "${targetBranches[@]}"
+for branch in "${targetBranches[@]}"; do
+  git branch -D "${branch}" 2>/dev/null || log-warning "Failed to delete branch '${branch}' locally"
 
-if [[ "${deleteRemote}" == "true" ]]; then
-  for branch in "${targetBranches[@]}"; do
+  if [[ "${deleteRemote}" == "true" ]]; then
     git branch -D --remote "origin/${branch}" 2>/dev/null ||
       log-warning "Branch '${branch}' doesn't have a remote"
-  done
-fi
+  fi
+done
 
 exit 0
