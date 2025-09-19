@@ -38,4 +38,5 @@ if [[ -z ${str} ]]; then
   exit 0
 fi
 
-echo "${str}" | sed 's|\t|  |g'
+# ${var//search/replace} -> same as `echo ${var} | sed 's|search|replace|g'`
+printf '%s\n' "${str//$'\t'/  }"

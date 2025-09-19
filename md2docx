@@ -28,7 +28,8 @@ checkDeps "$0"
 file="$1"
 
 if [[ -f "${file}" ]]; then
-  filename="$(echo "${file}" | sed 's/\.[^.]*$//')"
+  # This removes everything after the last dot, including the dot
+  filename="${file%.*}"
 
   if [[ -z "${MRT}" && -f ${MRT} ]]; then
     pandoc "${file}" -o "${filename}.docx" || log-error "Unknown Error Occured"
