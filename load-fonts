@@ -26,6 +26,8 @@ eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 cd "${HOME}/fonts" || log-error "failed to find '${HOME}/fonts' directory, create it first."
+declare dir
+declare -a ttfDirs otfDirs dirs
 
 ttfDir="/usr/local/share/fonts/TTF"
 otfDir="/usr/local/share/fonts/OTF"
@@ -37,22 +39,25 @@ otfDir="/usr/local/share/fonts/OTF"
 sudo mv -i ./*.ttf "${ttfDir}" >/dev/null 2>&1 || true
 sudo mv -i ./*.otf "${otfDir}" >/dev/null 2>&1 || true
 
-fd . -t d -d 1 | while read -r dir; do
-  ttfDirs=($(fd . -e ttf "${dir}" -x dirname {} | no-dups -a))
-  if [[ ${#ttfDirs} -gt 0 ]]; then
+mapfile -t dirs < <(fd . -t d -d 1)
+
+for dir in "${dirs[@]}"; do
+  mapfile -t ttfDirs < <(fd . -e ttf "${dir}" -x dirname {} | no-dups -a)
+
+  if ((${#ttfDirs} > 0)); then
     sudo mv "${ttfDirs[@]}" -t "${ttfDir}" &&
       log-info "Moved $(echo "${ttfDirs[@]}" | tr " " "\n" | cut -d " " -f 5- | tr "\n" " " | trim)"
   fi
 
   if [[ -d "${dir}" ]]; then
-    otfDirs=($(fd . -e otf "${dir}" -x dirname {} | no-dups -a))
-    if [[ ${#otfDirs} -gt 0 ]]; then
+    mapfile -t otfDirs < <(fd . -e otf "${dir}" -x dirname {} | no-dups -a)
+    if ((${#otfDirs} > 0)); then
       sudo mv "${otfDirs[@]}" -t "${otfDir}" &&
         log-info "Moved $(echo "${otfDirs[@]}" | tr " " "\n" | cut -d " " -f 5- | tr "\n" " " | trim)"
     fi
   fi
 done
 
-gum spin --title "Caching fonts..." --spinner "dot" -- sudo fc-cache -r
+gum spin --title "Caching fonts..." -- sudo fc-cache -r
 
 log-success "Fonts reloaded succefully!"
