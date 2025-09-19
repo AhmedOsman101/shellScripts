@@ -12,9 +12,9 @@
 #            ██
 #
 # --- DESCRIPTION --- #
-#
+# Downloads the desired version of Biome and installs it on the user's system
 # --- DEPENDENCIES --- #
-#
+# - wget
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -26,6 +26,7 @@ eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
+cmdarg_info "header" "$(get-desc "$0")"
 cmdarg_parse "$@"
 
 version="${cmdarg_argv[0]}"
@@ -37,4 +38,4 @@ wget -O "${tempPath}" "${url}"
 
 chmod +x "${tempPath}"
 
-sudo mv "${tempPath}" "$(which biome)"
+sudo mv "${tempPath}" "$(command -v biome)"
