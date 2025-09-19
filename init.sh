@@ -23,7 +23,11 @@ set -uo pipefail
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
-file="$(dirname $0)/check-deps"
+export PATH="${PATH}:$(dirname "$0")"
+
+file="$(dirname "$0")/check-deps"
+declare -a scripts
+
 if [[ -f "${file}" ]]; then
   source "${file}"
   checkDeps "$0"
@@ -35,7 +39,7 @@ fi
 # For debian-based distros fd package is named fdfind
 if command -v fdfind &>/dev/null; then
   logInfo "Creating a symlink from fdfind to /usr/bin/fd"
-  sudo ln -sf "$(which fdfind)" /usr/bin/fd 2>/dev/null
+  sudo ln -sf "$(command -v fdfind)" /usr/bin/fd 2>/dev/null
 fi
 
 error=$(
@@ -62,7 +66,7 @@ if [[ ! -d "${DESTINATION_DIR}" ]]; then
   sudo mkdir -p "${DESTINATION_DIR}" || logError "Failed to create ${DESTINATION_DIR}"
 fi
 
-sudo chown -R ${USER}:${USER} "${DESTINATION_DIR}" || logError "Failed to make ${USER} the owner of ${DESTINATION_DIR}"
+sudo chown -R "${USER}:${USER}" "${DESTINATION_DIR}" || logError "Failed to make ${USER} the owner of ${DESTINATION_DIR}"
 
 # Ensure DESTINATION_DIR is user-writable
 if [[ ! -w "${DESTINATION_DIR}" ]]; then
@@ -79,33 +83,29 @@ ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${SCRIPTS_DIR}/cmdarg.sh" || logError "Fa
 sudo ln -sf "${SCRIPTS_DIR}/clipcopy" "${DESTINATION_DIR}/copyclip" || logError "Failed to link copyclip"
 ln -sf "${SCRIPTS_DIR}/clipcopy" "${SCRIPTS_DIR}/copyclip" || logError "Failed to link copyclip"
 
-if ! echo ${PATH} | grep "${DESTINATION_DIR}" -q; then
+if ! echo "${PATH}" | grep "${DESTINATION_DIR}" -q; then
   echo "Add this to your .$(basename "${SHELL}")rc file to make scripts globally available:"
+
+  # shellcheck disable=2016 # literally print it don't expand
   printf 'export PATH="$PATH:$HOME/.local/bin/scripts"\n\n'
 fi
 
-# Define directories to exclude
-EXCLUDE_DIRS=(
-  "${SCRIPTS_DIR}/.git"
-  "${SCRIPTS_DIR}/python/.venv"
-  "${SCRIPTS_DIR}/init.sh"
-  "${SCRIPTS_DIR}/cpp/release.sh"
+mapfile -t scripts < <(
+  fd . -t x "${SCRIPTS_DIR}" \
+    -E ".git" \
+    -E "python/.venv" \
+    -E "init.sh" \
+    -E "release.sh"
 )
 
-# Create symlinks for all executable scripts, excluding specified paths
 count=0
-while IFS= read -r script; do
+# Create symlinks for all executable scripts, excluding specified paths
+for script in "${scripts[@]}"; do
   if sudo ln -sf "${script}" "${DESTINATION_DIR}/$(basename "${script}")" 2>/dev/null; then
     ((count++))
   else
     logInfo "Failed to link ${script}"
   fi
-done < <(
-  fd . -t x "${SCRIPTS_DIR}" \
-    -E ".git" \
-    -E "python/.venv" \
-    -E "init.sh" \
-    -E "cpp/release.sh"
-)
+done
 
-log-success "Linked ${count} scripts to ${DESTINATION_DIR}"
+logSuccess "Linked ${count} scripts to ${DESTINATION_DIR}"
