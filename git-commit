@@ -50,6 +50,8 @@ is-git-repo
 
 repoPath="$(git-root)"
 
+trap 'cleanup' EXIT
+
 choices=(
   "docs: ANY changes to documentation files (*.md, docs/*, etc.)"
   "feat: New features or significant functional changes"
@@ -66,7 +68,12 @@ choices=(
 
 declare -a files
 
-if ! git status --porcelain | grep -q '^'; then
+cleanup() {
+  killwait "${SPINNER_PID}"
+  rm -f "${logFile}"
+}
+
+if ! git status --porcelain | rg -q '^'; then
   log-info "Nothing to commit"
   exit 0
 fi
@@ -97,32 +104,29 @@ fi
 
 if [[ "${useAi}" == true ]]; then
   logFile=$(mktemp -t commit-sage-XXXXX.log)
-  trap 'rm -f $logFile' EXIT
 
-  cmdArray=(bash -c "commit-sage > ${logFile} 2>&1")
-
-  # Another implementation
-  # gum spin --title "Generating..." -- yes &
-  # # Capture the PID immediately after launching
-  # pid=$!
-
-  # if ! commit-sage >"${logFile}" 2>&1; then
-  #   kill "${pid}"
+  # cmdArray=(bash -c "commit-sage > ${logFile} 2>&1")
+  # if ! gum spin --title "Generating..." -- "${cmdArray[@]}"; then
   #   log-error "$(sed 's|\[ERROR\] ||' ${logFile})"
-  # else
-  #   kill "${pid}"
   # fi
 
-  if ! gum spin --title "Generating..." -- "${cmdArray[@]}"; then
-    log-error "$(sed 's|\[ERROR\] ||' ${logFile})"
+  # Another implementation
+  spinner.sh &
+  # Capture the PID immediately after launching
+  SPINNER_PID=$!
+  if ! commit-sage >"${logFile}" 2>&1; then
+    killwait "${SPINNER_PID}"
+    log-error "$(sed 's|\[ERROR\] ||' "${logFile}")"
   fi
+
+  killwait "${SPINNER_PID}"
 
   # Check for [ERROR] lines after execution
-  if rg -q '\[ERROR\].' ${logFile}; then
-    log-error "$(sed 's|\[ERROR\] ||' ${logFile})"
+  if rg -q '\[ERROR\].' "${logFile}"; then
+    log-error "$(sed 's|\[ERROR\] ||' "${logFile}")"
   fi
 
-  transformed=$(cat ${logFile} | tr "\n" "#")
+  transformed=$(tr "\n" "#" <"${logFile}")
 
   summary=$(echo "${transformed}" | awk -F "##" '{print $1}' | sed 's|#$||g')
   details=$(echo "${transformed}" | awk -F "##" '{print $2}' | tr "#" "\n")
@@ -178,3 +182,5 @@ if [[ -n "$(git remote -v)" && "${local}" != true ]]; then
     log-error "Failed to push to ${branch}."
   fi
 fi
+
+exit 0
