@@ -12,9 +12,9 @@
 #
 #
 # --- DESCRIPTION --- #
-#
+# Spits out file names' and their content
 # --- DEPENDENCIES --- #
-#
+# - bat
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -24,5 +24,11 @@ trap 'exit 1' SIGUSR1
 eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
-echo -e "\n$1:"
-cat "$1"
+for file in "${@}"; do
+  if [[ -f "${file}" ]]; then
+    bat --style=header "${file}"
+  else
+    log-warning "file '${file}' doesn't exist"
+  fi
+  printf '\n'
+done
