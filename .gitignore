@@ -2,3 +2,4 @@ bin
 dmscripts
 *.out
 *.exe
+target

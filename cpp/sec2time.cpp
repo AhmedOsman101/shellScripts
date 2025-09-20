@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
     if (isShort) {
       output += "d";
     } else {
-      output += days > 1 ? " Days" : " Day";
+      output += days > 1 ? " days" : " day";
     }
 
     out.push_back(output);
@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
     if (isShort) {
       output += "h";
     } else {
-      output += hours > 1 ? " Hours" : " Hour";
+      output += hours > 1 ? " hours" : " hour";
     }
 
     out.push_back(output);
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
     if (isShort) {
       output += "m";
     } else {
-      output += minutes > 1 ? " Minutes" : " Minute";
+      output += minutes > 1 ? " minutes" : " minute";
     }
 
     out.push_back(output);
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
     if (isShort) {
       output += "s";
     } else {
-      output += seconds > 1 ? " Seconds" : " Second";
+      output += seconds > 1 ? " seconds" : " second";
     }
 
     out.push_back(output);
@@ -89,9 +89,7 @@ int main(int argc, char* argv[]) {
   for (int i = 0; i <= len; i++) {
     time += out[i];
 
-    if (i == len) time += "";
-
-    if (i < len && isShort)time += " ";
+    if (i < len && isShort) time += " ";
     else if (i == len - 1) time += " and ";
     else if (i <= len - 2) time += ", ";
   }
