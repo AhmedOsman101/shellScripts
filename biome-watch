@@ -20,15 +20,14 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1 # Terminate script on SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "p?" "preset" "The files preset to watch" "std"
 cmdarg "d?" "debounce" "Time to wait for new events before taking action" "5s"
@@ -74,5 +73,5 @@ extensions=$(joinarr ',' "${extensionsArray[@]}")
 
 watch.sh "${extensions}" \
   -d "${debounce}" \
-  -c "biome check --fix --reporter=summary --config-path=\"${BIOME_CONFIG_PATH}\" ." &&
+  -c "biome check --fix --reporter=summary --config-path='${BIOME_CONFIG_PATH}' ." &&
   exit $?

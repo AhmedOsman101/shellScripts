@@ -18,15 +18,14 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "w?" "width" "The image's width in pixels" "1280"
 cmdarg "t?" "height" "The image's height in pixels" "720"
@@ -36,11 +35,11 @@ cmdarg "n?" "name" "The image's name" "blank"
 
 cmdarg_parse "$@"
 
-width=${cmdarg_cfg['width']}
-height=${cmdarg_cfg['height']}
-color=${cmdarg_cfg['color']}
-extension=${cmdarg_cfg['extension']}
-name=${cmdarg_cfg['name']}
+width="${cmdarg_cfg['width']}"
+height="${cmdarg_cfg['height']}"
+color="${cmdarg_cfg['color']}"
+extension="${cmdarg_cfg['extension']}"
+name="${cmdarg_cfg['name']}"
 
 magick -size "${width}x${height}" \
   "xc:${color}" \

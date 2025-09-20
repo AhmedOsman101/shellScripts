@@ -17,17 +17,22 @@
 # - bat | batcat (bat)
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
-checkDeps "$0"
-# ---  Main script logic --- #
-[[ -z $1 ]] && log-error "No valid input was given!"
 
-if path=$(command -v "$1" 2>/dev/null); then
+checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+
+# ---  Main script logic --- #
+script="${argv[0]}"
+[[ -z "${script}" ]] && log-error "No valid input was given!"
+
+if path="$(command -v "${script}" 2>/dev/null)"; then
   bat --style plain "${path}"
 else
-  log-error "Script $1 doesn't exist!"
+  log-error "Script ${script} doesn't exist!"
 fi

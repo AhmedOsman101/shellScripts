@@ -17,16 +17,20 @@
 # - cat
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+
 # ---  Main script logic --- #
-file=$1
+file="${argv[0]}"
 
-[[ -z ${file} || ! -f ${file} ]] && log-error "File ${file} not found"
+[[ -z "${file}" || ! -f "${file}" ]] && log-error "File ${file} not found"
 
-clipcopy <"${file}" &&
-  log-success "Copied file ${file} contents successfully"
+clipcopy <"${file}" && log-success "Copied file ${file} contents successfully"

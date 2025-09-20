@@ -18,8 +18,7 @@
 # - sudo
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #

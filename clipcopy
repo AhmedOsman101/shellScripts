@@ -17,16 +17,20 @@
 # - copyq | xclip | wl-copy (wl-clipboard)
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/helpers.sh")"
-
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+
 # ---  Main script logic --- #
-str="$(input "$@")"
+str="$(input "${argv[@]}")"
 
 [[ -z ${str} ]] && log-error "No valid input was given"
 
