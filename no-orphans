@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#                                                              ▄▄
+#                                                              ██
+#  ██▄████▄   ▄████▄              ▄████▄    ██▄████  ██▄███▄   ██▄████▄   ▄█████▄  ██▄████▄  ▄▄█████▄
+#  ██▀   ██  ██▀  ▀██            ██▀  ▀██   ██▀      ██▀  ▀██  ██▀   ██   ▀ ▄▄▄██  ██▀   ██  ██▄▄▄▄ ▀
+#  ██    ██  ██    ██   █████    ██    ██   ██       ██    ██  ██    ██  ▄██▀▀▀██  ██    ██   ▀▀▀▀██▄
+#  ██    ██  ▀██▄▄██▀            ▀██▄▄██▀   ██       ███▄▄██▀  ██    ██  ██▄▄▄███  ██    ██  █▄▄▄▄▄██
+#  ▀▀    ▀▀    ▀▀▀▀                ▀▀▀▀     ▀▀       ██ ▀▀▀    ▀▀    ▀▀   ▀▀▀▀ ▀▀  ▀▀    ▀▀   ▀▀▀▀▀▀
+#                                                    ██
+#
+# --- DESCRIPTION --- #
+# Removes orphan packages using paru
+# --- DEPENDENCIES --- #
+# - paru
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "f" "force" "Don't ask for confirmation and delete all"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+declare -a orphanPkgs removablePkgs keepPkgs pkgsToRemove
+force="${cmdarg_cfg['force']}"
+
+# Collect orphans
+mapfile -t orphanPkgs < <(paru -Qtdq || true) # if no orphan packages found, paru fails
+((${#orphanPkgs[@]})) || terminate "No orphan packages were found"
+
+mapfile -t removablePkgs < <(
+  # -Rs -> Remove packages along with their dependencies (recursive)
+  # -p -> perform a dry-run
+  # --print-format '%n' -> print the name only without the version
+  paru -Rps --print-format "%n" "${orphanPkgs[@]}"
+)
+
+if [[ "${force}" != true ]]; then
+  mapfile -t keepPkgs < <(
+    gum choose \
+      --header='Choose what to KEEP' \
+      --no-limit "${removablePkgs[@]}" ||
+      log-error "Program terminated"
+  )
+  removablePkgs+=("${keepPkgs[@]}")
+fi
+
+mapfile -t pkgsToRemove < <(
+  printf '%s\n' "${removablePkgs[@]}" | get-unique
+)
+
+((${#pkgsToRemove} < 1)) && terminate "No orphan packages were found"
+
+paru -Rn "${pkgsToRemove[@]}"
+exit 0
