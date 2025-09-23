@@ -227,7 +227,7 @@ Like any good option parsing framework, cmdarg understands '--' and positional a
 myscript.sh -x 0 --longopt thingy file1 file2
 ```
 
-... It would seem reasonable to assume that -x and --longopt would be parsed as expected; with arguments of 0 and thingy. But what to do with file1 and file2? cmdarg puts those into a bash indexed array called cmdarg_argv.
+... It would seem reasonable to assume that -x and --longopt would be parsed as expected; with arguments of 0 and thingy. But what to do with file1 and file2? cmdarg puts those into a bash indexed array called argv.
 
 Similarly, cmdarg understands '--' which means "stop processing arguments, the rest of this stuff is just to be passed to the program directly". So in this case:
 
@@ -235,7 +235,7 @@ Similarly, cmdarg understands '--' which means "stop processing arguments, the r
 myscript.sh -x 0 --longopt thingy -- --some-thing-with-dashes
 ```
 
-... Cmdarg would parse -x and --longopt as expected, and then ${cmdarg_argv[0]} would hold "--some-thing-with-dashes", for your program to do with what it will.
+... Cmdarg would parse -x and --longopt as expected, and then ${argv[0]} would hold "--some-thing-with-dashes", for your program to do with what it will.
 
 # Helpers
 

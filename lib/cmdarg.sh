@@ -1,8 +1,7 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
+# shellcheck disable=all
 if ((BASH_VERSINFO[0] < 4)); then
-  log-error "cmdarg is incompatible with bash versions < 4, please upgrade bash" >&2
-  exit 1
+  log-error "cmdarg is incompatible with bash versions < 4, please upgrade bash"
 fi
 
 CMDARG_ERROR_BEHAVIOR=return
@@ -161,7 +160,8 @@ function cmdarg_usage {
   if [[ -n "${AUTHOR}" && -n "${AUTHOR_EMAIL}" ]]; then
     CMDARG_INFO["author"]="${AUTHOR} <${AUTHOR_EMAIL}>"
   fi
-  echo "$(basename $0) ${CMDARG_INFO['copyright']}: ${CMDARG_INFO['author']}"
+  fallbackCopyRight="(c) 2024-$(date +%Y)"
+  echo "$(basename $0) ${CMDARG_INFO['copyright']:-${fallbackCopyRight}}: ${CMDARG_INFO['author']}"
   echo
   echo "${CMDARG_INFO['header']}"
   echo
@@ -294,7 +294,7 @@ function cmdarg_parse {
     fi
 
     if [[ "${fullopt}" == "--" ]] && [[ ${parsing} -eq 0 ]]; then
-      cmdarg_argv+=($@)
+      argv+=($@)
       break
     elif [[ "${fullopt:0:2}" == "--" ]]; then
       longopt=${fullopt:2}
@@ -303,7 +303,7 @@ function cmdarg_parse {
       opt=${fullopt:1}
       longopt=${CMDARG[${opt}]}
     elif [[ "${fullopt:0:1}" != "-" ]]; then
-      cmdarg_argv+=("${fullopt}")
+      argv+=("${fullopt}")
       continue
     else
       ${cmdarg_helpers['usage']} >&2
@@ -354,6 +354,7 @@ function cmdarg_parse {
     fi
     ${CMDARG_ERROR_BEHAVIOR} 1
   fi
+  argc=$((${#argv[@]}))
 }
 
 function cmdarg_traceback {
@@ -433,7 +434,9 @@ declare -xA CMDARG_FLAGS
 # Map of (short arg) -> type (string, array, hash)
 declare -xA CMDARG_TYPES
 # Array of all elements found after --
-declare -xa cmdarg_argv
+declare -xa argv
+# Count of all arguments found after --
+declare -x argc
 # Hash of functions that are used for user-extensible functionality
 declare -xA cmdarg_helpers
 cmdarg_helpers['describe']=cmdarg_describe_default
