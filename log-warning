@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #  ▄▄▄▄                                                                               ██
@@ -17,14 +17,12 @@
 # - tput
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+
+checkDeps "$0"
 # ---  Main script logic --- #
-
-# read from stdin
-str="$(input "$@")"
-
-printYellow "[WARNING] ${str}"
+printYellow "[WARNING] $(input "$@")" 1>&2

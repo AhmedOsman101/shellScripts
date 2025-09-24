@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+# shellcheck disable=2310
 # --- SCRIPT SIGNATURE --- #
 #
 #  ▄▄▄▄
@@ -20,22 +20,22 @@
 # - kill
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+
+checkDeps "$0"
 # ---  Main script logic --- #
-
-# read from stdin
-str="$(input "$@")"
-
 # Print error message in red
-printRed "[ERROR] ${str}" 1>&2
+printRed "[ERROR] $(input "$@")" 1>&2
 
-# Get parent PID (script that called log-error) and send SIGUSR1
-PARENT_PID=$(ps -o ppid= $$ | xargs)
-kill -SIGUSR1 "${PARENT_PID}"
+if ! isInteractiveShell; then
+  # Get parent PID (script that called log-error) and send SIGUSR1
+  kill -SIGUSR1 "${PPID}" &>/dev/null || true
+  wait "${PPID}" &>/dev/null || true
+fi
 
 # Exit with failure code (fallback if signal is ignored)
 exit 1
