@@ -1,10 +1,12 @@
+#include <format>
+#include <cmath>
 #include <iostream>
 #include <vector>
 
 using namespace std;
 
 int main(int argc, char* argv[]) {
-  int seconds = 0;
+  double seconds = 0;
 
   vector<string> out;
   string output = "";
@@ -12,11 +14,11 @@ int main(int argc, char* argv[]) {
   bool isShort = false;
 
   // Constants
-  const int oneDay = 86400;
-  const int oneHour = 3600;
-  const int oneMinute = 60;
+  const int ONE_DAY = 86400;
+  const int ONE_HOUR = 3600;
+  const int ONE_MINUTE = 60;
 
-  if (1 < argc) seconds = atoi(argv[1]);
+  if (1 < argc) seconds = atof(argv[1]);
   else {
     printf("Time is required\n");
     return 1;
@@ -27,16 +29,16 @@ int main(int argc, char* argv[]) {
     if (string(argv[2]) == "-s" || string(argv[2]) == "--short") isShort = true;
   }
 
-  int days = seconds / oneDay;
-  seconds %= oneDay;
+  int days = seconds / ONE_DAY;
+  seconds = fmod(seconds, ONE_DAY);
 
-  int hours = seconds / oneHour;
-  seconds %= oneHour;
+  int hours = seconds / ONE_HOUR;
+  seconds = fmod(seconds, ONE_HOUR);
 
-  int minutes = seconds / oneMinute;
-  seconds %= oneMinute; // Remaining seconds
+  int minutes = seconds / ONE_MINUTE;
+  seconds = fmod(seconds, ONE_MINUTE);
 
-  if (days > 0) {
+  if (0 < days) {
     output = to_string(days);
 
     if (isShort) {
@@ -48,7 +50,7 @@ int main(int argc, char* argv[]) {
     out.push_back(output);
   }
 
-  if (hours > 0) {
+  if (0 < hours) {
     output = to_string(hours);
 
     if (isShort) {
@@ -60,7 +62,7 @@ int main(int argc, char* argv[]) {
     out.push_back(output);
   }
 
-  if (minutes > 0) {
+  if (0 < minutes) {
     output = to_string(minutes);
 
     if (isShort) {
@@ -72,13 +74,24 @@ int main(int argc, char* argv[]) {
     out.push_back(output);
   }
 
-  if (seconds > 0) {
-    output = to_string(seconds);
+  if (0 < seconds) {
+    if (1 <= seconds) {
+      output = std::format("{:.2f}", seconds);
 
-    if (isShort) {
-      output += "s";
+      if (isShort) output += "s";
+      else {
+        output += seconds > 1 ? " seconds" : " second";
+      }
+
     } else {
-      output += seconds > 1 ? " seconds" : " second";
+      double ms = seconds * 1000;
+      output = std::format("{:.2f}", ms);
+
+      if (isShort) output += "ms";
+      else {
+        output += seconds > 1 ? " milliseconds" : " millisecond";
+      }
+
     }
 
     out.push_back(output);
