@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #  ▄▄                  ▄▄▄▄                                                                  ▄▄
@@ -227,4 +227,66 @@ isNegative() {
   [[ -z "${num}" ]] && return 1
   isFloat "${num}" || return 1
   [[ $(echo "${num} < 0" | bc -l) -eq 1 ]]
+}
+
+isInteractiveShell() {
+  [[ -t 0 ]] && [[ -t 1 ]] && ps -o stat= -p "${PPID}" | grep -q 's'
+}
+
+benchmark() {
+  local start=$(date +%s.%N)
+
+  local iters="$1"
+  shift
+
+  tmp="$(mktemp)"
+  trap 'rm -rf $tmp' EXIT
+
+  loop -n "${iters}" "command time -f '%e' -o ${tmp} -a $* >/dev/null 2>&1"
+
+  local end=$(date +%s.%N)
+  local elapsed="$(bc <<<"${end} - ${start}")"
+
+  awk '
+    {
+      sum+=$1
+      if(NR == 1 || $1 < min) min=$1
+      if(NR == 1 || $1 > max) max=$1
+      }
+      END {
+      printf "runs: %d\navg: %.6fs\nmin: %.6fs\nmax: %.6fs\n", NR, sum / NR, min, max
+    }
+  ' "${tmp}"
+
+  echo "total: $(sec2time "${elapsed}" --short)"
+}
+
+eraseLine() {
+  n="${1:-1}"
+  for ((i = 0; i < n; i++)); do
+    printf '\r'
+    printf '\e[1A'
+    printf '\e[2K'
+  done
+}
+
+mapColor() {
+  local color="$1"
+  local -A colors=(
+    [black]=0
+    [red]=1
+    [green]=2
+    [yellow]=3
+    [blue]=4
+    [magenta]=5
+    [cyan]=6
+    [white]=7
+    [gray]=8
+    [grey]=8
+  )
+  if [[ -v "colors[${color}]" ]]; then
+    echo "${colors[${color}]}"
+  else
+    return 1
+  fi
 }
