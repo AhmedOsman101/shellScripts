@@ -16,7 +16,11 @@
 # --- END SIGNATURE --- #
 
 # ---  Main script logic --- #
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_DIR="${HOME}/scripts"
+
+scripts_dir="${SCRIPTS_DIR}"
+[[ ! -d "${scripts_dir}" ]] && scripts_dir="$(dirname -- "${BASH_SOURCE[0]}")"
+script_dir="$(cd -- "${scripts_dir}" && pwd)"
 file="$(realpath -m "${script_dir}/$1")"
 
 [[ -f "${file}" ]] && echo "source '${file}'"
