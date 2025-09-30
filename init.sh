@@ -108,4 +108,4 @@ for script in "${scripts[@]}"; do
   fi
 done
 
-logSuccess "Linked ${count} scripts to ${DESTINATION_DIR}"
+log-success "Linked ${count} scripts to ${DESTINATION_DIR}"
