@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#
+# shellcheck disable=2183
 # --- SCRIPT SIGNATURE --- #
 #
 #                         ██                                                                 ▄▄
@@ -28,90 +28,62 @@ eval "$(include "lib/helpers.sh")"
 eval "$(include "check-deps")"
 
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
-cmdarg "c?" "color" "Color of the banner (black, red, green, yellow, blue, magenta, cyan, white, gray)" "green"
+cmdarg "c?" "color" "Color of the spinner (black, red, green, yellow, blue, magenta, cyan, white, gray)" "green"
 
 cmdarg_parse "$@"
 
 color=${cmdarg_cfg['color']}
-msg=${cmdarg_argv[*]:-Loading...}
+msg=${argv[*]:-Loading...}
 [[ -z ${msg} ]] && log-error "Message is required"
 
-trapsig=0
+# make sure we restore cursor before exit
+cleanup() {
+  local sig=$1
 
-onkill() {
-  trapsig="${BASH_TRAPSIG}"
-  if ((trapsig != 2)); then
-    printf '\r'      # return to start
-    printf '\e[2K'   # erase whole line
-    printf '\e[?25h' # show cursor
-    printf '\e[2K'   # erase whole line
+  printf '\r'      # return to start
+  printf '\e[2K'   # erase whole line
+  printf '\e[?25h' # show cursor
+
+  if [[ "${sig}" != TERM ]]; then
+    printf '\e[3%sm' "${colorCode}"                                  # set the foreground color
+    printf '%s %s%s' "${currentSpinner}" "${msg%$'\n'}" "${padding}" # print the progress bar
+    printf '\e[0m'                                                   # reset the foreground color
   fi
+
   exit 0
 }
 
-# make sure we restore cursor on exit or Ctrl-C
-cleanup() {
-  trapsig="${trapsig:-${BASH_TRAPSIG}}"
-  if ((trapsig == 0)) || ((trapsig == 2)); then
-    printf '\r'                                       # return to start
-    printf '\e[2K'                                    # erase whole line
-    printf '\e[?25h'                                  # show cursor
-    tput setaf "${colorCode}"                         # set the foreground color
-    printf '%s %s' "${currentSpinner}" "${msg%$'\n'}" # print the progress bar
-    tput sgr0                                         # reset the foreground color
-  fi
-  return 0
-}
-
-trap 'cleanup' EXIT
-trap 'onkill' INT TERM SIGUSR1
+trap 'cleanup INT' INT
+trap 'cleanup TERM' TERM
+trap 'cleanup SIGUSR1' SIGUSR1
 
 sp='⣾⣽⣻⢿⡿⣟⣯⣷'
 msgLength=$((${#msg} + 2))
-width=$((COLUMNS - msgLength))
 
-for _ in $(seq 1 "${width}"); do
-  msg+=' '
-done
-
-declare colorCode
-
-case ${color} in
-black) colorCode=0 ;;
-red) colorCode=1 ;;
-green) colorCode=2 ;;
-yellow) colorCode=3 ;;
-blue) colorCode=4 ;;
-magenta) colorCode=5 ;;
-cyan) colorCode=6 ;;
-white) colorCode=7 ;;
-gray | grey) colorCode=8 ;;
-*) log-error "Invalid color '${color}'" ;;
-esac
+colorCode="$(mapColor "${color}")" || log-error "Invalid color '${color}'"
 
 # hide cursor
 printf '\e[?25l'
 
-i=0
 idx=0
 currentSpinner="${sp:idx:1}"
-while true; do
-  # compute once, use everywhere
-  idx=$((i % ${#sp}))
-  currentSpinner="${sp:idx:1}"
+while :; do
+  pad=$((COLUMNS - msgLength))
+  ((pad > 0)) && printf -v padding "%*s" "${pad}"
+  currentSpinner="${sp:idx%${#sp}:1}"
 
-  printf '\e7'                                # save the cursor location
-  printf '\e[2K'                              # clear the line
-  tput setaf "${colorCode}"                   # set the foreground color
-  printf '%s %s' "${currentSpinner}" "${msg}" # print the progress bar
-  tput sgr0                                   # reset the foreground color
-  printf '\e8'                                # restore the cursor location
+  printf '\e[s'                                                    # save the cursor location
+  printf '\e[2K'                                                   # clear the line
+  printf '\e[3%sm' "${colorCode}"                                  # set the foreground color
+  printf '%s %s%s' "${currentSpinner}" "${msg%$'\n'}" "${padding}" # print the progress bar
+  printf '\e[0m'                                                   # reset the foreground color
+  printf '\e[u'                                                    # restore the cursor location
 
   sleep 0.1
-  ((i++))
+  ((++idx))
 done
 
 exit 0
