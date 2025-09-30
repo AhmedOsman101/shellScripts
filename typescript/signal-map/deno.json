@@ -1,0 +1,6 @@
+{
+  "tasks": {
+    "dev": "deno run --allow-run --watch signal-map.ts",
+    "compile": "deno compile --allow-run signal-map.ts -o signal-map.out"
+  }
+}
