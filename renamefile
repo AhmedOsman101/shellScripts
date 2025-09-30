@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                                                 ▄▄▄▄      ██     ▄▄▄▄
@@ -18,25 +18,23 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "lib/helpers.sh")"
-
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "f" "force" "Don't ask for confirmation"
 
 cmdarg_parse "$@"
 
 force="${cmdarg_cfg["force"]}"
-old="${cmdarg_argv[0]}"
-new="${cmdarg_argv[1]}"
+old="${argv[0]}"
+new="${argv[1]}"
 
 if [[ -z "${old}" ]]; then
   log-error "Missing source file"

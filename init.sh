@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #     ██                  ██                                   ▄▄
@@ -102,7 +102,7 @@ count=0
 # Create symlinks for all executable scripts, excluding specified paths
 for script in "${scripts[@]}"; do
   if sudo ln -sf "${script}" "${DESTINATION_DIR}/$(basename "${script}")" 2>/dev/null; then
-    ((count++))
+    ((++count))
   else
     logInfo "Failed to link ${script}"
   fi

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #
@@ -18,22 +18,21 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "s" "save" "Save the result to a file"
 
 cmdarg_parse "$@"
 
 saveToFile=${cmdarg_cfg['save']}
-image=${cmdarg_argv[0]}
+image=${argv[0]}
 
 [[ -f "${image}" ]] || log-error "file '${image}' was not found!"
 

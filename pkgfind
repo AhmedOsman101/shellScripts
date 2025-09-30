@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                             ▄▄▄▄      ██                     ▄▄
@@ -19,15 +19,14 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "o" "online" "Search online instead of installed packages"
 cmdarg "l" "local" "Search in installed packages, no prompt for searching online"
@@ -41,7 +40,7 @@ online=${cmdarg_cfg['online']}
 pkgManager=${cmdarg_cfg['manager']}
 local=${cmdarg_cfg['local']}
 version=${cmdarg_cfg['version']}
-pkg=${cmdarg_argv[0]}
+pkg=${argv[0]}
 
 if [[ "${online}" == true ]]; then
   ${pkgManager} -Ss "${pkg}"
