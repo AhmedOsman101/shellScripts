@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄                               ▄▄▄▄      ██     ▄▄▄▄
+#            ██                              ██▀▀▀      ▀▀     ▀▀██
+#  ██▄███▄   ██ ▄██▀    ▄███▄██            ███████    ████       ██       ▄████▄   ▄▄█████▄
+#  ██▀  ▀██  ██▄██     ██▀  ▀██              ██         ██       ██      ██▄▄▄▄██  ██▄▄▄▄ ▀
+#  ██    ██  ██▀██▄    ██    ██   █████      ██         ██       ██      ██▀▀▀▀▀▀   ▀▀▀▀██▄
+#  ███▄▄██▀  ██  ▀█▄   ▀██▄▄███              ██      ▄▄▄██▄▄▄    ██▄▄▄   ▀██▄▄▄▄█  █▄▄▄▄▄██
+#  ██ ▀▀▀    ▀▀   ▀▀▀   ▄▀▀▀ ██              ▀▀      ▀▀▀▀▀▀▀▀     ▀▀▀▀     ▀▀▀▀▀    ▀▀▀▀▀▀
+#  ██                   ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# Displays all files/directories owned by a given package.
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "a" "all" "Shows both directories and files"
+cmdarg "d" "directories" "Show directories only"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+package="${argv[0]}"
+showAll="${cmdarg_cfg[all]}"
+showDirs="${cmdarg_cfg[directories]}"
+
+[[ -z ${package} ]] && log-error "Must provide a package name"
+
+while read -r entry; do
+  if [[ "${showAll}" == true ]]; then
+    echo "${entry}"
+  elif [[ "${showDirs}" == true ]]; then
+    [[ -d "${entry}" ]] && echo "${entry}"
+  elif [[ ! -d "${entry}" ]]; then
+    echo "${entry}"
+  fi
+done < <(pacman -Ql "${package}" | cut -d' ' -f2-)
+
+exit 0
