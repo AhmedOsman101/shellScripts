@@ -125,10 +125,10 @@ getPackageManager() {
     # For Arch-based distros, check for AUR helpers
     if command -v paru &>/dev/null; then
       pkgManager="paru"
-      installCmd="sudo -A paru -S --noconfirm"
+      installCmd="paru -S --noconfirm"
     elif command -v yay &>/dev/null; then
       pkgManager="yay"
-      installCmd="sudo -A yay -S --noconfirm"
+      installCmd="yay -S --noconfirm"
     else
       pkgManager="pacman"
       installCmd="sudo -A pacman -S --noconfirm"
