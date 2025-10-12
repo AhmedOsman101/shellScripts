@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #            ▄▄▄▄         ██
@@ -12,9 +12,10 @@
 #                                ██                            ██         ███
 #
 # --- DESCRIPTION --- #
-# Copies input text or arguments to the system clipboard using available clipboard tools
+# Copies input text or arguments to the system clipboard using available clipboard tools.
 # --- DEPENDENCIES --- #
-# - copyq | xclip | wl-copy (wl-clipboard)
+# - xclip | wl-copy (wl-clipboard) | copyq
+# - ansifilter
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -25,22 +26,21 @@ eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
 
-# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg_parse "$@"
-
 # ---  Main script logic --- #
 str="$(input "${argv[@]}")"
+str="$(echo "${str}" | ansifilter)"
 
-[[ -z ${str} ]] && log-error "No valid input was given"
+[[ -z "${str}" ]] && log-error "No valid input was given"
 
-if command -v copyq >/dev/null 2>&1; then
-  copyq add "${str}" &>/dev/null
-  copyq copy "${str}" &>/dev/null
-elif command -v wl-copy >/dev/null 2>&1; then
-  printf '%s' "${str}" | wl-copy
-elif command -v xclip >/dev/null 2>&1; then
-  printf '%s' "${str}" | xclip -selection clipboard
+if [[ "${XDG_SESSION_TYPE}" == "x11" ]] && command -v xclip &>/dev/null; then
+  echo -n "${str}" | xclip -selection clipboard
+elif [[ "${XDG_SESSION_TYPE}" == "wayland" ]] && command -v wl-copy &>/dev/null; then
+  wl-copy "${str}"
+elif command -v copyq &>/dev/null; then
+  copyq add "${str}" 1>/dev/null
+  copyq copy "${str}" 1>/dev/null
 else
-  log-error "No clipboard tool (copq, wl-copy or xclip) was found"
+  log-error "No clipboard tool (xclip, wl-clipboard, copyq) was found"
 fi
