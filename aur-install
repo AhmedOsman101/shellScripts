@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#                                             ██                                             ▄▄▄▄      ▄▄▄▄
+#                                             ▀▀                           ██                ▀▀██      ▀▀██
+#   ▄█████▄  ██    ██   ██▄████             ████     ██▄████▄  ▄▄█████▄  ███████    ▄█████▄    ██        ██
+#   ▀ ▄▄▄██  ██    ██   ██▀                   ██     ██▀   ██  ██▄▄▄▄ ▀    ██       ▀ ▄▄▄██    ██        ██
+#  ▄██▀▀▀██  ██    ██   ██        █████       ██     ██    ██   ▀▀▀▀██▄    ██      ▄██▀▀▀██    ██        ██
+#  ██▄▄▄███  ██▄▄▄███   ██                 ▄▄▄██▄▄▄  ██    ██  █▄▄▄▄▄██    ██▄▄▄   ██▄▄▄███    ██▄▄▄     ██▄▄▄
+#   ▀▀▀▀ ▀▀   ▀▀▀▀ ▀▀   ▀▀                 ▀▀▀▀▀▀▀▀  ▀▀    ▀▀   ▀▀▀▀▀▀      ▀▀▀▀    ▀▀▀▀ ▀▀     ▀▀▀▀      ▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+#
+# --- DEPENDENCIES --- #
+# - paru
+# - updatedb (plocate)
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+fzf_args=(
+  --multi
+  --preview 'paru -Sii {1}'
+  --preview-label='alt-p: toggle description, alt-b/B: toggle PKGBUILD, alt-j/k: scroll, tab: multi-select, F11: maximize'
+  --preview-label-pos='bottom'
+  --preview-window='down:65%:wrap'
+  --bind 'alt-p:toggle-preview'
+  --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up'
+  --bind 'alt-k:preview-up,alt-j:preview-down'
+  --bind 'alt-b:change-preview:paru -Gp {1} | tail -n +5'
+  --bind 'alt-B:change-preview:paru -Sii {1}'
+  --color 'pointer:green,marker:green'
+)
+
+declare -a pkgNames
+mapfile -t pkgNames < <(paru -Slq | fzf "${fzf_args[@]}")
+
+if ((${#pkgNames[@]})); then
+  paru -S "${pkgNames[@]}"
+  sudo updatedb &>/dev/null || true
+fi

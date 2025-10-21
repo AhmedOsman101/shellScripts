@@ -1,4 +1,34 @@
 #!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄                               ██                                             ▄▄▄▄      ▄▄▄▄
+#            ██                               ▀▀                           ██                ▀▀██      ▀▀██
+#  ██▄███▄   ██ ▄██▀    ▄███▄██             ████     ██▄████▄  ▄▄█████▄  ███████    ▄█████▄    ██        ██
+#  ██▀  ▀██  ██▄██     ██▀  ▀██               ██     ██▀   ██  ██▄▄▄▄ ▀    ██       ▀ ▄▄▄██    ██        ██
+#  ██    ██  ██▀██▄    ██    ██   █████       ██     ██    ██   ▀▀▀▀██▄    ██      ▄██▀▀▀██    ██        ██
+#  ███▄▄██▀  ██  ▀█▄   ▀██▄▄███            ▄▄▄██▄▄▄  ██    ██  █▄▄▄▄▄██    ██▄▄▄   ██▄▄▄███    ██▄▄▄     ██▄▄▄
+#  ██ ▀▀▀    ▀▀   ▀▀▀   ▄▀▀▀ ██            ▀▀▀▀▀▀▀▀  ▀▀    ▀▀   ▀▀▀▀▀▀      ▀▀▀▀    ▀▀▀▀ ▀▀     ▀▀▀▀      ▀▀▀▀
+#  ██                   ▀████▀▀
+#
+# --- DESCRIPTION --- #
+#
+# --- DEPENDENCIES --- #
+# - updatedb (plocate)
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
 
 fzf_args=(
   --multi
@@ -12,9 +42,12 @@ fzf_args=(
   --color 'pointer:green,marker:green'
 )
 
-pkg_names=$(pacman -Slq | fzf "${fzf_args[@]}")
+declare -a pkgNames
+mapfile -t pkgNames < <(pacman -Slq | fzf "${fzf_args[@]}")
 
-if [[ -n "${pkg_names}" ]]; then
-  # Convert newline-separated selections to space-separated for paru
-  echo "${pkg_names}" | xargs paru -S --noconfirm
+if ((${#pkgNames[@]})); then
+  sudo pacman -S "${pkgNames[@]}"
+  sudo updatedb &>/dev/null || true
 fi
+
+exit 0
