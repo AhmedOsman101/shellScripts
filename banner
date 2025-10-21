@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #  ▄▄
@@ -14,50 +14,37 @@
 # --- DESCRIPTION --- #
 # Creates a colorful framed banner in the terminal.
 # --- DEPENDENCIES --- #
-# - gum
+#
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/helpers.sh")"
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
 checkDeps "$0"
-# ---  Main script logic --- #
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "f?" "frame" "Symbol to use for the banner frame" ":"
-cmdarg "c?" "color" "Color of the banner (black, red, green, yellow, blue, magenta, cyan, white, gray, orange, purple)" "gray"
+cmdarg "c?" "color" "Color of the banner (black, red, green, yellow, blue, magenta, cyan, white, gray)" "gray"
 
 cmdarg_parse "$@"
+# ---  Main script logic --- #
+color="${cmdarg_cfg['color']}"
+frame="${cmdarg_cfg['frame']}"
 
-color=${cmdarg_cfg['color']}
-frame=${cmdarg_cfg['frame']}
+msg="${argv[*]}"
 
-msg=${cmdarg_argv[*]}
+[[ -z "${msg}" ]] && log-error "Message is required"
 
-[[ -z ${msg} ]] && log-error "Message is required"
-
-case ${color} in
-black) hex=${U_BLACK} ;;
-red) hex=${U_RED} ;;
-green) hex=${U_GREEN} ;;
-yellow) hex=${U_YELLOW} ;;
-blue) hex=${U_BLUE} ;;
-magenta) hex=${U_MAGENTA} ;;
-cyan) hex=${U_CYAN} ;;
-white) hex=${U_WHITE} ;;
-gray | grey) hex=${U_GRAY} ;;
-orange) hex=${U_ORANGE} ;;
-purple) hex=${U_PURPLE} ;;
-*) log-error "Invalid color '${color}'" ;;
-esac
+colorCode="$(mapColor "${color}")" || log-error "Invalid color '${color}'"
 
 # Build the banner
 text="${frame}${frame}${frame}${frame} ${msg} ${frame}${frame}${frame}${frame}"
 edge="${text//?/${frame}}"
 
 # Print with color
-gum style --foreground="${hex}" "$(printf "%s\n%s\n%s\n" "${edge}" "${text}" "${edge}")"
+printer "${colorCode}" "$(printf "%s\n%s\n%s\n" "${edge}" "${text}" "${edge}")"
