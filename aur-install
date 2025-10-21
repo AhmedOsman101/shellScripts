@@ -12,8 +12,9 @@
 #
 #
 # --- DESCRIPTION --- #
-#
+# Install AUR packages interactively using fzf and paru
 # --- DEPENDENCIES --- #
+# - fzf
 # - paru
 # - updatedb (plocate)
 # --- END SIGNATURE --- #

@@ -12,8 +12,9 @@
 #  ██                   ▀████▀▀
 #
 # --- DESCRIPTION --- #
-#
+# Install official packages interactively using fzf and pacman
 # --- DEPENDENCIES --- #
+# - fzf
 # - updatedb (plocate)
 # --- END SIGNATURE --- #
 
