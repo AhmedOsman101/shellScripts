@@ -72,7 +72,11 @@ else
   fi
 fi
 
-cat >"$(command -v askpass)" <<EOF
+path="$(dirname "$0")/askpass"
+
+command -v askpass &>/dev/null && path="$(command -v askpass)"
+
+cat >"${path}" <<EOF
 #!/usr/bin/env bash
 
 set -euo pipefail
@@ -81,4 +85,4 @@ set -euo pipefail
 ${cmd}
 EOF
 
-printf '%s' "$(command -v askpass)"
+printf '%s' "${path}"
