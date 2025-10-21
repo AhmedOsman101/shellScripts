@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #
@@ -18,73 +18,74 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
 checkDeps "$0"
-# ---  Main script logic --- #
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 
+declare -a compiler_args
 cmdarg "c" "compile" "Compile the files in the current working directory"
-cmdarg "v" "verbose" "Show success message after compilation (works with compile mode only)"
-cmdarg "a?" "compiler-args" "Compiler arguments" ""
+cmdarg "o?" "output" "Specify the output file name" ""
+cmdarg "a?[]" "compiler_args" "Custom compiler arguments"
+cmdarg "q" "quiet" "Supress all output"
 
 cmdarg_parse "$@"
+# ---  Main script logic --- #
+compile="${cmdarg_cfg['compile']}"
+output="${cmdarg_cfg['output']}"
+quiet="${cmdarg_cfg['quiet']}"
 
-compile=${cmdarg_cfg['compile']}
-verbose=${cmdarg_cfg['verbose']}
-compiler_args=${cmdarg_cfg['compiler-args']}
-
-if [[ ${#cmdarg_argv[@]} -lt 1 ]]; then
-  log-error "No input files were provided."
-fi
+((argc < 1)) && log-error "No input files were provided."
 
 declare -a files
 
-for file in "${cmdarg_argv[@]}"; do
-  if [[ ! -r "${file}" ]]; then
-    log-error "File '${file}' is not readable."
-  fi
-  # Basic filename validation (no spaces or special chars for simplicity)
-  if [[ ! "${file}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
-    log-error "Invalid filename '${file}'."
-  fi
+for file in "${argv[@]}"; do
+  [[ ! -f "${file}" ]] && log-error "'${file}' is not a file."
+  [[ ! -r "${file}" ]] && log-error "File '${file}' is not readable."
 
   files+=("${file}")
 done
 
-if [[ ${compile} == true ]]; then
+if [[ "${compile}" == true ]]; then
   outfile="$(echo "${files[0]}" | cut -d "." -f1).out"
+  [[ -n "${output}" ]] && outfile="${output}"
 else
   outfile=$(mktemp -t "$(basename "$0")"-XXXXXX.out)
   trap 'rm -f $outfile' EXIT
 fi
 
-# Splitting the args into an array instead of a single string
-mapfile -t compilerArgs <<<"${compiler_args}"
+cmdArray=(
+  g++
+  -std=c++23
+  -Wall
+  -Wextra
+  -lm "${files[@]}"
+  -o "${outfile}"
+)
 
-if [[ -n "${compiler_args}" ]]; then
-  if ! g++ -Wall -Wextra "${files[@]}" -o "${outfile}" "${compilerArgs[@]}"; then
-    log-error "Compilation failed."
+if ((1 < ${#compiler_args[@]})); then
+  cmdArray+=("${compiler_args[@]}")
+fi
+
+if [[ "${quiet}" == true ]]; then
+  "${cmdArray[@]}" &>/dev/null || log-error "Compilation failed."
+else
+  "${cmdArray[@]}" || log-error "Compilation failed."
+fi
+
+if [[ -f "${outfile}" ]]; then
+  # Compile-and-run mode: run the program and propagate its exit status
+  if [[ "${compile}" == true ]]; then
+    log-success "Compilation successful: ${outfile}"
+    exit 0
+  else
+    "${outfile}"
+    exit $? # Propagate the program's exit status
   fi
 else
-  if ! g++ -Wall -Wextra "${files[@]}" -o "${outfile}"; then
-    log-error "Compilation failed."
-  fi
+  log-error "Compilation failed."
 fi
-
-# Compile-and-run mode: run the program and propagate its exit status
-if [[ ${compile} != true && -f "${outfile}" ]]; then
-  ${outfile}
-  exit $? # Propagate the program's exit status
-fi
-
-# Compile-only mode: just compile and exit successfully
-if [[ ${compile} == true && ${verbose} == true ]]; then
-  log-success "Compilation successful: ${outfile}"
-fi
-
-exit 0 # Success if compile-only or no execution
