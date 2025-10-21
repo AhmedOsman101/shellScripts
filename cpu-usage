@@ -12,7 +12,7 @@
 #            ██                                                           ▀████▀▀
 #
 # --- DESCRIPTION --- #
-# Shows raw cpu usage
+# Displays cpu usage percentage
 # --- DEPENDENCIES --- #
 # - bc
 # - grep

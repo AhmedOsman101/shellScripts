@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #  ▄▄        ▄▄▄▄                          ▄▄                     ██
@@ -22,10 +22,10 @@ trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
-
 checkDeps "$0"
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
-# ---  Main script logic --- #
 
 cmdarg "w?" "width" "The image's width in pixels" "1280"
 cmdarg "t?" "height" "The image's height in pixels" "720"
@@ -34,7 +34,7 @@ cmdarg "e?" "extension" "The image's extension" "png"
 cmdarg "n?" "name" "The image's name" "blank"
 
 cmdarg_parse "$@"
-
+# ---  Main script logic --- #
 width="${cmdarg_cfg['width']}"
 height="${cmdarg_cfg['height']}"
 color="${cmdarg_cfg['color']}"

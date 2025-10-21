@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 
-sudo chown -R "$(whoami)" "$(command -v code)"
-sudo chown -R "$(whoami)" /opt/visual-studio-code
+if command -v code &>/dev/null; then
+  sudo chown -R "$(whoami)" "$(command -v code)"
+  sudo chown -R "$(whoami)" /opt/visual-studio-code
+fi
 
-sudo chown -R "$(whoami)" "$(command -v cursor)"
-sudo chown -R "$(whoami)" /opt/cursor
-sudo chown -R "$(whoami)" /usr/lib/cursor
+if command -v cursor &>/dev/null; then
+  sudo chown -R "$(whoami)" "$(command -v cursor)"
+  sudo chown -R "$(whoami)" /opt/cursor
+  sudo chown -R "$(whoami)" /usr/lib/cursor
+fi
