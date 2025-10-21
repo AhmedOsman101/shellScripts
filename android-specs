@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#                            ▄▄                         ██           ▄▄
+#                            ██                         ▀▀           ██
+#   ▄█████▄  ██▄████▄   ▄███▄██   ██▄████   ▄████▄    ████      ▄███▄██            ▄▄█████▄  ██▄███▄    ▄████▄    ▄█████▄  ▄▄█████▄
+#   ▀ ▄▄▄██  ██▀   ██  ██▀  ▀██   ██▀      ██▀  ▀██     ██     ██▀  ▀██            ██▄▄▄▄ ▀  ██▀  ▀██  ██▄▄▄▄██  ██▀    ▀  ██▄▄▄▄ ▀
+#  ▄██▀▀▀██  ██    ██  ██    ██   ██       ██    ██     ██     ██    ██   █████     ▀▀▀▀██▄  ██    ██  ██▀▀▀▀▀▀  ██         ▀▀▀▀██▄
+#  ██▄▄▄███  ██    ██  ▀██▄▄███   ██       ▀██▄▄██▀  ▄▄▄██▄▄▄  ▀██▄▄███            █▄▄▄▄▄██  ███▄▄██▀  ▀██▄▄▄▄█  ▀██▄▄▄▄█  █▄▄▄▄▄██
+#   ▀▀▀▀ ▀▀  ▀▀    ▀▀    ▀▀▀ ▀▀   ▀▀         ▀▀▀▀    ▀▀▀▀▀▀▀▀    ▀▀▀ ▀▀             ▀▀▀▀▀▀   ██ ▀▀▀      ▀▀▀▀▀     ▀▀▀▀▀    ▀▀▀▀▀▀
+#                                                                                            ██
+#
+# --- DESCRIPTION --- #
+# Prints out the specs of the connected anrdoid device using adb.
+# --- DEPENDENCIES --- #
+# - adb (android-tools)
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+cmd="$(
+  cat <<'EOF'
+echo CPU ABI: "$(getprop ro.product.cpu.abi)"
+echo ABI List: "$(getprop ro.product.cpu.abilist)"
+echo Android: "$(getprop ro.build.version.release)"
+echo API: "$(getprop ro.build.version.sdk)"
+echo GLES: "$(dumpsys SurfaceFlinger | grep GLES)"
+echo RAM: "$(cat /proc/meminfo | grep 'MemTotal:')"
+EOF
+)"
+
+adb shell "${cmd}"
+
+exit 0
