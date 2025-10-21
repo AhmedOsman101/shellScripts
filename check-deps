@@ -57,47 +57,45 @@ getAskPass() {
 
   # Check if running in a graphical environment
   if [[ -n "${DISPLAY}" || -n "${WAYLAND_DISPLAY}" ]]; then
-    # Check for rofi-askpass
-    if command -v rofi-askpass >/dev/null 2>&1; then
-      askpass="$(command -v rofi-askpass)"
+    # Check for kdialog
+    if command -v kdialog >/dev/null 2>&1; then
+      askpass="kdialog --password 'Authentication Required'"
     # Check for zenity
     elif command -v zenity >/dev/null 2>&1; then
       askpass="zenity --password --title='Authentication Required' --timeout=30"
-    # Check for kdialog
-    elif command -v kdialog >/dev/null 2>&1; then
-      askpass="kdialog --password 'Authentication Required'"
     # Check for yad (zenity fork)
     elif command -v yad >/dev/null 2>&1; then
       askpass="yad --entry --hide-text --title='Authentication Required' --button=OK:0 --timeout=30 --width=300 --height=150 --center"
+    # Check for whiptail (alternative text-based UI for terminals)
+    elif command -v whiptail >/dev/null 2>&1; then
+      askpass="/bin/sh -c 'whiptail --passwordbox \"Authentication Required\" 8 40 2>&1 >/dev/tty; echo \$?'"
+    # Check for dialog (text-based UI for terminals)
+    elif command -v dialog >/dev/null 2>&1; then
+      askpass="/bin/sh -c 'dialog --passwordbox \"Authentication Required\" 8 40 2>&1 >/dev/tty; echo \$?'"
     # Check for ssh-askpass (common in some X11 setups)
     elif command -v ssh-askpass >/dev/null 2>&1; then
       askpass="$(command -v ssh-askpass)"
     # Check for x11-ssh-askpass (alternative askpass tool)
     elif command -v x11-ssh-askpass >/dev/null 2>&1; then
       askpass="$(command -v x11-ssh-askpass)"
-      # Check for dialog (text-based UI for terminals)
-    elif command -v dialog >/dev/null 2>&1; then
-      askpass="/bin/sh -c 'dialog --passwordbox \"Authentication Required\" 8 40 2>&1 >/dev/tty; echo \$?'"
-    # Check for whiptail (alternative text-based UI for terminals)
-    elif command -v whiptail >/dev/null 2>&1; then
-      askpass="/bin/sh -c 'whiptail --passwordbox \"Authentication Required\" 8 40 2>&1 >/dev/tty; echo \$?'"
     else
       # Fallback for terminal prompt
       askpass="/bin/sh -c 'stty -echo; printf \"Password: \"; read password; stty echo; echo \"\$password\"'"
     fi
   else
     # Non-graphical environment (terminal)
-    # Check for dialog
-    if command -v dialog >/dev/null 2>&1; then
-      askpass="/bin/sh -c 'dialog --passwordbox \"Authentication Required\" 8 40 2>&1 >/dev/tty; echo \$?'"
     # Check for whiptail
-    elif command -v whiptail >/dev/null 2>&1; then
+    if command -v whiptail >/dev/null 2>&1; then
       askpass="/bin/sh -c 'whiptail --passwordbox \"Authentication Required\" 8 40 2>&1 >/dev/tty; echo \$?'"
+    # Check for dialog
+    elif command -v dialog >/dev/null 2>&1; then
+      askpass="/bin/sh -c 'dialog --passwordbox \"Authentication Required\" 8 40 2>&1 >/dev/tty; echo \$?'"
     else
       # Fallback for terminal prompt
       askpass="/bin/sh -c 'stty -echo; printf \"Password: \"; read password; stty echo; echo \"\$password\"'"
     fi
   fi
+
   printf '%s' "${askpass}"
 }
 
