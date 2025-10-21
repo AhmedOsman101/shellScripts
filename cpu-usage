@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#
+#   ▄█████▄  ██▄███▄   ██    ██            ██    ██  ▄▄█████▄   ▄█████▄   ▄███▄██   ▄████▄
+#  ██▀    ▀  ██▀  ▀██  ██    ██            ██    ██  ██▄▄▄▄ ▀   ▀ ▄▄▄██  ██▀  ▀██  ██▄▄▄▄██
+#  ██        ██    ██  ██    ██   █████    ██    ██   ▀▀▀▀██▄  ▄██▀▀▀██  ██    ██  ██▀▀▀▀▀▀
+#  ▀██▄▄▄▄█  ███▄▄██▀  ██▄▄▄███            ██▄▄▄███  █▄▄▄▄▄██  ██▄▄▄███  ▀██▄▄███  ▀██▄▄▄▄█
+#    ▀▀▀▀▀   ██ ▀▀▀     ▀▀▀▀ ▀▀             ▀▀▀▀ ▀▀   ▀▀▀▀▀▀    ▀▀▀▀ ▀▀   ▄▀▀▀ ██    ▀▀▀▀▀
+#            ██                                                           ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# Shows raw cpu usage
+# --- DEPENDENCIES --- #
+# - bc
+# - grep
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+# Get CPU usage as a number using /proc/stat and bc
+# Read first line of /proc/stat (aggregate CPU stats)
+declare -a cpu1 cpu2
+read -ra cpu1 < <(grep '^cpu ' /proc/stat)
+sleep 0.5
+read -ra cpu2 < <(grep '^cpu ' /proc/stat)
+
+# Extract relevant fields
+idle1=${cpu1[4]}
+total1=0
+idle2=${cpu2[4]}
+total2=0
+
+for v in "${cpu1[@]:1}"; do total1=$((total1 + v)); done
+for v in "${cpu2[@]:1}"; do total2=$((total2 + v)); done
+
+# Calculate deltas
+total_diff=$((total2 - total1))
+idle_diff=$((idle2 - idle1))
+
+# Compute CPU usage percentage using bc
+if ((total_diff)); then
+  usage=$(bc -l <<<"scale=2; (1 - ${idle_diff} / ${total_diff}) * 100")
+fi
+
+echo "${usage}"
