@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #  ▄▄           ██                                                       ▄▄                            ▄▄
@@ -22,42 +22,48 @@ trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
-
 checkDeps "$0"
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
-# ---  Main script logic --- #
+
 cmdarg "s" "summary" "Change the reporter type to summary"
 cmdarg "u" "unsafe" "Apply unsafe fixes"
 cmdarg "m?" "max-diagnostics" "Limit the amount of diagnostics displayed. When 'none' is provided, the limit is lifted." "20"
 
 cmdarg_parse "$@"
+# ---  Main script logic --- #
 
-declare result
 summary="${cmdarg_cfg["summary"]}"
 unsafe="${cmdarg_cfg["unsafe"]}"
 maxDiagnostics="${cmdarg_cfg["max-diagnostics"]}"
 
 configFile="${BIOME_CONFIG_PATH}"
 
-if is-git-repo --safe; then
-  result="$(fd-by-depth biome.json "$(git-root)")"
-else
-  result="$(fd-by-depth biome.json .)"
-fi
+declare result
 
 # Take the one at top-level
-[[ -n "${result}" ]] && configFile="$(echo "${result}" | head -n 1)"
+if is-git-repo --safe; then
+  result="$(fd-by-depth biome.json "$(git-root)" | head -n 1)"
+else
+  result="$(fd-by-depth biome.json . | head -n 1)"
+fi
 
 cmdArray=(
   biome
   check
   --fix
-  --config-path="${configFile}"
   --max-diagnostics "${maxDiagnostics}"
 )
 
-[[ ${summary} == 'true' ]] && cmdArray+=(--reporter=summary)
-[[ ${unsafe} == 'true' ]] && cmdArray+=(--unsafe)
+if [[ -n ${configFile} && -f ${configFile} ]]; then
+  cmdArray+=("--config-path='${configFile}'")
+elif [[ -n "${result}" ]]; then
+  cmdArray+=("--config-path='${result}'")
+fi
+
+[[ "${summary}" == true ]] && cmdArray+=('--reporter=summary')
+[[ "${unsafe}" == true ]] && cmdArray+=(--unsafe)
 
 cmdArray+=("${argv[@]}")
 

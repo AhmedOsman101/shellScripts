@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #  ▄▄           ██                                                                                     ▄▄
@@ -15,63 +15,25 @@
 # Watches and formats code changes using biome.js with configurable presets
 # --- DEPENDENCIES --- #
 # - biome
-# - watchexec
-# - gum
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-trap 'exit 1' SIGUSR1 # Terminate script on SIGUSR1
+trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
-
 checkDeps "$0"
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
-# ---  Main script logic --- #
-
-cmdarg "p?" "preset" "The files preset to watch" "std"
 cmdarg "d?" "debounce" "Time to wait for new events before taking action" "5s"
-
 cmdarg_parse "$@"
 
-preset=${cmdarg_cfg['preset']}
-debounce=${cmdarg_cfg['debounce']}
+# ---  Main script logic --- #
+debounce="${cmdarg_cfg['debounce']}"
 
-# Function to display help text
-print_help() {
-  cat <<EOF
-Presets:
-  std     : Use standard extensions (js, mjs, cjs, ts, mts, cts, json, jsonc) [default]
-  react   : Use React extensions (js, mjs, cjs, ts, mts, cts, json, jsonc, jsx, tsx)
-  vue     : Use Vue extensions (js, mjs, cjs, ts, mts, cts, json, jsonc, vue)
-EOF
-}
-
-if [[ -z "${preset}" ]]; then
-  presets=(std vue react)
-  preset="$(gum choose --header "Choose a preset: " "${presets[@]}")"
-fi
-
-case "${preset}" in
-'react')
-  extensionsArray=(js mjs cjs ts mts cts json jsonc jsx tsx)
-  ;;
-'vue')
-  extensionsArray=(js mjs cjs ts mts cts json jsonc vue)
-  ;;
-'std')
-  extensionsArray=(js mjs cjs ts mts cts json jsonc)
-  ;;
-*)
-  print_help
-  log-error "Invalid preset: ${preset}"
-  ;;
-esac
-
-# Build a comma-separated string of extensions
-extensions=$(joinarr ',' "${extensionsArray[@]}")
-
-watch.sh "${extensions}" \
+watch.sh "js,mjs,cjs,ts,mts,cts,json,jsonc,jsx,tsx,vue" \
   -d "${debounce}" \
-  -c "biome check --fix --reporter=summary --config-path='${BIOME_CONFIG_PATH}' ." &&
-  exit $?
+  -c "biome-check --summary ."
+
+exit $?
