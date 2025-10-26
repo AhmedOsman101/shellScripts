@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                                ▄▄
@@ -12,38 +12,41 @@
 #   ▀████▀▀
 #
 # --- DESCRIPTION --- #
-# Extracts the script's description
+# Extracts a script's description
 # --- DEPENDENCIES --- #
 #
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
-# ---  Main script logic --- #
 
-if [[ $# -ne 1 ]]; then
+cmdarg_info "header" "Extracts a script's description"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+if ((argc != 1)); then
   log-error "Invalid arguments, only a script name is accepted"
 else
-  if [[ -f $1 ]]; then
-    file=$1
+  if [[ -f "${argv[0]}" ]]; then
+    file="${argv[0]}"
   else
-    file=$(command -v "$1")
+    file="$(command -v "${argv[0]}")"
   fi
 
-  [[ ! -f ${file} ]] && log-error "Script '${file}' was not found"
+  [[ ! -f "${file}" ]] && log-error "Script '${file}' was not found"
 fi
 
-desc=$(
-  sed -n '/# --- DESCRIPTION --- #/,/# --- DEPENDENCIES --- #/ {/\# /p;}' "${file}" |
-    replace "# " ""
-)
-
-if echo "${desc}" | grep -v " --- " -q; then
-  echo "${desc}" | grep -v " --- "
-else
-  printf ''
-fi
+sed -n '
+  /# --- DESCRIPTION --- #/{
+    :loop
+    n
+    /# --- DEPENDENCIES --- #/q
+    /\# /p
+    b loop
+  }
+' "${file}" |
+  sed 's|# ||g' |
+  grep -v " --- " || printf ''
