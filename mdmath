@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                  ▄▄                                ▄▄
@@ -13,47 +13,40 @@
 #
 # --- DESCRIPTION --- #
 # Replaces LaTeX math delimiters with Obsidian's delimiters in a given file
+# Usage: mdmath <file>
 # --- DEPENDENCIES --- #
 #
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
 
+checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
+file="${argv[0]}"
+
 # Check if the correct number of arguments is passed
-if [[ -z $1 || $# -gt 1 ]]; then
-  log-warning "Usage: $(basename "$0") <file>"
+if ((1 < argc)) || [[ -z "${file}" ]]; then
+  cmdarg_usage
   exit 1
 fi
 
-# Assign arguments to variables for clarity
-file="$1"
-
 # Check if the file exists
-[[ ! -f ${file} ]] && log-error "File '${file}' does not exist."
+[[ -f ${file} ]] || log-error "File '${file}' does not exist."
 
-# Initialize replacement counts
 # Count occurrences of all delimiters to be replaced
-count_display=0
-count_inline=0
-
-if grep -o '\\\[' "${file}" -q; then
-  count_display=$(grep -o '\\\[' "${file}" | wc -l)
-fi
-
-if grep -o '\\(' "${file}" -q; then
-  count_inline=$(grep -o '\\(' "${file}" | wc -l)
-fi
+count_display=$(grep -o '\\\[' "${file}" | wc -l || true)
+count_inline=$(grep -o '\\(' "${file}" | wc -l || true)
 
 count=$((count_display + count_inline))
 
-if [[ ${count} -eq 0 ]]; then
-  terminate "Nothing to do"
-fi
+((count)) || terminate "Nothing to do"
 
 # Perform the replacements
 sed -i -e 's~\\\[~$$~g' \
@@ -61,5 +54,6 @@ sed -i -e 's~\\\[~$$~g' \
   -e 's~ \\)~$~g' \
   -e 's~\\( ~$~g' \
   -e 's~\\(~$~g' \
-  -e 's~\\)~$~g' "${file}" &&
-  log-success "${count} Replacements made"
+  -e 's~\\)~$~g' "${file}"
+
+log-success "${count} Replacements made"
