@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #     ██                                             ▄▄▄▄      ▄▄▄▄                                                                            ▄▄▄▄         ██
@@ -19,42 +19,43 @@
 # - gum
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
-checkDeps "$0"
-# ---  Main script logic --- #
-origin="$1"
 
-file=$(mktemp -t "XXXXXX.json")
+checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+origin="${argv[0]}"
+
+file="$(mktemp -t "XXXXXX.json")"
 trap 'rm -f $file' EXIT
 
-get-ext "${file}" -o &>/dev/null
+get-ext --overwrite "${file}" &>/dev/null
 
-[[ ! -s "${origin}" ]] && {
-  log-warning "No entries found in ${origin}" || exit 0
-}
-
-if [[ -s "${file}" ]]; then
-  # Combine JSON files with only unique enteries as an array
-  if ! extensions="$(jq -s '[.[][]] | unique | .[]' -r "${origin}" "${file}")"; then
-    log-error "Failed to parse '${file}'"
-  fi
-
-else
-  log-warning "No new entries found in ${file}" || exit 0
+# NOTE: Returns True if file exists and is not empty.
+if [[ ! -s "${origin}" ]]; then
+  log-warning "No entries found in ${origin}"
+  exit 0
 fi
 
-for extension in ${extensions}; do
-  extensionName=$(echo "${extension}" | cut -d '.' -f 2)
+declare -a extensions
+if [[ -s "${file}" ]]; then
+  # Combine JSON files with only unique enteries as an array
+  mapfile -t < <(jq -s '[.[][]] | unique | .[]' -r "${origin}" "${file}") || log-error "Failed to parse '${file}'"
+else
+  log-warning "No new entries found in ${file}"
+  exit 0
+fi
 
-  if gum spin \
-    --title "Installing ${extensionName}..." \
-    --title.foreground="${U_CYAN}" \
-    --spinner.foreground="${U_CYAN}" \
-    -- repeat-it --preserve "code --install-extension ${extension} --force &>/dev/null"; then
+for extension in "${extensions[@]}"; do
+  extensionName="$(echo "${extension}" | awk -F '.' '{print $2}')"
+
+  log-info "Installing ${extensionName}..."
+  if repeat-it --preserve "code --install-extension ${extension} --force"; then
     log-info "Installed ${extensionName}"
   fi
 done

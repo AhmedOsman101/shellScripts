@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #     ██                                             ▄▄▄▄      ▄▄▄▄
@@ -17,28 +17,32 @@
 # - code
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
-directory="${1:-extensions}"
+directory="${argv[0]:-extensions}"
 
 # Change to the extensions directory
 cd "${directory}" || log-error "directory '${directory}' was not found!"
 
-# Loop through all .vsix files in the extensions directory
-for extension in *.vsix; do
-  if [[ -f ${extension} ]]; then
+shopt -s nullglob
+extensions=(*.vsix)
+
+if ((${#extensions[@]} == 0)); then
+  log-error "No .vsix files found in ${directory}."
+else
+  # Loop through all .vsix files in the extensions directory
+  for extension in "${extensions[@]}"; do
     # Install the extension using VSCode CLI
-    if ! code --install-extension "${extension}"; then
-      log-error "Failed to install ${extension}."
-    fi
-  else
-    log-error "No .vsix files found in ${directory}."
-  fi
-done
+    code --install-extension "${extension}" || log-warning "Failed to install ${extension}."
+  done
+fi
 
 log-success "Installation Done 🚀"
