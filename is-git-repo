@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #     ██                                      ██
@@ -17,29 +17,31 @@
 # - git
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/helpers.sh")"
-
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "s" "safe" "Wether to exit with non-zero code or to kill the parent process as well"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
+isSafe="${cmdarg_cfg['safe']}"
 
-
-if [[ "${1:-none}" == "--safe" ]]; then
-  # returns true if it's a git repo and false otherwise
-  isGitRepo=$(git rev-parse --is-inside-work-tree 2>/dev/null) || logError "$(pwd) is not a git repository."
-
-  # check if the user is inside .git directory
-  [[ ${isGitRepo} != true ]] && logError "Not in a work tree."
+if [[ "${isSafe}" == true ]]; then
+  action='logError'
 else
-  # returns true if it's a git repo and false otherwise
-  isGitRepo=$(git rev-parse --is-inside-work-tree 2>/dev/null) || log-error "$(pwd) is not a git repository."
-
-  # check if the user is inside .git directory
-  [[ ${isGitRepo} != true ]] && log-error "Not in a work tree."
+  action='log-error'
 fi
+
+# returns true if it's a git repo and false otherwise
+isGitRepo="$(git rev-parse --is-inside-work-tree 2>/dev/null)" || "${action}" "$(pwd) is not a git repository."
+
+# check if the user is inside .git directory
+[[ "${isGitRepo}" != true ]] && "${action}" "Not in a work tree."
 
 exit 0
