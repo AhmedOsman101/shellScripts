@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+# File:         testfonts
+# Description:  Extended fonts testing (with ligatures & Nerd Fonts)
+# Author:       NNB (extended by Ahmad Othman)
+# License:      GPLv3
+
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# Values
+text() {
+  cat <<-'EOF'
+	abcd efg hijk lmno pqrs tuv wxyz
+	ABCD EFG HIJK LMNO PQRS TUV WXYZ
+	1234567890       ,./\\;'[]-=\`
+	!@#\$%%^&*()      <>?|:\"\{\}_+~
+	EOF
+}
+TEXT="$(text)"
+STYLES="${2:-normal bold italic}"
+# Ligatures and symbols (e.g., for JetBrainsMono Nerd Font, FiraCode, etc.)
+LIGATURES="--> => --> ==> === != == <= >= ++ -- /* */ // || && ?? ??= |> <| <- <=> =>> << >> <<< >>>"
+NERD_SYMBOLS="                                  "
+
+print_section() {
+  local title content
+  title="$1"
+  content="$2"
+  printf "\033[1;34m== %s ==\033[0m\n%s\n\n" "${title}" "${content}"
+}
+
+# Generate styled text
+for style in ${STYLES}; do
+  case "${style}" in
+  normal) code="0" ;;
+  bold) code="1" ;;
+  italic) code="3" ;;
+  *) code="0" ;;
+  esac
+
+  echo
+  echo "────────────────────────────────────────────"
+  echo "Style: ${style}"
+  echo "────────────────────────────────────────────"
+
+  print_section "Basic characters" "$(echo -e "\033[${code}m${TEXT}\033[0m")"
+  print_section "Ligatures" "$(echo -e "\033[${code}m${LIGATURES}\033[0m")"
+  print_section "Nerd Font symbols" "$(echo -e "\033[${code}m${NERD_SYMBOLS}\033[0m")"
+done
+
+exit 0
