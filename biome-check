@@ -38,15 +38,20 @@ summary="${cmdarg_cfg["summary"]}"
 unsafe="${cmdarg_cfg["unsafe"]}"
 maxDiagnostics="${cmdarg_cfg["max-diagnostics"]}"
 
-configFile="${BIOME_CONFIG_PATH}"
+configFile="${BIOME_CONFIG_PATH:-${HOME}/.config/biome/biome.json}"
 
 declare result
 
 # Take the one at top-level
 if is-git-repo --safe; then
-  result="$(fd-by-depth biome.json "$(git-root)" | head -n 1)"
-else
-  result="$(fd-by-depth biome.json . | head -n 1)"
+  cd "$(git-root)"
+  result="$(fd-by-depth --type f biome.json . | head -n 1)"
+  # NOTE: Go to previous directory
+  cd - &>/dev/null
+fi
+
+if [[ -z "${result}" ]]; then
+  result="$(fd-by-depth --type f biome.json . | head -n 1)"
 fi
 
 cmdArray=(
@@ -56,15 +61,17 @@ cmdArray=(
   --max-diagnostics "${maxDiagnostics}"
 )
 
-if [[ -n ${configFile} && -f ${configFile} ]]; then
-  cmdArray+=("--config-path='${configFile}'")
-elif [[ -n "${result}" ]]; then
-  cmdArray+=("--config-path='${result}'")
+if [[ -n ${result} && -f ${result} ]]; then
+  cmdArray+=("--config-path=${result}")
+elif [[ -n ${configFile} && -f ${configFile} ]]; then
+  cmdArray+=("--config-path=${configFile}")
 fi
 
-[[ "${summary}" == true ]] && cmdArray+=('--reporter=summary')
+[[ "${summary}" == true ]] && cmdArray+=(--reporter=summary)
 [[ "${unsafe}" == true ]] && cmdArray+=(--unsafe)
 
 cmdArray+=("${argv[@]}")
 
 "${cmdArray[@]}"
+
+exit 0

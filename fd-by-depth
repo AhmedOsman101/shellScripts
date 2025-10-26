@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #     ▄▄▄▄         ▄▄            ▄▄                                  ▄▄                                ▄▄
@@ -18,17 +18,13 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "check-deps")"
 checkDeps "$0"
-# ---  Main script logic --- #
-if [[ $# -eq 0 ]]; then
-  log-error "Usage: fd-by-depth [fd arguments...]"
-fi
 
-# Run fd with whatever args you pass
+# ---  Main script logic --- #
+# Run fd with whatever args you pass, then sort the output by depth
 fd "$@" |
   awk -F/ '{ print NF, $0 }' |
   sort -n |
