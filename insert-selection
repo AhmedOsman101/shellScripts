@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#     ██                                                                                     ▄▄▄▄                                       ██
+#     ▀▀                                               ██                                    ▀▀██                            ██         ▀▀
+#   ████     ██▄████▄  ▄▄█████▄   ▄████▄    ██▄████  ███████             ▄▄█████▄   ▄████▄     ██       ▄████▄    ▄█████▄  ███████    ████      ▄████▄   ██▄████▄
+#     ██     ██▀   ██  ██▄▄▄▄ ▀  ██▄▄▄▄██   ██▀        ██                ██▄▄▄▄ ▀  ██▄▄▄▄██    ██      ██▄▄▄▄██  ██▀    ▀    ██         ██     ██▀  ▀██  ██▀   ██
+#     ██     ██    ██   ▀▀▀▀██▄  ██▀▀▀▀▀▀   ██         ██       █████     ▀▀▀▀██▄  ██▀▀▀▀▀▀    ██      ██▀▀▀▀▀▀  ██          ██         ██     ██    ██  ██    ██
+#  ▄▄▄██▄▄▄  ██    ██  █▄▄▄▄▄██  ▀██▄▄▄▄█   ██         ██▄▄▄             █▄▄▄▄▄██  ▀██▄▄▄▄█    ██▄▄▄   ▀██▄▄▄▄█  ▀██▄▄▄▄█    ██▄▄▄   ▄▄▄██▄▄▄  ▀██▄▄██▀  ██    ██
+#  ▀▀▀▀▀▀▀▀  ▀▀    ▀▀   ▀▀▀▀▀▀     ▀▀▀▀▀    ▀▀          ▀▀▀▀              ▀▀▀▀▀▀     ▀▀▀▀▀      ▀▀▀▀     ▀▀▀▀▀     ▀▀▀▀▀      ▀▀▀▀   ▀▀▀▀▀▀▀▀    ▀▀▀▀    ▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Inserts selected text at the current cursor
+# --- DEPENDENCIES --- #
+# - xsel
+# - xdotool
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+prev="$(xsel --clipboard 2>/dev/null)"
+
+content="$(xsel --primary 2>/dev/null)"
+[[ -z "${content}" ]] && content="$(xsel --clipboard 2>/dev/null)"
+
+# Exit if nothing to paste
+[[ -z "${content}" ]] && exit 0
+
+# --- Temporarily put content into CLIPBOARD for pasting --- #
+printf '%s' "${content}" | xsel --clipboard --input
+# Give the system a tiny moment to register clipboard
+sleep 0.05
+# Simulate Ctrl+V at cursor
+xdotool key --clearmodifiers ctrl+v
+
+# clear clipboard and restore previous copied content
+loop -n 2 'copyq remove 0 &>/dev/null || true'
+printf '%s' "${prev}" | xsel --clipboard --input
