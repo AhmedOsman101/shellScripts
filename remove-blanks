@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                                                        ▄▄        ▄▄▄▄                          ▄▄
@@ -19,24 +19,23 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "b" "backup" "Creates a backup .bak file of the original file"
 
 cmdarg_parse "$@"
 
 useBackup=${cmdarg_cfg['backup']}
-file=${cmdarg_argv[0]}
+file=${argv[0]}
 
-if [[ ${#cmdarg_argv[@]} -eq 0 || ${file} == "-" ]]; then
+if [[ ${file} == "-" ]] || ((${#argv[@]} != 0)); then
   str=$(cat)
   [[ -z ${str} ]] && printf '' && exit 0
   echo "${str}" | awk 'NF'

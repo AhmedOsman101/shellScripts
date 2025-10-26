@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                                                           ██
@@ -18,17 +18,15 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "lib/helpers.sh")"
-
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "p" "preserve" "Preserve output between retries (don't clear the screen)"
 cmdarg "d?" "delay" "Delay in seconds between retries" "5"
@@ -37,14 +35,13 @@ cmdarg_parse "$@"
 
 preserve="${cmdarg_cfg['preserve']}"
 delay="${cmdarg_cfg['delay']}"
-cmd="${cmdarg_argv[*]}"
+cmd="${argv[*]}"
 
 # validate the delay if defined
 if [[ -n "${delay}" ]]; then
   isPositive "${delay}" || log-error "Delay must be a positive number"
 fi
 
-counter=1
 
 if [[ -z "${cmd}" ]]; then
   cmd="$(gum write --placeholder "enter a command to repeat...")"
@@ -55,10 +52,11 @@ fi
 # Check if the command is empty
 [[ -z "${cmd}" ]] && log-error "No command entered."
 
+counter=1
 # Infinite loop: repeat until success or interruption
 while true; do
   if eval "${cmd}"; then
-    if [[ "${counter}" -gt 1 ]]; then
+    if ((counter > 1)); then
       printf '\n'
       log-success "Done after ${counter} retries 🚀!"
     fi
@@ -70,7 +68,7 @@ while true; do
     --title "Retrying '${cmd}' in ${delay}s..." \
     -- sleep "${delay}"; then
     # If gum spin fails (e.g., due to Ctrl+C), exit
-    if [[ "${counter}" -gt 1 ]]; then
+    if ((counter > 1)); then
       printf '\n'
       terminate "Program terminated after ${counter} retries"
     else
