@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #  ▄▄▄▄                                              ▄▄▄▄
@@ -20,12 +20,15 @@
 # - gum
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
 declare -a colors
 
@@ -36,7 +39,5 @@ for line in "${colors[@]}"; do
   varname=$(echo "${var}" | awk -F "=" '{print $1}')
   color=$(echo "${var}" | awk -F "=" '{print $2}' | tr -d '"')
 
-  gum style \
-    --foreground="${color}" \
-    "${varname} ${color}"
+  gum style --foreground="${color}" "${varname} ${color}"
 done
