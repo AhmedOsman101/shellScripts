@@ -50,11 +50,13 @@ for file in "${argv[@]}"; do
   files+=("${file}")
 done
 
+filename="$(basename "${files[0]}" | cut -d "." -f1)"
+
 if [[ "${compile}" == true ]]; then
-  outfile="$(echo "${files[0]}" | cut -d "." -f1).out"
+  outfile="${filename}.out"
   [[ -n "${output}" ]] && outfile="${output}"
 else
-  outfile=$(mktemp -t "$(basename "$0")"-XXXXXX.out)
+  outfile=$(mktemp -t "${filename}-XXXXXX.out")
   trap 'rm -f $outfile' EXIT
 fi
 
