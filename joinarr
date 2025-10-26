@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #     ██                  ██
@@ -17,25 +17,35 @@
 #
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+scriptName="$0"
+cmdarg_info "header" "$(get-desc "${scriptName}")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
+
 # Check for separator argument
-if (($# < 1)); then
-  log-error "Separator is required\nUsage: $0 <separator> <array...>"
+if ((argc < 1)); then
+  printRed "Usage: $(basename scriptName) <separator> <array...>" 1>&2
+  log-error "Separator is required"
 fi
 
-# Set the separator and shift it off
-separator="$1"
-shift
+separator="${argv[0]}"
 
-# Join and output elements without trailing newline
-if (($# > 0)); then
-  # Remove the last occurance of the separator
-  printf "%s${separator}" "${@}" | sed "s|\(.*\)${separator}|\1|"
-  printf '\n'
-fi
+declare i
+# Join and output elements
+for ((i = 1; i < argc - 1; i++)); do
+  # NOTE: %b -> expand backslash escape sequences in the corresponding argument
+  printf '%s%b' "${argv[${i}]}" "${separator}"
+done
+
+printf '%s\n' "${argv[${i}]}"
 
 exit 0
