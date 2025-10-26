@@ -15,7 +15,6 @@
 # Links all executable scripts (excluding specified paths) into ~/.local/bin/scripts
 # --- DEPENDENCIES --- #
 # - fd | fdfind (fd-find)
-# - realpath
 # --- END SIGNATURE --- #
 
 set -uo pipefail
@@ -39,7 +38,7 @@ fi
 # For debian-based distros fd package is named fdfind
 if command -v fdfind &>/dev/null; then
   logInfo "Creating a symlink from fdfind to /usr/bin/fd"
-  sudo ln -sf "$(command -v fdfind)" /usr/bin/fd 2>/dev/null
+  sudo ln -si "$(command -v fdfind)" /usr/bin/fd
 fi
 
 error=$(
@@ -75,13 +74,6 @@ fi
 
 # Remove existing symlinks
 fd . -t l -t x "${DESTINATION_DIR}" -x sudo rm 2>/dev/null || true
-
-# Create symlinks
-sudo ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${DESTINATION_DIR}/cmdarg.sh" || logError "Failed to link cmdarg.sh"
-ln -sf "${SCRIPTS_DIR}/lib/cmdarg.sh" "${SCRIPTS_DIR}/cmdarg.sh" || logError "Failed to link cmdarg.sh"
-
-sudo ln -sf "${SCRIPTS_DIR}/clipcopy" "${DESTINATION_DIR}/copyclip" || logError "Failed to link copyclip"
-ln -sf "${SCRIPTS_DIR}/clipcopy" "${SCRIPTS_DIR}/copyclip" || logError "Failed to link copyclip"
 
 if ! echo "${PATH}" | grep "${DESTINATION_DIR}" -q; then
   echo "Add this to your .$(basename "${SHELL}")rc file to make scripts globally available:"
