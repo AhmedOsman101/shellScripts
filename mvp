@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #
@@ -19,34 +19,33 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
-
-cmdarg "f" "force" "Do not prompt before overwriting"
-cmdarg "i" "interactive" "Prompt before overwrite"
-
+cmdarg "f" "force" "Overwrite without confirmation"
+cmdarg "i" "interactive" "Confirm before overwriting"
 cmdarg_parse "$@"
-
+# ---  Main script logic --- #
 force="${cmdarg_cfg["force"]}"
 interactive="${cmdarg_cfg["interactive"]}"
-old="${cmdarg_argv[0]}"
-new="${cmdarg_argv[1]}"
+old="${argv[0]}"
+new="${argv[1]}"
 
 sudo mkdir -p "$(dirname "${new}")" 2>/dev/null
 cmdArray=(sudo mv)
 
 if [[ "${force}" == "true" ]]; then
-  cmdArray+=(-f "${old}" "${new}")
+  cmdArray+=(-f)
 elif [[ "${interactive}" == "true" ]]; then
-  cmdArray+=(-f "${old}" "${new}")
+  cmdArray+=(-i)
 fi
 
-# log-error "${cmdArray[@]}"
+cmdArray+=("${old}" "${new}")
+
 "${cmdArray[@]}"
