@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                  ▄▄            ▄▄▄▄
@@ -19,15 +19,22 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
-checkDeps "$0"
-# ---  Main script logic --- #
-file=$1
 
-[[ ! -f ${file} ]] && log-error "File '${file}' was not found!"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "q" "quiet" "Silence any output"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+file="${argv[0]}"
+isQiuet="${cmdarg_cfg['quiet']}"
+
+[[ -f ${file} ]] || log-error "File '${file}' was not found!"
 
 tr -d '\f' <"${file}" | sponge "${file}"
 
@@ -37,4 +44,4 @@ replace 'كلية تكنولوجيا الصناعة والطاقة' '' <"${file}
 
 perl -CSD -pe 's/[\x{202A}-\x{202E}\x{200F}\x{2066}-\x{2069}]//g' "${file}" | sponge "${file}"
 
-log-success "${file} was cleaned successfully"
+[[ "${isQiuet}" == true ]] || log-success "${file} was cleaned successfully"

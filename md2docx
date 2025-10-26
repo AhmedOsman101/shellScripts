@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                  ▄▄   ▄▄▄▄▄          ▄▄
@@ -18,23 +18,26 @@
 # - sed
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
-file="$1"
+file="${argv[0]}"
 
 if [[ -f "${file}" ]]; then
   # This removes everything after the last dot, including the dot
   filename="${file%.*}"
 
-  if [[ -z "${MRT}" && -f ${MRT} ]]; then
-    pandoc "${file}" -o "${filename}.docx" || log-error "Unknown Error Occured"
-  else
+  if [[ -n "${MRT}" && -f "${MRT}" ]]; then
     pandoc "${file}" -o "${filename}.docx" --reference-doc="${MRT}" || log-error "Unknown Error Occured"
+  else
+    pandoc "${file}" -o "${filename}.docx" || log-error "Unknown Error Occured"
   fi
 
   log-success "File '${file}' converted successfully!"

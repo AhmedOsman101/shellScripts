@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                  ▄▄     ▄▄▄▄
@@ -19,35 +19,37 @@
 # - prettier
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
+
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
 declare -a files
 
-if [[ $# -eq 0 || $1 == "." ]]; then
+if [[ "${argv[0]}" == "." ]] || ((argc == 0)); then
   # Populate the array directly from fd output
   mapfile -t files < <(fd . -e md -e markdown --hidden)
 else
-  for file in "$@"; do
+  for file in "${argv[@]}"; do
     ext=$(echo "${file}" | awk -F. '{print $NF}')
     [[ "${ext}" == "md" || "${ext}" == "markdown" ]] && files+=("${file}")
   done
 fi
 
+# NOTE: ((0)) fails, while any other number succeeds
+((${#files[@]})) || log-error "No valid markdown files were passed"
+
 for file in "${files[@]}"; do
-  mdclean "${file}" &>/dev/null
+  mdclean "${file}" --quiet || log-warning "Failed to clean '${file}'"
 
   sed -e "s|[‘’]|'|g" \
     -e 's|[“”]|"|g' \
     -i "${file}"
 done
 
-if [[ ${#files[@]} -eq 0 ]]; then
-  log-error "No valid markdown files were passed"
-else
-  prettier --write --config "${PRETTIERRC}" "${files[@]}"
-fi
+prettier --write --config "${PRETTIERRC}" "${files[@]}"
