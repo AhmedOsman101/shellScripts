@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                                                 ██
@@ -18,14 +18,13 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
 checkDeps "$0"
-# ---  Main script logic --- #
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "b" "backup" "Creates a backup .bak file of the original file"
@@ -34,16 +33,17 @@ cmdarg "a" "array" "Returns the output as a bash compatible array"
 cmdarg "q" "quiet" "Runs quietly without output on success"
 
 cmdarg_parse "$@"
+# ---  Main script logic --- #
 
-useBackup=${cmdarg_cfg['backup']}
-force=${cmdarg_cfg['force']}
-useArray=${cmdarg_cfg['array']}
-quiet=${cmdarg_cfg['quiet']}
-file=${cmdarg_argv[0]}
+useBackup="${cmdarg_cfg['backup']}"
+force="${cmdarg_cfg['force']}"
+useArray="${cmdarg_cfg['array']}"
+quiet="${cmdarg_cfg['quiet']}"
+file="${argv[0]}"
 
 # Function to process input and remove duplicates
 remove_duplicates() {
-  if [[ ${useArray} == true ]]; then
+  if [[ "${useArray}" == true ]]; then
     tr ' ' '\n' |
       awk '
     {
@@ -71,29 +71,29 @@ remove_duplicates() {
   fi
 }
 
-if [[ -z ${file} || ${file} == "-" ]]; then
+if [[ -z "${file}" || "${file}" == "-" ]]; then
   # Read from stdin
   remove_duplicates
 else
   tmpfile="$(mktemp)"
   trap 'rm -f $tmpfile' EXIT
   # Read from file
-  if [[ -f ${file} ]]; then
-    if [[ ${useBackup} == true ]]; then
+  if [[ -f "${file}" ]]; then
+    if [[ "${useBackup}" == true ]]; then
       cp "${file}" "${file}.bak"
-      [[ ${quiet} == true ]] || log-info "Backup created as ${file}.bak"
+      [[ "${quiet}" == true ]] || log-info "Backup created as ${file}.bak"
     fi
 
     remove_duplicates <"${file}" >"${tmpfile}"
 
     # override the input file
-    if [[ ${force} == true ]]; then
+    if [[ "${force}" == true ]]; then
       mv "${tmpfile}" "${file}"
     else
       mv -i "${tmpfile}" "${file}"
     fi
 
-    [[ ${quiet} == true ]] || log-info "Filtered unique lines from '${file}'!"
+    [[ "${quiet}" == true ]] || log-info "Filtered unique lines from '${file}'!"
   else
     log-error "${file} was not found!"
   fi

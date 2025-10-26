@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #     ██
@@ -18,14 +18,13 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
 checkDeps "$0"
-# ---  Main script logic --- #
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "w?" "width" "The image's width in pixels" "1280"
@@ -38,15 +37,15 @@ cmdarg "n?" "name" "The image's name" "blank"
 cmdarg "m:" "message" "The text to be written on the image"
 
 cmdarg_parse "$@"
-
-width=${cmdarg_cfg['width']}
-height=${cmdarg_cfg['height']}
-extension=${cmdarg_cfg['extension']}
-foreground=${cmdarg_cfg['foreground']}
-background=${cmdarg_cfg['background']}
-fontSize=${cmdarg_cfg['font-size']}
-msg=${cmdarg_cfg['message']}
-name=${cmdarg_cfg['name']:-${cmdarg_argv[0]}}
+# ---  Main script logic --- #
+width="${cmdarg_cfg['width']}"
+height="${cmdarg_cfg['height']}"
+extension="${cmdarg_cfg['extension']}"
+foreground="${cmdarg_cfg['foreground']}"
+background="${cmdarg_cfg['background']}"
+fontSize="${cmdarg_cfg['font-size']}"
+msg="${cmdarg_cfg['message']}"
+name="${cmdarg_cfg['name']:-${argv[0]}}"
 
 magick -size "${width}x${height}" \
   "xc:${background}" \
