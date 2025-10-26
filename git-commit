@@ -21,36 +21,33 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
 eval "$(include "lib/helpers.sh")"
-
 eval "$(include "check-deps")"
 checkDeps "$0"
-# ---  Main script logic --- #
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "a" "ai" "Use AI to generate the message"
 cmdarg "y" "yes" "Answer yes to all the prompts"
 cmdarg "l" "local" "Commit changes without confirmation (no push)"
 cmdarg "p" "push" "Commit and push without confirmation"
-cmdarg "e" "edit" "Edit the commit message after generation (used with --ai)"
+cmdarg "e" "edit" "Edit the message before committing"
 
 cmdarg_parse "$@"
-
-useAi=${cmdarg_cfg['ai']}
-noConfirm=${cmdarg_cfg['yes']}
-local=${cmdarg_cfg['local']}
-push=${cmdarg_cfg['push']}
-edit=${cmdarg_cfg['edit']}
+# ---  Main script logic --- #
+useAi="${cmdarg_cfg['ai']}"
+noConfirm="${cmdarg_cfg['yes']}"
+local="${cmdarg_cfg['local']}"
+push="${cmdarg_cfg['push']}"
+edit="${cmdarg_cfg['edit']}"
 
 is-git-repo
 
 repoPath="$(git-root)"
-
-trap 'cleanup' EXIT
 
 choices=(
   "docs: ANY changes to documentation files (*.md, docs/*, etc.)"
@@ -73,12 +70,11 @@ cleanup() {
   rm -f "${logFile}"
 }
 
-if ! git status --porcelain | rg -q '^'; then
-  log-info "Nothing to commit"
-  exit 0
-fi
+trap 'cleanup' EXIT
 
-if ! git status --porcelain | rg -q '^[A-Z]'; then
+[[ -z "$(git status --porcelain)" ]] && terminate "Nothing to commit"
+
+if ! git status --porcelain | rg '^[A-Z]' &>/dev/null; then
   output=$(
     git status --porcelain |
       rg -v '^[MAD]' |
@@ -91,10 +87,12 @@ if ! git status --porcelain | rg -q '^[A-Z]'; then
   ) || terminate
 
   # Parse output to extract file names, preserving spaces
+  declare -a files
   mapfile -t files < <(
     echo "${output}" |
-      cut -d " " -f 2- | tr -d '"' |
-      sed -E 's/^[?[:space:]]{3}//'
+      cut -d " " -f 2- |
+      tr -d '"' |
+      sed -E 's|^[?[:space:]]{3}||'
   ) || terminate
 
   for file in "${files[@]}"; do
@@ -104,11 +102,6 @@ fi
 
 if [[ "${useAi}" == true ]]; then
   logFile=$(mktemp -t commit-sage-XXXXX.log)
-
-  # cmdArray=(bash -c "commit-sage > ${logFile} 2>&1")
-  # if ! gum spin --title "Generating..." -- "${cmdArray[@]}"; then
-  #   log-error "$(sed 's|\[ERROR\] ||' ${logFile})"
-  # fi
 
   # Another implementation
   spinner.sh &
@@ -138,16 +131,21 @@ else
       cut -d ':' -f 1
   ) || terminate
 
-  summary=$(
-    gum input \
-      --value "${type}: " \
-      --placeholder "Summary of this change"
-  )
+  if [[ "${edit}" == true ]]; then
+    summary="${type}: "
+    details=""
+  else
+    summary=$(
+      gum input \
+        --value "${type}: " \
+        --placeholder "Summary of this change"
+    )
 
-  details=$(gum write --placeholder "Details of this change") || terminate
+    details=$(gum write --placeholder "Details of this change") || terminate
+  fi
 fi
 
-if [[ "${useAi}" == true && "${edit}" == true ]]; then
+if [[ "${edit}" == true ]]; then
   if git commit -m "${summary}" -m "${details}" -e; then
     log-success "Committed Changes Locally!"
   else

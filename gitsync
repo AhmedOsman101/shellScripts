@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #               ██
@@ -19,14 +19,13 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
 checkDeps "$0"
-# ---  Main script logic --- #
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 
 cmdarg "b?" "branch" "Specify the branch to work on. Defaults to current branch." "#no-branch#"
@@ -34,13 +33,14 @@ cmdarg "m" "message" "Opens an interactive model for adding a custom commit mess
 cmdarg "s" "staged" "Commits the staged changes only, no auto stage"
 
 cmdarg_parse "$@"
+# ---  Main script logic --- #
 
 # check if in a git repo and if the user is inside .git directory
 is-git-repo
 
-branch=${cmdarg_cfg['branch']}
-onlyStaged=${cmdarg_cfg['staged']}
-hasMsg=${cmdarg_cfg['message']}
+branch="${cmdarg_cfg['branch']}"
+onlyStaged="${cmdarg_cfg['staged']}"
+hasMsg="${cmdarg_cfg['message']}"
 
 currentBranch="$(git_current_branch)"
 [[ -z "${currentBranch}" ]] && log-error "Unable to determine current branch."
@@ -50,16 +50,19 @@ if [[ "${branch}" == "#no-branch#" || -z "${branch}" ]]; then
   # returns the current working branch
   branch="${currentBranch}"
 elif [[ "${branch}" != "${currentBranch}" ]]; then
-  switch-branch "${branch}" || log-error "Switching to branch '${branch}' failed"
-  log-info "Switched to branch: ${branch}"
+  if switch-branch "${branch}" &>/dev/null; then
+    log-info "Switched to branch: ${branch}"
+  else
+    log-error "Switching to branch '${branch}' failed"
+  fi
 fi
 
-[[ ${onlyStaged} != true ]] && git add --all
+[[ "${onlyStaged}" != true ]] && git add --all
 
 # Check for changes before attempting to commit
-if git status --porcelain | grep -q '^'; then
+if [[ -n "$(git status --porcelain)" ]]; then
 
-  if [[ ${hasMsg} == true ]]; then
+  if [[ "${hasMsg}" == true ]]; then
     msg=$(gum write --placeholder "Write the commit message...")
     gum confirm "Add timestamps?" && msg="${msg} $(now)"
   else
