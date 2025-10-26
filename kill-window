@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄           ██     ▄▄▄▄      ▄▄▄▄                             ██                     ▄▄
+#  ██           ▀▀     ▀▀██      ▀▀██                             ▀▀                     ██
+#  ██ ▄██▀    ████       ██        ██               ██      ██  ████     ██▄████▄   ▄███▄██   ▄████▄  ██      ██
+#  ██▄██        ██       ██        ██               ▀█  ██  █▀    ██     ██▀   ██  ██▀  ▀██  ██▀  ▀██ ▀█  ██  █▀
+#  ██▀██▄       ██       ██        ██       █████    ██▄██▄██     ██     ██    ██  ██    ██  ██    ██  ██▄██▄██
+#  ██  ▀█▄   ▄▄▄██▄▄▄    ██▄▄▄     ██▄▄▄             ▀██  ██▀  ▄▄▄██▄▄▄  ██    ██  ▀██▄▄███  ▀██▄▄██▀  ▀██  ██▀
+#  ▀▀   ▀▀▀  ▀▀▀▀▀▀▀▀     ▀▀▀▀      ▀▀▀▀              ▀▀  ▀▀   ▀▀▀▀▀▀▀▀  ▀▀    ▀▀    ▀▀▀ ▀▀    ▀▀▀▀     ▀▀  ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Tries to kill a window gracefully then forcefully
+# --- DEPENDENCIES --- #
+# - wmctrl
+# - xdotool
+# - xkill (xorg-xkill)
+# - notify-send (libnotify)
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+notify-send -a "Kill Window" "Click a window to close" &
+
+# Gracefully close a window or force kill it if needed
+wid="$(xdotool selectwindow 2>/dev/null)" || terminate
+wmctrl -ic "${wid}" &>/dev/null
+sleep 0.5
+# Check if window still exists
+if wmctrl -l | grep -q "${wid}"; then
+  notify-send "Force killing window..." &
+  xkill -id "${wid}" &>/dev/null
+fi
+
+exit 0
