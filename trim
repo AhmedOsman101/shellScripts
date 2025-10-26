@@ -17,15 +17,14 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "b" "backup" "Creates a backup .bak file of the original file"
 cmdarg "s?" "str" "The string to trim" " "
@@ -36,9 +35,9 @@ useBackup=${cmdarg_cfg['backup']}
 trimStr=${cmdarg_cfg['str']}
 trimStrEscaped=$(printf '%s' "${trimStr}" | sed 's|[[\\|.*^$/]|\\&|g')
 
-file=${cmdarg_argv[0]}
+file=${argv[0]}
 
-if [[ ${#cmdarg_argv[@]} -eq 0 || ${file} == "-" ]]; then
+if [[ ${#argv[@]} -eq 0 || ${file} == "-" ]]; then
   input=$(cat)
   [[ -z ${input} ]] && printf '' && exit 0
   echo "${input}" | sed -e "s|^${trimStrEscaped}*||" -e "s|${trimStrEscaped}*$||"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                ▄▄
@@ -19,12 +19,15 @@
 # - cut
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
 path="${TUCKR_DIR:-${HOME}/.config/dotfiles/Configs}"
 
@@ -39,7 +42,7 @@ for package in "${packages[@]}"; do
 
   # ((0)) returns 1 which is a failure
   # that would trigger the `set -e` option to exit the script
-  ((count++)) || true
+  ((++count))
 done
 
 log-success "Synced ${count} tuckr packages"

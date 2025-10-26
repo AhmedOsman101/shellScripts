@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                ▄▄           ██               ▄▄
@@ -18,16 +18,27 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
-checkDeps "$0"
-# ---  Main script logic --- #
-[[ -z $1 ]] && log-error "No valid input was given!"
 
-if path=$(command -v "$1" 2>/dev/null); then
-  rm -i "${path}"
+checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "force" "f" "Deletes without confirmation"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+force="${cmdarg_cfg['force']}"
+file="${argv[0]}"
+
+[[ -z "${file}" ]] && log-error "No valid input was given!"
+
+if path=$(command -v "${file}" 2>/dev/null); then
+  if [[ "${force}" == true ]]; then
+    sudo rm -i "${path}"
+  else
+    sudo rm -f "${path}"
+  fi
 else
-  log-error "Script $1 doesn't exist!"
+  log-error "Script ${file} doesn't exist!"
 fi

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                                          ▄▄     ██
@@ -18,15 +18,14 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "p" "preserve" "Keep the file after the editing is done, the default is deleting it."
 
@@ -35,7 +34,7 @@ cmdarg_parse "$@"
 # Store option values
 preserve=${cmdarg_cfg['preserve']}
 
-extension=${cmdarg_argv[0]:-md}
+extension=${argv[0]:-md}
 
 EDITOR=${EDITOR:-nano}
 

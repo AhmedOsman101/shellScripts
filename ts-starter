@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #
@@ -22,13 +22,15 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/helpers.sh")"
-
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
 
 fetchRaw() {
@@ -181,7 +183,7 @@ esac
 
 mkdir -p .vscode
 
-fetchRaw "AhmedOsman101/dotfiles" "Configs/biome/.config/biome.json" "biome.json"
+fetchRaw "AhmedOsman101/dotfiles" "Configs/biome/.config/biome/biome.json" "biome.json"
 fetchRaw "AhmedOsman101/dotfiles" "Configs/editorconfig/.config/.editorconfig" ".editorconfig"
 
 fetchGist "https://gist.githubusercontent.com/AhmedOsman101/5254232eb2c72a626cf798002d16a255/raw/ace64049d276de197887b65bbd9484f2fed710a1" "settings.json" ".vscode/settings.json"

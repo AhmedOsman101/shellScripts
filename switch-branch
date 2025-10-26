@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                         ██                         ▄▄                  ▄▄                                                ▄▄
@@ -20,17 +20,15 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "lib/helpers.sh")"
-
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "n" "new" "Create a new branch and switch to it"
 cmdarg "o" "orphan" "Create a new orphan branch (no parent history) and switch to it"
@@ -40,7 +38,7 @@ cmdarg_parse "$@"
 createNew=${cmdarg_cfg['new']}
 createOrphan=${cmdarg_cfg['orphan']}
 
-branchParam=${cmdarg_argv[0]:-"#-none-#"}
+branchParam=${argv[0]:-"#-none-#"}
 
 is-git-repo
 
