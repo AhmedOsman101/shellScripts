@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                            ▄▄                                          ▄▄           ██
@@ -18,24 +18,31 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 cmdarg_parse "$@"
 
-version="${cmdarg_argv[0]}"
+version="${argv[0]}"
 [[ -z "${version}" ]] && log-error "No valid version was provided!"
 
-url="https://github.com/biomejs/biome/releases/download/%40biomejs%2Fbiome%40${version}/biome-linux-x64"
-tempPath="/tmp/biome-download"
-wget -O "${tempPath}" "${url}"
+tempPath="/tmp/biome-download-${version}"
+regex="${version}\$"
+
+if [[ ! -f "${tempPath}" || ! "${tempPath}" =~ ${regex} ]]; then
+  wget -O "${tempPath}" \
+    "https://github.com/biomejs/biome/releases/download/%40biomejs%2Fbiome%40${version}/biome-linux-x64"
+fi
 
 chmod +x "${tempPath}"
 
-sudo mv "${tempPath}" "$(command -v biome)"
+if command -v biome &>/dev/null; then
+  sudo mv -iv "${tempPath}" "$(command -v biome)"
+else
+  sudo mv -v "${tempPath}" '/usr/bin/biome'
+fi
