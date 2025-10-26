@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                          ▄▄                            ▄▄
@@ -19,15 +19,14 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "d?" "debounce" "Time to wait for new events before taking action" "5s"
 cmdarg "c?" "command" "The command to run" ""
@@ -36,7 +35,7 @@ cmdarg_parse "$@"
 
 cmd=${cmdarg_cfg['command']}
 debounce=${cmdarg_cfg['debounce']}
-exts=${cmdarg_argv[*]}
+exts=${argv[*]}
 
 # Get the extensions string
 # Prompt user for extensions if not provided as arguments
