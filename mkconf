@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #            ▄▄                                         ▄▄▄▄
@@ -18,17 +18,19 @@
 # - tuckr
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/helpers.sh")"
-
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
-app=$1
-[[ -z ${app} ]] && app=$(gum input --placeholder "Enter app's name e.g. vim")
+app="${argv[0]}"
+[[ -z ${app} ]] && app="$(gum input --placeholder "Enter app's name e.g. vim")"
 
 target="${TUCKR_DIR}/${app}/.config/${app}"
 
@@ -38,9 +40,7 @@ if [[ ! -d "${source}" ]]; then
 
   if [[ ! -d "${target}" ]]; then # if !from && !to: mkdir to
     log-warning "Source directory doesn't exist!"
-    createDist=$(gum confirm "Do you want to create the target directory?") || createDist=1
-
-    if [[ ${createDist} -eq 0 ]]; then # 0 means yes
+    if gum confirm "Do you want to create the target directory?"; then
       mkdir -p "${target}"
     else
       terminate "No changes were made!"
@@ -53,17 +53,16 @@ else
     mkdir -p "${target}"
     log-info "'${target}' directory created!"
   fi
-  moveSource=$(gum confirm "Do you want to move exsiting files to the target directory?") ||
-    terminate "No changes were made!"
-  if [[ ${moveSource} -eq 0 ]]; then # 0 means yes
+  if gum confirm "Do you want to move exsiting files to the target directory?"; then
     target="$(dirname "${target}")"
     gum spin \
-      --spinner dot \
       --title "Moving ${app}'s config from '$(dirname "${source}")' to '$(dirname "${target}")'" \
       -- mv -v "${source}" "${target}"
+  else
+    terminate "No changes were made!"
   fi
 fi
 
 log-success "Created config directory for ${app}!"
 
-tuckr a "${app}" # Populate the config after making it
+tuckr add "${app}" # Populate the config after making it
