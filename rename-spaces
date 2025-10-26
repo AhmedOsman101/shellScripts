@@ -18,14 +18,14 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/helpers.sh")"
-
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
-checkDeps "$0"
 
+checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
 mapfile -t arr < <(fd ' ' -t f -p "${PWD}")
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                      ▄▄
@@ -21,15 +21,14 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
 cmdarg_info "header" "$(get-desc "$0")"
+# ---  Main script logic --- #
 
 cmdarg "b" "backup" "Creates a backup .bak file of the original file"
 cmdarg "f" "force" "Overwrite the original file without cofirmation"
@@ -52,7 +51,7 @@ remove_duplicates() {
   fi
 }
 
-file=${cmdarg_argv[0]}
+file=${argv[0]}
 
 # Check if input is from a file or stdin
 if [[ -z ${file} || ${file} == "-" ]]; then

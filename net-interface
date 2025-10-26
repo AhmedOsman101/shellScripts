@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                             ██                                                ▄▄▄▄
@@ -18,12 +18,15 @@
 # - awk
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
 interface="$(ip route get 1.1.1.1 2>/dev/null | awk '{print $5;exit}')"
 
@@ -33,7 +36,7 @@ else
   interface="$(ip route get 8.8.8.8 2>/dev/null | awk '{print $5;exit}')"
   if [[ -n "${interface}" ]]; then
     echo "${interface}"
-  else
-    echo ""
   fi
 fi
+
+exit 0

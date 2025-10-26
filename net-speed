@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                                                                        ▄▄
@@ -19,21 +19,23 @@
 # - printf
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
 interface="$(net-interface)"
 
 downOld="$(cat /sys/class/net/"${interface}"/statistics/rx_bytes)"
 upOld="$(cat /sys/class/net/"${interface}"/statistics/tx_bytes)"
 
+printf '\n'
 while true; do
-  sleep 1
-
   downNew="$(cat /sys/class/net/"${interface}"/statistics/rx_bytes)"
   upNew="$(cat /sys/class/net/"${interface}"/statistics/tx_bytes)"
 
@@ -43,8 +45,10 @@ while true; do
   downSpeed=$((downDiff * 8 / 1024)) # Kbps
   upSpeed=$((upDiff * 8 / 1024))     # Kbps
 
-  downOld=${downNew}
-  upOld=${upNew}
+  downOld="${downNew}"
+  upOld="${upNew}"
 
+  eraseLine
   printf " %d Kbps  %d Kbps\n" "${downSpeed}" "${upSpeed}"
+  sleep 1
 done
