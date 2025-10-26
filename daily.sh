@@ -52,3 +52,5 @@ get-ext --overwrite "${DOTFILES}/${device}_extensions.json"
 pnpm-ls >>"${DOTFILES}/pnpm_global_packages.txt"
 
 no-dups --force "${DOTFILES}/pnpm_global_packages.txt"
+
+notify-send "Daily system backup finished!" &
