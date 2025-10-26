@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                      ▄▄                                         ██
@@ -19,22 +19,27 @@
 # - printf
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+
 # ---  Main script logic --- #
-name="$1"
-desc="$2"
-deps="$3"
+name="${argv[0]}"
+desc="${argv[1]}"
+deps="${argv[2]}"
 
 cat <<EOF
 #!/usr/bin/env bash
 #
 # --- SCRIPT SIGNATURE --- #
-$(toilet --font mono12 --termwidth --width 190 "${name}" | sed 's/^/# /')
+$(toilet --font mono12 --termwidth --width 190 "${name}" | sed 's|^|# |')
 # --- DESCRIPTION --- #
 # ${desc}
 # --- DEPENDENCIES --- #
@@ -52,15 +57,15 @@ cat <<'EOF'
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "lib/helpers.sh")"
-
 eval "$(include "check-deps")"
 checkDeps "$0"
 
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
-
-
 EOF
