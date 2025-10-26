@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #
@@ -19,44 +19,39 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "lib/helpers.sh")"
-
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
-
 cmdarg "o" "overwrite" "Overwrite the file if it exists"
-
 cmdarg_parse "$@"
 
-overwrite=${cmdarg_cfg['overwrite']}
-file=${cmdarg_argv[0]:-extensions.json}
+# ---  Main script logic --- #
+overwrite="${cmdarg_cfg['overwrite']}"
+file="${argv[0]:-extensions.json}"
 
 getExtensions() {
-  # Get all VS Code extensions
-  extensions="$(code --list-extensions)"
+  local -a array
 
-  # Format the extensions for the JSON file
-  readarray -t array <<<"${extensions}"
+  # Get all VS Code extensions
+  mapfile -t array < <(code --list-extensions)
 
   # Create the JSON content
-  output="$(printf '%s\n' "${array[@]}" | jq -R . | jq -s .)"
-  echo "${output}"
+  printf '%s\n' "${array[@]}" | jq -R . | jq -s .
 }
 
 # Check if the file already exists
 if [[ -f "${file}" ]]; then
-  if [[ ${overwrite} == true ]]; then
+  if [[ "${overwrite}" == true ]]; then
     getExtensions >"${file}"
     log-info "${file} has been overwritten."
   else
-    if gum confirm "File: ${file} exists do you want to overwrite it?" --prompt.foreground="#DBAC66"; then
+    if gum confirm "File: ${file} exists do you want to overwrite it?" --prompt.foreground="${U_YELLOW}"; then
       getExtensions >"${file}"
       log-info "${file} has been overwritten."
     else
@@ -64,7 +59,6 @@ if [[ -f "${file}" ]]; then
     fi
   fi
 else
-  touch "${file}"
   getExtensions >"${file}"
   log-info "${file} has been created."
 fi
