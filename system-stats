@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#                                  ██                                                ██                  ██
+#  ▄▄█████▄  ▀██  ███  ▄▄█████▄  ███████    ▄████▄   ████▄██▄            ▄▄█████▄  ███████    ▄█████▄  ███████   ▄▄█████▄
+#  ██▄▄▄▄ ▀   ██▄ ██   ██▄▄▄▄ ▀    ██      ██▄▄▄▄██  ██ ██ ██            ██▄▄▄▄ ▀    ██       ▀ ▄▄▄██    ██      ██▄▄▄▄ ▀
+#   ▀▀▀▀██▄    ████▀    ▀▀▀▀██▄    ██      ██▀▀▀▀▀▀  ██ ██ ██   █████     ▀▀▀▀██▄    ██      ▄██▀▀▀██    ██       ▀▀▀▀██▄
+#  █▄▄▄▄▄██     ███    █▄▄▄▄▄██    ██▄▄▄   ▀██▄▄▄▄█  ██ ██ ██            █▄▄▄▄▄██    ██▄▄▄   ██▄▄▄███    ██▄▄▄   █▄▄▄▄▄██
+#   ▀▀▀▀▀▀      ██      ▀▀▀▀▀▀      ▀▀▀▀     ▀▀▀▀▀   ▀▀ ▀▀ ▀▀             ▀▀▀▀▀▀      ▀▀▀▀    ▀▀▀▀ ▀▀     ▀▀▀▀    ▀▀▀▀▀▀
+#             ███
+#
+# --- DESCRIPTION --- #
+# Displays vairous system monitoring stats like cpu, ram, and disk usage
+# --- DEPENDENCIES --- #
+# - top
+# - awk
+# - free
+# - df
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+printf '  %s\t' "$(top -bn1 | awk '/Cpu\(s\)/ {printf "%.0f%", 100 - $8}')"
+printf '  %s  ' "$(free -m | awk '/Mem:/ {print $3 "MB"}')"
+printf '󰋊  %s\n' "$(df -h / | awk 'NR==2 {print $4}')"
