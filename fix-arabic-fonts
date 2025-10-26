@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #     ▄▄▄▄      ██                                                       ▄▄           ██                            ▄▄▄▄
@@ -16,9 +16,11 @@
 #
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
-sudo cp -f "${HOME}/.config/fontconfig/65-nonlatin.conf /etc/fonts/conf.d/65-nonlatin.conf"
+sudo cp -f "${HOME}/.config/fontconfig/65-nonlatin.conf" "/etc/fonts/conf.d/65-nonlatin.conf"

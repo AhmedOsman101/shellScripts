@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #                                                ▄▄
@@ -17,22 +17,21 @@
 #
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
 
-if [[ $# -ne 1 ]]; then
+if (($# != 1)); then
   log-error "Invalid arguments, only a script name is accepted"
 else
-  if [[ -f $1 ]]; then
-    file=$1
+  if [[ -f "$1" ]]; then
+    file="$1"
   else
-    file=$(command -v "$1")
+    file="$(command -v "$1")"
   fi
 
-  [[ ! -f ${file} ]] && log-error "Script '${file}' was not found"
+  [[ ! -f "${file}" ]] && log-error "Script '${file}' was not found"
 fi
 
 sed -n '/# --- DEPENDENCIES --- #/,/# --- END SIGNATURE --- #/{/\# - /p;}' "${file}" |

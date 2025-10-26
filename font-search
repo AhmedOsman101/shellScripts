@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #     ▄▄▄▄                                                                                             ▄▄
@@ -17,13 +17,16 @@
 # - rg (ripgrep)
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
 fc-list |
   awk -F ':' '{print $2}' |
-  rg -i "$@" || log-error "Font '$*' was not found"
+  rg -i "${argv[@]}" || log-error "Font '${argv[*]}' was not found"
