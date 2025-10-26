@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #  ▄▄▄▄                                ▄▄               ▄▄▄▄
@@ -19,42 +19,39 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
 cd "${HOME}/fonts" || log-error "failed to find '${HOME}/fonts' directory, create it first."
-declare dir
-declare -a ttfDirs otfDirs dirs
+declare -a dirs ttfDirs otfDirs
 
 ttfDir="/usr/local/share/fonts/TTF"
 otfDir="/usr/local/share/fonts/OTF"
 
 [[ ! -d "${ttfDir}" ]] && sudo mkdir -p "${ttfDir}"
-
 [[ ! -d "${otfDir}" ]] && sudo mkdir -p "${otfDir}"
 
-sudo mv -i ./*.ttf "${ttfDir}" >/dev/null 2>&1 || true
-sudo mv -i ./*.otf "${otfDir}" >/dev/null 2>&1 || true
+sudo mv -i ./*.ttf "${ttfDir}" &>/dev/null || true
+sudo mv -i ./*.otf "${otfDir}" &>/dev/null || true
 
 mapfile -t dirs < <(fd . -t d -d 1)
 
 for dir in "${dirs[@]}"; do
   mapfile -t ttfDirs < <(fd . -e ttf "${dir}" -x dirname {} | no-dups -a)
-
   if ((${#ttfDirs} > 0)); then
-    sudo mv "${ttfDirs[@]}" -t "${ttfDir}" &&
-      log-info "Moved $(echo "${ttfDirs[@]}" | tr " " "\n" | cut -d " " -f 5- | tr "\n" " " | trim)"
+    sudo mv "${ttfDirs[@]}" -t "${ttfDir}" && log-info "Moved ${ttfDirs[*]}"
+    continue # to avoid searching again
   fi
 
-  if [[ -d "${dir}" ]]; then
-    mapfile -t otfDirs < <(fd . -e otf "${dir}" -x dirname {} | no-dups -a)
-    if ((${#otfDirs} > 0)); then
-      sudo mv "${otfDirs[@]}" -t "${otfDir}" &&
-        log-info "Moved $(echo "${otfDirs[@]}" | tr " " "\n" | cut -d " " -f 5- | tr "\n" " " | trim)"
-    fi
+  mapfile -t otfDirs < <(fd . -e otf "${dir}" -x dirname {} | no-dups -a)
+  if ((${#otfDirs} > 0)); then
+    sudo mv "${otfDirs[@]}" -t "${otfDir}" && log-info "Moved ${otfDirs[*]}"
   fi
 done
 
