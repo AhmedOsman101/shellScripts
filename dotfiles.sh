@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #        ▄▄                         ▄▄▄▄      ██     ▄▄▄▄                                              ▄▄
@@ -12,43 +12,70 @@
 #
 #
 # --- DESCRIPTION --- #
-# Selects or specifies a configuration directory from TUCKR_DIR using eza and gum for interactive filtering
+# Selects or specifies a configuration directory from TUCKR_DIR with interactive filtering
 # --- DEPENDENCIES --- #
 # - eza
-# - gum
+# - fzf
+# - fd | fdfind (fd-find)
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/helpers.sh")"
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
-if [[ $# -eq 0 ]]; then
+cancelled=false
+
+cd "${TUCKR_DIR}" || terminate
+fzfPreview="$(
+  cat <<'EOF'
+item="$(echo {} | cut -d " " -f 2-)"
+if [[ -d "${item}" ]]; then
+  eza --all --tree --color=always --icons=always --git --ignore-glob="node_modules|.turbo|dist|build|.next|.nuxt|.git|vendor" "${item}" | head -200
+elif [[ "${item}" =~ \.(md|markdown)$ ]]; then
+  if command -v mdcat 2>/dev/null;
+    mdcat {}
+  elif command -v glow 2>/dev/null;
+    glow {}
+  elif command -v bat 2>/dev/null;
+    bat --color=always --line-range :500 {}
+  else
+    cat {} | head -n 500
+  fi
+else
+  bat --color=always --line-range :500 "${item}" || file "${item}"
+fi
+EOF
+)"
+if ((argc < 1)) || [[ -z "${argv[0]}" ]]; then
   app=$(
-    (eza "${TUCKR_DIR}" \
-      --color=always \
+    eza \
       --only-dirs \
       --icons=always \
-      --long \
-      --no-time \
-      --no-user \
-      --sort name \
-      --no-permissions \
-      --no-filesize |
-      gum filter \
-        --placeholder="Search..." \
-        --header="Choose a config directory" \
-        --fuzzy |
-      cut -d " " -f 2-) || pwd
-  )
-
+      --all -1 \
+      --sort name |
+      fzf --multi=1 \
+        --preview="${fzfPreview}" \
+        --layout=reverse \
+        --preview-window='right:65%' |
+      cut -d " " -f 2-
+  ) || cancelled=true
 else
-  app=$1
+  app="${argv[0]}"
 fi
 
-fullpath=$(fd-by-depth "${app}" -t d "${TUCKR_DIR}/${app}" | tail -n 1)
+if "${cancelled}"; then
+  eraseLine
+  terminate "Nothing selected"
+fi
+
+fullpath="$(fd-by-depth "${app}" --type d --min-depth=2 --max-depth=4 "${TUCKR_DIR}/${app}" | tail -n 1)"
 [[ -z "${fullpath}" ]] && fullpath="${TUCKR_DIR}/${app}"
 
 echo "${fullpath}"
