@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #        ▄▄                                                                                     ▄▄▄▄      ██     ▄▄▄▄
@@ -18,28 +18,30 @@
 # - wget
 # --- END SIGNATURE --- #
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
-# ---  Main script logic --- #
-file="${1:-'extensions.json'}"
 
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+file="${argv[0]:-extensions.json}"
+declare -a extensions
 if [[ -f "${file}" ]]; then
   # Attempt to read JSON file contents
-  if ! extensions="$(jq -r '.[]' "${file}" 2>/dev/null)"; then
-    log-error "Failed to parse '${file}'"
-  fi
+  mapfile -t extensions < <(jq -r '.[]' "${file}" 2>/dev/null) || log-error "Failed to parse '${file}'"
 
   # Create extensions directory if it does not exist
-  [[ ! -d "extensions" ]] && mkdir "extensions"
+  [[ ! -d "extensions" ]] && mkdir -p "extensions"
 else
   log-error "File '${file}' not found."
 fi
 
-for extension in ${extensions}; do
+count=0
+for extension in "${extensions[@]}"; do
   publisher=$(echo "${extension}" | cut -d '.' -f 1)
   extensionName=$(echo "${extension}" | cut -d '.' -f 2)
   url="https://${publisher}.gallery.vsassets.io/_apis/public/gallery/publisher/${publisher}/extension/${extensionName}/latest/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage"
@@ -51,12 +53,14 @@ for extension in ${extensions}; do
   if [[ -f "$(pwd)/extensions/${filename}" ]]; then
     log-warning "Skipping ${filename}. File already exists."
   else
-    # Download the .vsix file with only the progress bar shown
-    if ! wget -q --show-progress -O "$(pwd)/extensions/${filename}" "${url}"; then
+    # Download the .vsix file
+    if ! wget -O "$(pwd)/extensions/${filename}" "${url}"; then
       log-error "Failed to download ${filename}."
+    else
+      ((++count))
+      log-info "Downloaded ${filename}"
     fi
-    log-info "Downloaded ${filename}"
   fi
 done
 
-log-success "Done 🚀"
+log-success "Downloaded ${count} extensions 🚀"
