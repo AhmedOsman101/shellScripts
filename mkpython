@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #            ▄▄                                      ▄▄
@@ -20,22 +20,24 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
+
 checkDeps "$0"
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
 dir="${SCRIPTS_DIR}/python"
-name="$1"
+name="${argv[0]}"
 
-if echo "${name}" | grep -vq ".py"; then
-  name="${name}.py"
-fi
+# Check if it ends with the .py extension
+[[ "${name}" =~ (\.py)$ ]] || name="${name}.py"
 
 nameNoExt="$(strip-ext "${name}" py)"
-fileExists=$(fd "${nameNoExt}" -e py -p "${dir}" --no-ignore)
-scriptExists=$(fd "${nameNoExt}" -p "${SCRIPTS_DIR}" --no-ignore -d 1)
+fileExists="$(fd-all "${nameNoExt}" -- -e py -p "${dir}")"
+scriptExists=$(fd-all "${nameNoExt}" -- -d 1 -p "${SCRIPTS_DIR}")
 
 if [[ -n "${fileExists}" ]]; then
   log-error "File ${name} already exists at ${fileExists}"
@@ -46,28 +48,28 @@ fi
 projectDir="${dir}/${nameNoExt}"
 
 mkdir -p "${projectDir}"
-cd "${projectDir}"
+cd "${projectDir}" || log-error "Cannot cd into '${projectDir}'"
 
 uv init --name "${nameNoExt}" --no-readme --no-workspace
 uv venv # creates the venv
-
-scriptContent=$(
-  cat <<'EOF'
-#!/usr/bin/env bash
-
-runpy "$0" "$@"
-EOF
-)
 
 scriptPath="${SCRIPTS_DIR}/${nameNoExt}"
 
 touch "${scriptPath}" || log-error "Failed to create file '${scriptPath}'"
 
-echo "${scriptContent}" >"${scriptPath}" || log-error "Failed to write to file '${scriptPath}'"
+scriptContent() {
+  cat <<'EOF'
+#!/usr/bin/env bash
+
+runpy "$0" "$@"
+EOF
+}
+
+scriptContent >"${scriptPath}" || log-error "Failed to write to file '${scriptPath}'"
 
 chmod u+x "${scriptPath}" || log-error "Failed to make '${scriptPath}' executable"
 
-renamefile "main.py" "${name}"
+renamefile "main.py" "${name}" &>/dev/null
 
 "${EDITOR:-nano}" "${name}"
 

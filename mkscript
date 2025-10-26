@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+#
 # --- SCRIPT SIGNATURE --- #
 #
 #            ▄▄                                         ██
@@ -18,44 +18,39 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "check-deps")"
+
 checkDeps "$0"
-# ---  Main script logic --- #
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
-
 cmdarg "t" "temp" "Creates the script at /tmp and copies its name to clipboard"
-cmdarg "f?" "file" "Creates the script with the given name in the current working directory" ""
-
+cmdarg "f?" "file" "Creates the script with the given name in the current working directory"
 cmdarg_parse "$@"
-
-# Store option values
-isTemp=${cmdarg_cfg['temp']}
-filename=${cmdarg_cfg['file']}
+# ---  Main script logic --- #
+isTemp="${cmdarg_cfg['temp']}"
+filename="${cmdarg_cfg['file']}"
 no_flags=false
 file=""
 
-[[ ${isTemp} != true && -z ${filename} ]] && no_flags=true
+[[ -z "${isTemp}" && -z "${filename}" ]] && no_flags=true
 
-scriptContent=$(
+scriptContent() {
   cat <<'EOF'
 #!/usr/bin/env bash
 
-set -euo pipefail
-
+set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
-
 EOF
-)
+}
 
 validateAndCreateFile() {
-  local file=$1
+  local file="$1"
   [[ -f "${file}" ]] && log-error "The script '$(basename "${file}")' already exists at '${file}'!"
 
   touch "${file}" || log-error "Failed to create file '${file}'"
@@ -70,14 +65,14 @@ if [[ "${isTemp}" == true ]]; then
 
   name="${file}"
   clipcopy "${file}"
-  echo "${scriptContent}" >"${file}"
+  scriptContent >"${file}"
   log-info "The script name was copied to clipboard"
 
 elif [[ "${no_flags}" == true ]]; then
-  if [[ -n ${cmdarg_argv[0]} ]]; then
-    name=${cmdarg_argv[0]}
+  if [[ -n ${argv[0]} ]]; then
+    name=${argv[0]}
   else
-    name=$(gum input --placeholder "Enter Script's name: ") || log-error "Failed to capture the script name"
+    name="$(gum input --placeholder "Enter Script's name: ")" || log-error "Failed to capture the script name"
   fi
   file="${SCRIPTS_DIR}/${name}"
 
@@ -85,29 +80,29 @@ elif [[ "${no_flags}" == true ]]; then
 
   mkdir -p "$(dirname "${file}")" 2>/dev/null
   name="$(basename "${file}")"
-  make-signature "${name}" " " "" >"${file}"
+  make-signature "${name}" "" "" >"${file}"
 
 elif [[ -z "${filename}" ]]; then
-  name=$(gum input --placeholder "Enter Script's name: ") || log-error "Failed to capture the script name"
-  file="$(pwd)/${name}"
+  name="$(gum input --placeholder "Enter Script's name: ")" || log-error "Failed to capture the script name"
+  file="${PWD}/${name}"
 
   validateAndCreateFile "${file}"
 
   mkdir -p "$(dirname "${file}")" 2>/dev/null
   name="$(basename "${file}")"
 
-  make-signature "${name}" " " "" >"${file}"
+  make-signature "${name}" "" "" >"${file}"
 
   if [[ "${name}" != *.sh ]]; then
-    gum confirm "Do you want to add .sh extension to your script?" && {
+    if gum confirm "Do you want to add .sh extension to your script?"; then
       rm -f "${file}"
-      file="$(pwd)/${name}.sh"
+      file="${PWD}/${name}.sh"
       validateAndCreateFile "${file}"
-    }
+    fi
   fi
 
 elif [[ -n "${filename}" ]]; then
-  file="$(pwd)/${filename}"
+  file="${PWD}/${filename}"
 
   validateAndCreateFile "${file}"
 
@@ -115,17 +110,16 @@ elif [[ -n "${filename}" ]]; then
   name="$(basename "${file}")"
 
   if [[ "${name}" != *.sh ]]; then
-    gum confirm "Do you want to add .sh extension to your script?" && {
+    if gum confirm "Do you want to add .sh extension to your script?"; then
       rm -f "${file}"
-      file="$(pwd)/${name}.sh"
+      file="${PWD}/${name}.sh"
       validateAndCreateFile "${file}"
-    }
+    fi
   fi
-  echo "${scriptContent}" >"${file}"
+
+  scriptContent >"${file}"
 fi
 
 "${EDITOR}" "${file}"
 
 log-success "Script '$(basename "${file}")' created succefully!"
-
-log-info "Run ${SCRIPTS_DIR}/init.sh script to refresh"
