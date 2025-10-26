@@ -12,19 +12,16 @@
 #                                ██
 #
 # --- DESCRIPTION --- #
-#
+# Repeats a given command or block of code for n times
 # --- DEPENDENCIES --- #
-#
+# - bash
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
-
 eval "$(include "lib/helpers.sh")"
-
 eval "$(include "check-deps")"
 checkDeps "$0"
 
@@ -36,12 +33,12 @@ cmdarg "d?" "delay" "Delay in seconds between iterations" "0"
 cmdarg "n:" "iterations" "Number of iterations"
 
 cmdarg_parse "$@"
-
+# ---  Main script logic --- #
 clear="${cmdarg_cfg['clear']}"
 delay="${cmdarg_cfg['delay']}"
 iterations="${cmdarg_cfg['iterations']}"
 
-cmd="${cmdarg_argv[*]}"
+cmd="${argv[*]}"
 # ---  Main script logic --- #
 # validate the iterations
 isUnsignedInt "${iterations}" || log-error "Number of iterations must be a valid integer."
@@ -57,16 +54,13 @@ if [[ -z "${cmd}" ]]; then
   cmd="$(gum write --placeholder "enter a command to repeat...")"
 fi
 
-# Evaluate the command to parse variables
-cmd="$(eval echo "${cmd}")"
-
 # Check if the command is empty
 [[ -z "${cmd}" ]] && log-error "No command entered."
 
-eval "${cmd}"
-
-for ((count = 1; count < iterations; count++)); do
-  [[ -n "${delay}" ]] && sleep "${delay}"
-  [[ "${clear}" == true ]] && clear
-  eval "${cmd}"
+for ((count = 0; count < iterations; count++)); do
+  [[ -n "${delay}" ]] && ((0 < count)) && sleep "${delay}"
+  [[ "${clear}" == true ]] && ((0 < count)) && clear
+  bash -c "${cmd}" || true
 done
+
+exit 0
