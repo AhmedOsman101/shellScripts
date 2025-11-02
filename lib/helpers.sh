@@ -290,3 +290,18 @@ mapColor() {
     return 1
   fi
 }
+
+touch() {
+  for file in "$@"; do
+    if [[ ! -f "${file}" ]]; then
+      local dir="$(dirname "${file}")"
+      if [[ ! -d "${dir}" ]]; then
+        if ! mkdir -p "${dir}"; then
+          log-warning "Couldn't create parent directory, skipping file: ${file}"
+          continue
+        fi
+      fi
+    fi
+    command touch "${file}"
+  done
+}
