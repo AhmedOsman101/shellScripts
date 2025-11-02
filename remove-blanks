@@ -21,6 +21,7 @@
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+eval "$(include "lib/helpers.sh")"
 eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 
@@ -35,7 +36,7 @@ cmdarg_parse "$@"
 useBackup=${cmdarg_cfg['backup']}
 file=${argv[0]}
 
-if [[ ${file} == "-" ]] || ((${#argv[@]} != 0)); then
+if [[ ${file} == "-" ]] || ((argc == 0)); then
   str=$(cat)
   [[ -z ${str} ]] && printf '' && exit 0
   echo "${str}" | awk 'NF'

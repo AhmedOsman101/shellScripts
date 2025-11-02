@@ -62,9 +62,11 @@ cmdArray=(
 )
 
 if [[ -n ${result} && -f ${result} ]]; then
-  cmdArray+=("--config-path=${result}")
+  unset BIOME_CONFIG_PATH
+  # cmdArray+=("--config-path=${result}")
 elif [[ -n ${configFile} && -f ${configFile} ]]; then
-  cmdArray+=("--config-path=${configFile}")
+  # cmdArray+=("--config-path=${configFile}")
+  true
 fi
 
 [[ "${summary}" == true ]] && cmdArray+=(--reporter=summary)
