@@ -37,13 +37,13 @@ fzfPreview="$(
   cat <<'EOF'
 item="$(echo {} | cut -d " " -f 2-)"
 if [[ -d "${item}" ]]; then
-  eza --all --tree --color=always --icons=always --git --ignore-glob="node_modules|.turbo|dist|build|.next|.nuxt|.git|vendor" "${item}" | head -200
+  eza --all --tree -L 4 --color=always --icons=always --git --ignore-glob="node_modules|.turbo|dist|build|.next|.nuxt|.git|vendor" "${item}" | head -200
 elif [[ "${item}" =~ \.(md|markdown)$ ]]; then
-  if command -v mdcat 2>/dev/null;
+  if command -v mdcat 2>/dev/null; then
     mdcat {}
-  elif command -v glow 2>/dev/null;
+  elif command -v glow 2>/dev/null; then
     glow {}
-  elif command -v bat 2>/dev/null;
+  elif command -v bat 2>/dev/null; then
     bat --color=always --line-range :500 {}
   else
     cat {} | head -n 500
