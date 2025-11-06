@@ -17,7 +17,6 @@
 # - rg (ripgrep)
 # - awk
 # - tr
-# - gum
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -32,12 +31,20 @@ cmdarg_parse "$@"
 # ---  Main script logic --- #
 declare -a colors
 
-mapfile -t colors < <(rg -N "export U_" "${ZDOTDIR}/variables.sh")
+findColors() {
+  {
+    if [[ -f "${ZDOTDIR}/variables.sh" ]]; then
+      cut -d' ' -f2- "${ZDOTDIR}/variables.sh" | tr -d '"'
+    fi
+    printenv
+  } | no-dups | rg --color=never '^U_'
+  return 0
+}
+
+mapfile -t colors < <(findColors)
 
 for line in "${colors[@]}"; do
-  var=$(echo "${line}" | awk '{print $2}')
-  varname=$(echo "${var}" | awk -F "=" '{print $1}')
-  color=$(echo "${var}" | awk -F "=" '{print $2}' | tr -d '"')
-
-  gum style --foreground="${color}" "${varname} ${color}"
+  varname="${line%%=*}"
+  color="${line#*=}"
+  printHex "${color}" "${varname} ${color}"
 done
