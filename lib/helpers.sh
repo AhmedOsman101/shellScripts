@@ -33,7 +33,7 @@ input() {
 
 logInfo() {
   local str="$(input "$@")"
-  printBlue "[INFO] ${str}"
+  printPurple "[INFO] ${str}"
 }
 
 logWarning() {
