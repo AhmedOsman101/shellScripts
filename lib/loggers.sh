@@ -1,6 +1,40 @@
 #!/usr/bin/env bash
 
 # ---  Main script logic --- #
+
+# Convert hex to RGB
+hex_to_rgb() {
+  local hex r g b
+  hex=$1
+
+  if [[ ! "${hex}" =~ ^#[0-9A-Fa-f]{3}$ && ! "${hex}" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+    log-error "Invalid hex color"
+    return 1
+  fi
+
+  # Remove the '#' symbol
+  hex="${hex#"#"}"
+
+  if ((${#hex} == 3)); then
+    # short form hex (#eee)
+    r="${hex:0:1}${hex:0:1}"
+    g="${hex:1:1}${hex:1:1}"
+    b="${hex:2:1}${hex:2:1}"
+  else
+    # Long form hex (#ff00aa)
+    r="${hex:0:2}" # from index 0 take 2
+    g="${hex:2:2}" # from index 2 take 2
+    b="${hex:4:2}" # from index 4 take 2
+  fi
+
+  # Convert hex to decimal
+  r=$((16#${r})) || log-error "Invalid hex color"
+  g=$((16#${g})) || log-error "Invalid hex color"
+  b=$((16#${b})) || log-error "Invalid hex color"
+
+  echo "${r} ${g} ${b}"
+}
+
 printer() {
   local color="$1"
   local str="$2"
@@ -8,11 +42,8 @@ printer() {
 
   tput setaf "${color}"
 
-  if [[ "${noNewline}" == "true" ]]; then
-    echo -en "${str}"
-  else
-    echo -e "${str}"
-  fi
+  printf '%b' "${str}"
+  [[ "${noNewline}" != "true" ]] && printf '\n'
 
   tput sgr0
 }
@@ -207,4 +238,41 @@ printBrightWhite() {
     str="$(input "$@")"
     printer 15 "${str}"
   fi
+}
+
+printPurple() {
+  printHex "${U_PURPLE}" "$@"
+}
+
+printRGB() {
+  local rgb r g b noNewLine=0
+  (($# < 1)) && log-error "Missing color code"
+
+  rgb=$1
+  shift
+  read -r r g b < <(echo "${rgb}")
+
+  isUnsignedInt "${r}" || log-error "Invalid Red code"
+  isUnsignedInt "${g}" || log-error "Invalid Green code"
+  isUnsignedInt "${b}" || log-error "Invalid Blue code"
+
+  if [[ "$1" == "-n" ]]; then
+    shift
+    noNewLine=1
+  fi
+
+  str="$(input "$@")"
+
+  printf "%b%b" "\e[38;2;${r};${g};${b}m" "${str}"
+  tput sgr0
+
+  ((noNewLine)) || printf '\n'
+}
+
+printHex() {
+  local hex rgb
+  hex=$1
+  shift
+  rgb="$(hex_to_rgb "${hex}")" || log-error "Invalid hex color"
+  printRGB "${rgb}" "$@"
 }
