@@ -36,20 +36,19 @@ if [[ "${argv[0]}" == "." ]] || ((argc == 0)); then
   mapfile -t files < <(fd . -e md -e markdown --hidden)
 else
   for file in "${argv[@]}"; do
-    ext=$(echo "${file}" | awk -F. '{print $NF}')
-    [[ "${ext}" == "md" || "${ext}" == "markdown" ]] && files+=("${file}")
+    [[ "${file##*.}" =~ ^(md|markdown)$ ]] && files+=("${file}")
   done
 fi
 
 # NOTE: ((0)) fails, while any other number succeeds
 ((${#files[@]})) || log-error "No valid markdown files were passed"
 
+spinner.sh &
+SPINNER_PID=$!
 for file in "${files[@]}"; do
-  mdclean "${file}" --quiet || log-warning "Failed to clean '${file}'"
-
-  sed -e "s|[‘’]|'|g" \
-    -e 's|[“”]|"|g' \
-    -i "${file}"
+  mdclean "${file}" || log-warning "Failed to clean '${file}'"
 done
+
+killwait "${SPINNER_PID}"
 
 prettier --write --config "${PRETTIERRC}" "${files[@]}"

@@ -57,8 +57,10 @@ else
   for file in "$@"; do
     [[ ! -f "${file}" ]] && log-error "File '${file}' not found"
 
-    # Create backup and perform replacement
-    cp -f "${file}" "${file}.bak" 2>/dev/null || log-error "Backup failed for ${file}"
+    # # Create backup and perform replacement
+    # if gum confirm "Make a backup?"; then
+    #   cp -f "${file}" "${file}.bak" 2>/dev/null || log-error "Backup failed for ${file}"
+    # fi
 
     sed -i "s|${searchEscaped}|${replaceEscaped}|g" "${file}" 2>/dev/null || {
       log-warning "Replacement failed for ${file}"
