@@ -12,7 +12,7 @@
 #
 #
 # --- DESCRIPTION --- #
-# Cleans md files from common Unicode garabage symbols
+# Cleans Markdown files from common Unicode garbage symbols and fixes formatting.
 # --- DEPENDENCIES --- #
 # - sponge (moreutils)
 # - perl
@@ -28,20 +28,36 @@ checkDeps "$0"
 
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
-cmdarg "q" "quiet" "Silence any output"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
-file="${argv[0]}"
-isQiuet="${cmdarg_cfg['quiet']}"
 
-[[ -f ${file} ]] || log-error "File '${file}' was not found!"
+for file in "${argv[@]}"; do
+  if [[ ! -f ${file} ]]; then
+    log-warning "File '${file}' was not found!"
+    continue
+  fi
 
-tr -d '\f' <"${file}" | sponge "${file}"
+  # Remove form-feed characters
+  tr -d '\f' <"${file}" | sponge "${file}"
 
-replace '• ' '- ' <"${file}" | sponge "${file}"
-replace '•' '-' <"${file}" | sponge "${file}"
-replace 'كلية تكنولوجيا الصناعة والطاقة' '' <"${file}" | sponge "${file}"
+  # Strip LTR/RTL and directional Unicode markers
+  perl -CSD -pe 's/[\x{202A}-\x{202E}\x{200F}\x{2066}-\x{2069}]//g' "${file}" | sponge "${file}"
 
-perl -CSD -pe 's/[\x{202A}-\x{202E}\x{200F}\x{2066}-\x{2069}]//g' "${file}" | sponge "${file}"
-
-[[ "${isQiuet}" == true ]] || log-success "${file} was cleaned successfully"
+  # 1. Normalize bullets and arrows
+  # 2. Remove bold from headers
+  # 3. Normalize qoutes (single and double)
+  # 4. Remove Arabic college name
+  # 5. Remove preceding horizontal rule (---) before H2 only
+  sed -E -i \
+    -e 's/→/->/g' \
+    -e 's/•[[:space:]]*/- /g' \
+    -e 's/^(#{1,6}[[:space:]]+)\*\*(.+)\*\*$/\1\2/' \
+    -e '/^#{1,6}[[:space:]]/s/\*\*([^*]+)\*\*/\1/g' \
+    -e "s|[‘’]|'|g" \
+    -e 's|[“”]|"|g' \
+    -e 's|كلية تكنولوجيا الصناعة والطاقة||g' \
+    -e '/^---[[:space:]]*$/{
+    N
+    s/^---[[:space:]]*\n(##[[:space:]]+)/\1/
+  }' "${file}"
+done
