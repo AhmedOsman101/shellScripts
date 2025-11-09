@@ -1,0 +1,21 @@
+{
+  "version": "5",
+  "specifiers": {
+    "npm:emoji-regex@^10.6.0": "10.6.0",
+    "npm:lib-result@^3.2.2": "3.2.2"
+  },
+  "npm": {
+    "emoji-regex@10.6.0": {
+      "integrity": "sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A=="
+    },
+    "lib-result@3.2.2": {
+      "integrity": "sha512-ONymDVaq4JCaTMM4VMsThdEGruV5X5i1vSMuSma67xmqGzX9pwxIie8JA96+y9X9S9u8EtslW8N7RgbqNV6kTg=="
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "npm:emoji-regex@^10.6.0",
+      "npm:lib-result@^3.2.2"
+    ]
+  }
+}

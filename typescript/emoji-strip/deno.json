@@ -1,0 +1,10 @@
+{
+  "tasks": {
+    "dev": "deno run --allow-read --allow-write --watch emoji-strip.ts",
+    "compile": "deno compile -o emoji-strip.out --allow-read --allow-write emoji-strip.ts"
+  },
+  "imports": {
+    "emoji-regex": "npm:emoji-regex@^10.6.0",
+    "lib-result": "npm:lib-result@^3.2.2"
+  }
+}
