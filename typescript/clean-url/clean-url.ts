@@ -1,3 +1,5 @@
+#!/usr/bin/env -S deno run --allow-env
+
 import process from "node:process";
 import { createInterface } from "node:readline";
 

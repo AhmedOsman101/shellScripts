@@ -1,3 +1,5 @@
+#!/usr/bin/env -S deno run --allow-run
+
 // Function to print to stderr in red
 function logError(message: string): never {
   console.error(`\x1b[31m${message}\x1b[0m`);

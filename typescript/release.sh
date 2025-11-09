@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-mkdir "${SCRIPTS_DIR:-..}/bin" &>/dev/null
+mkdir -p "${SCRIPTS_DIR:-..}/bin" &>/dev/null
 
 for file in $(fd --no-ignore -e ts); do
   output="$(strip-ext "${file}" ts)"
