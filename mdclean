@@ -28,8 +28,10 @@ checkDeps "$0"
 
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "q" "quiet" "Supress output"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
+isQuiet="${cmdarg_cfg['quiet']}"
 
 for file in "${argv[@]}"; do
   if [[ ! -f ${file} ]]; then
@@ -57,7 +59,10 @@ for file in "${argv[@]}"; do
     -e 's|[“”]|"|g' \
     -e 's|كلية تكنولوجيا الصناعة والطاقة||g' \
     -e '/^---[[:space:]]*$/{
-    N
-    s/^---[[:space:]]*\n(##[[:space:]]+)/\1/
-  }' "${file}"
+      :loop
+      N
+      /\n[[:space:]]*$/b loop
+      s/^---([[:space:]]*\n)+##/\n##/
+    }' "${file}"
+  [[ "${isQuiet}" == true ]] || log-success "file '${file}' was cleaned successfully"
 done

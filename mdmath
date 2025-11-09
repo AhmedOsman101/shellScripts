@@ -27,33 +27,42 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "q" "quiet" "Supress output"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
-file="${argv[0]}"
-
 # Check if the correct number of arguments is passed
-if ((1 < argc)) || [[ -z "${file}" ]]; then
+if ((argc < 1)); then
   cmdarg_usage
   exit 1
 fi
 
-# Check if the file exists
-[[ -f ${file} ]] || log-error "File '${file}' does not exist."
+isQuiet="${cmdarg_cfg['quiet']}"
 
-# Count occurrences of all delimiters to be replaced
-count_display=$(grep -o '\\\[' "${file}" | wc -l || true)
-count_inline=$(grep -o '\\(' "${file}" | wc -l || true)
+for file in "${argv[@]}"; do
+  # Check if the file exists
+  if [[ ! -f ${file} ]]; then
+    log-warning "File '${file}' was not found!"
+    continue
+  fi
 
-count=$((count_display + count_inline))
+  # Count occurrences of all delimiters to be replaced
+  count_display=$(grep -o '\\\[' "${file}" | wc -l || true)
+  count_inline=$(grep -o '\\(' "${file}" | wc -l || true)
 
-((count)) || terminate "Nothing to do"
+  count=$((count_display + count_inline))
 
-# Perform the replacements
-sed -i -e 's~\\\[~$$~g' \
-  -e 's~\\\]~$$~g' \
-  -e 's~ \\)~$~g' \
-  -e 's~\\( ~$~g' \
-  -e 's~\\(~$~g' \
-  -e 's~\\)~$~g' "${file}"
+  if ! ((count)); then
+    [[ "${isQuiet}" == true ]] || log-info "Nothing to do!"
+    continue
+  fi
 
-log-success "${count} Replacements made"
+  # Perform the replacements
+  sed -i -e 's~\\\[~$$~g' \
+    -e 's~\\\]~$$~g' \
+    -e 's~ \\)~$~g' \
+    -e 's~\\( ~$~g' \
+    -e 's~\\(~$~g' \
+    -e 's~\\)~$~g' "${file}"
+
+  [[ "${isQuiet}" == true ]] || log-success "${count} Replacements made"
+done
