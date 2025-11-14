@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#
+# shellcheck disable=SC2034 # Using Bash namerefs
 # --- SCRIPT SIGNATURE --- #
 #
 #            ▄▄▄▄
@@ -15,12 +15,14 @@
 # Compiles and optionally runs C files with customizable compiler arguments
 # --- DEPENDENCIES --- #
 # - clang
+# - xxh3sum (xxhash) | xxhsum (xxhash)
 # --- END SIGNATURE --- #
 
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/compile.sh")"
 eval "$(include "check-deps")"
 checkDeps "$0"
 
@@ -44,49 +46,22 @@ quiet="${cmdarg_cfg['quiet']}"
 declare -a files
 
 for file in "${argv[@]}"; do
-  [[ ! -f "${file}" ]] && log-error "'${file}' is not a file."
+  [[ ! -s "${file}" ]] && log-error "'${file}' does not exist or empty."
   [[ ! -r "${file}" ]] && log-error "File '${file}' is not readable."
 
   files+=("${file}")
 done
 
-filename="$(basename "${files[0]}" | cut -d "." -f1)"
+# default flags as array (safe)
+declare -a default_flags=("-Wall" "-Wextra" "-fdiagnostics-color=always")
 
-if [[ "${compile}" == true ]]; then
-  outfile="${filename}.out"
-  [[ -n "${output}" ]] && outfile="${output}"
-else
-  outfile=$(mktemp -t "${filename}-XXXXXX.out")
-  trap 'rm -f $outfile' EXIT
-fi
-
-cmdArray=(
-  clang
-  -Wall
-  -Wextra
-  -lm "${files[@]}"
-  -o "${outfile}"
-)
-
-if ((1 < ${#compiler_args[@]})); then
-  cmdArray+=("${compiler_args[@]}")
-fi
-
-if [[ "${quiet}" == true ]]; then
-  "${cmdArray[@]}" &>/dev/null || log-error "Compilation failed."
-else
-  "${cmdArray[@]}" || log-error "Compilation failed."
-fi
-
-if [[ -f "${outfile}" ]]; then
-  # Compile-and-run mode: run the program and propagate its exit status
-  if [[ "${compile}" == true ]]; then
-    log-success "Compilation successful: ${outfile}"
-    exit 0
-  else
-    "${outfile}"
-    exit $? # Propagate the program's exit status
-  fi
-else
-  log-error "Compilation failed."
-fi
+# call compile_and_run passing array names (Bash namerefs used inside)
+# signature: compile_and_run <compiler> <default_flags_array_name> <files_array_name> <compile_flag> <quiet_flag> <output> <compiler_args_array_name>
+compile_and_run \
+  'clang' \
+  'default_flags' \
+  'files' \
+  "${compile}" \
+  "${quiet}" \
+  "${output}" \
+  'compiler_args'
