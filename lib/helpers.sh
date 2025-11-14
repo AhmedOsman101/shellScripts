@@ -305,3 +305,9 @@ touch() {
     command touch "${file}"
   done
 }
+
+randstr() {
+  local len="${1:-16}"
+  base64 /dev/urandom | tr -dc 'A-Za-z0-9' | head -c "${len}"
+  printf '\n'
+}
