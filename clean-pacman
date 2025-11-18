@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄▄▄
+#            ▀▀██
+#   ▄█████▄    ██       ▄████▄    ▄█████▄  ██▄████▄            ██▄███▄    ▄█████▄   ▄█████▄  ████▄██▄   ▄█████▄  ██▄████▄
+#  ██▀    ▀    ██      ██▄▄▄▄██   ▀ ▄▄▄██  ██▀   ██            ██▀  ▀██   ▀ ▄▄▄██  ██▀    ▀  ██ ██ ██   ▀ ▄▄▄██  ██▀   ██
+#  ██          ██      ██▀▀▀▀▀▀  ▄██▀▀▀██  ██    ██   █████    ██    ██  ▄██▀▀▀██  ██        ██ ██ ██  ▄██▀▀▀██  ██    ██
+#  ▀██▄▄▄▄█    ██▄▄▄   ▀██▄▄▄▄█  ██▄▄▄███  ██    ██            ███▄▄██▀  ██▄▄▄███  ▀██▄▄▄▄█  ██ ██ ██  ██▄▄▄███  ██    ██
+#    ▀▀▀▀▀      ▀▀▀▀     ▀▀▀▀▀    ▀▀▀▀ ▀▀  ▀▀    ▀▀            ██ ▀▀▀     ▀▀▀▀ ▀▀    ▀▀▀▀▀   ▀▀ ▀▀ ▀▀   ▀▀▀▀ ▀▀  ▀▀    ▀▀
+#                                                              ██
+#
+# --- DESCRIPTION --- #
+# Removes pacman/paru cached packages
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+shopt -s nullglob
+pacmanPkgsPath="/var/cache/pacman/pkg"
+aurPkgsPath="${XDG_CACHE_HOME:-${HOME}/.cache}/paru"
+
+get-size() {
+  du -hs "$1" | awk '{print $1}' | sed -e 's|K|KB|g' -e 's|M|MB|g' -e 's|G|GB|g'
+}
+
+pacmanSize="$(get-size "${pacmanPkgsPath}")"
+aurSize="$(get-size "${aurPkgsPath}")"
+
+sudo rm -r "${pacmanPkgsPath}"/* 2>/dev/null || true
+log-info "Cleaned ${pacmanSize} cached packages"
+
+sudo rm -r "${aurPkgsPath}"/* 2>/dev/null || true
+log-info "Cleaned ${aurSize} cached AUR packages"
