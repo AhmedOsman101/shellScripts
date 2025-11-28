@@ -30,11 +30,12 @@ cmdarg_info "header" "$(get-desc "$0")"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 shopt -s nullglob
+sudo -v
 pacmanPkgsPath="/var/cache/pacman/pkg"
 aurPkgsPath="${XDG_CACHE_HOME:-${HOME}/.cache}/paru"
 
 get-size() {
-  du -hs "$1" | awk '{print $1}' | sed -e 's|K|KB|g' -e 's|M|MB|g' -e 's|G|GB|g'
+  sudo du -hs "$1" | awk '{print $1}' | sed -e 's|K|KB|g' -e 's|M|MB|g' -e 's|G|GB|g'
 }
 
 pacmanSize="$(get-size "${pacmanPkgsPath}")"
