@@ -58,11 +58,8 @@ for file in "${argv[@]}"; do
     -e "s|[‘’]|'|g" \
     -e 's|[“”]|"|g' \
     -e 's|كلية تكنولوجيا الصناعة والطاقة||g' \
-    -e '/^---[[:space:]]*$/{
-      :loop
-      N
-      /\n[[:space:]]*$/b loop
-      s/^---([[:space:]]*\n)+##/\n##/
-    }' "${file}"
+    -e ':a; /---[[:space:]]*$/ { N; /\n[[:space:]]*$/ ba; s/---\n([[:space:]]*\n)*##[[:space:]]/\n## /; P; D }' \
+    "${file}"
+
   [[ "${isQuiet}" == true ]] || log-success "file '${file}' was cleaned successfully"
 done
