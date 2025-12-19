@@ -45,9 +45,9 @@ quiet=${cmdarg_cfg['quiet']}
 # Function to process input and remove duplicates
 remove_duplicates() {
   if [[ ${useArray} == true ]]; then
-    tr ' ' '\n' | awk '!a[$0]++' | paste -sd " "
+    tr ' ' '\n' | awk '!seen[$0]++' | paste -sd " "
   else
-    awk '!a[$0]++'
+    awk '!seen[$0]++'
   fi
 }
 
