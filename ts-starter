@@ -30,29 +30,41 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "b?" "biome-version" "Biome version to install (default: 2.3.0)" "2.3.0"
 cmdarg_parse "$@"
+
+biomeVersion="${cmdarg_cfg['biome-version']}"
 # ---  Main script logic --- #
 
-fetchRaw() {
-  local repo="$1" file="$2" dest="$3" branch="${4:-main}"
+fetch() {
+  local url="$1" dest="$2"
   log-info "Fetching ${dest}..."
 
   if command -v wget >/dev/null 2>&1; then
-    repeat-it "wget -O - 'https://raw.githubusercontent.com/${repo}/${branch}/${file}' >>${dest}"
+    if ! wget -q -O "${dest}" "${url}" 2>/dev/null; then
+      log-error "Failed to download ${url}"
+    fi
+  elif command -v curl >/dev/null 2>&1; then
+    if ! curl -fsSL -o "${dest}" "${url}" 2>/dev/null; then
+      log-error "Failed to download ${url}"
+    fi
   else
-    repeat-it "curl -L -# 'https://raw.githubusercontent.com/${repo}/${branch}/${file}' >>${dest}"
+    log-error "Neither wget nor curl is installed"
   fi
+}
+
+fetchRaw() {
+  local repo="$1" file="$2" dest="$3" branch="${4:-main}"
+  local url="https://raw.githubusercontent.com/${repo}/${branch}/${file}"
+
+  fetch "${url}" "${dest}"
 }
 
 fetchGist() {
   local url="$1" file="$2" dest="$3"
-  log-info "Fetching ${dest}..."
+  local gist_url="${url}/${file}"
 
-  if command -v wget >/dev/null 2>&1; then
-    repeat-it "wget -O - '${url}/${file}' >>${dest}"
-  else
-    repeat-it "curl -L -# '${url}/${file}' >>${dest}"
-  fi
+  fetch "${gist_url}" "${dest}"
 }
 
 # --- Command handlers --- #
@@ -61,7 +73,8 @@ addScripts() {
   "lint": "biome lint .",
   "format": "biome check --fix .",
   "format:unsafe": "biome check --fix --unsafe .",
-  "prepare": "husky || true"
+  "typecheck": "tsc --noUnusedLocals false --noUnusedParameters false --noEmit",
+  "prepare": "husky"
 }' package.json >tmp.json && mv tmp.json package.json
 }
 
@@ -77,66 +90,28 @@ addTasks() {
 
 # --- Package manager handlers --- #
 handleNpm() {
-  npm install -D -E '@biomejs/biome@2.3.0'
-  if is-git-repo --safe >/dev/null 2>&1; then
-    npm install --save-dev husky &&
-      npx husky init
-    fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
-  fi
-
+  npm install -D -E "@biomejs/biome@${biomeVersion}"
   addScripts
 }
 
 handlePnpm() {
-  pnpm add -D -E '@biomejs/biome@2.3.0'
-  if is-git-repo --safe >/dev/null 2>&1; then
-    pnpm add --save-dev husky &&
-      pnpm exec husky init
-    fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
-  fi
-
+  pnpm add -D -E "@biomejs/biome@${biomeVersion}"
   addScripts
   pnpm approve-builds
 }
 
 handleYarn() {
-  yarn add -D -E '@biomejs/biome@2.3.0'
-  if is-git-repo --safe >/dev/null 2>&1; then
-    yarn add --dev husky && {
-      npx husky init || log-error "See the docs for husky at https://typicode.github.io/husky/get-started.html"
-    }
-    fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
-  fi
-
+  yarn add -D -E "@biomejs/biome@${biomeVersion}"
   addScripts
 }
 
 handleBun() {
-  bun add -D -E '@biomejs/biome@2.3.0'
-  if is-git-repo --safe >/dev/null 2>&1; then
-    bun add --dev husky &&
-      bunx husky init
-    fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
-  fi
-
+  bun add -D -E "@biomejs/biome@${biomeVersion}"
   addScripts
 }
 
 handleDeno() {
-  deno add -D 'npm:@biomejs/biome@2.3.0'
-  if is-git-repo --safe >/dev/null 2>&1; then
-    deno add --dev npm:husky || true
-    if [[ ! -f "package.json" ]]; then
-      pnpm init
-      pnpm dlx husky init || true
-      printf '' >'.husky/pre-commit'
-      rm "package.json"
-    else
-      pnpm dlx husky init || true
-    fi
-    fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
-  fi
-
+  deno add -D "npm:@biomejs/biome@${biomeVersion}"
   if [[ -f "deno.json" ]]; then
     addTasks "deno.json"
   elif [[ -f "deno.jsonc" ]]; then
@@ -163,23 +138,41 @@ fi
 
 eval "${cmd}" || terminate
 
-case "${pkgMgr}" in
-npm | npx)
-  pkgMgr="npm"
-  handleNpm
-  ;;
-pnpm | pnpx)
-  pkgMgr="pnpm"
-  handlePnpm
-  ;;
-yarn) handleYarn ;;
-deno) handleDeno ;;
-bun | bunx)
-  pkgMgr="bun"
-  handleBun
-  ;;
-? | *) log-error "The package manager '${pkgMgr}' is not recognized" ;;
-esac
+if is-git-repo --safe >/dev/null 2>&1; then
+  case "${pkgMgr}" in
+  npm)
+    npm install --save-dev husky && npx husky init
+    ;;
+  pnpm)
+    pnpm add --save-dev husky && pnpm exec husky init
+    ;;
+  yarn)
+    yarn add --dev husky && {
+      npx husky init || log-error "See the docs for husky at https://typicode.github.io/husky/get-started.html"
+    }
+    ;;
+  bun)
+    bun add --dev husky && bunx husky init
+    ;;
+  deno)
+    deno add --dev npm:husky || true
+    if [[ ! -f "package.json" ]]; then
+      pnpm init
+      pnpm dlx husky init || true
+      printf '' >'.husky/pre-commit'
+      rm "package.json"
+    else
+      pnpm dlx husky init || true
+    fi
+    ;;
+  *)
+    log-warning "Unknown package manager: ${pkgMgr}"
+    return 1
+    ;;
+  esac
+
+  fetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
+fi
 
 mkdir -p .vscode
 
@@ -188,4 +181,3 @@ fetchRaw "AhmedOsman101/dotfiles" "Configs/editorconfig/.config/.editorconfig" "
 
 fetchGist "https://gist.githubusercontent.com/AhmedOsman101/5254232eb2c72a626cf798002d16a255/raw/ace64049d276de197887b65bbd9484f2fed710a1" "settings.json" ".vscode/settings.json"
 fetchGist "https://gist.githubusercontent.com/AhmedOsman101/5254232eb2c72a626cf798002d16a255/raw/ace64049d276de197887b65bbd9484f2fed710a1" "extensions.json" ".vscode/extensions.json"
-# fetchGist "https://gist.githubusercontent.com/AhmedOsman101/8617796a7f3ee422b095179621a3ba83/raw/afde6c65d797fc19cfadbd3999f8d9ba26ec8aa2" "languages.toml" ".helix/languages.toml"
