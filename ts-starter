@@ -25,6 +25,7 @@ set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/helpers.sh")"
+eval "$(include "lib/diff-handler.sh")"
 eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 
@@ -34,6 +35,7 @@ cmdarg "b?" "biome-version" "Biome version to install (default: 2.3.0)" "2.3.0"
 cmdarg_parse "$@"
 
 biomeVersion="${cmdarg_cfg['biome-version']}"
+
 # ---  Main script logic --- #
 
 fetch() {
@@ -65,102 +67,6 @@ fetchGist() {
   local gist_url="${url}/${file}"
 
   fetch "${gist_url}" "${dest}"
-}
-
-getDiffTool() {
-  local tools=("code" "cursor" "ag" "codium" "vscode" "meld" "kdiff3" "diffmerge" "kompare" "vimdiff" "colordiff" "diff")
-
-  for tool in "${tools[@]}"; do
-    if command -v "${tool}" >/dev/null 2>&1; then
-      case "${tool}" in
-      code | cursor | ag | codium | vscode)
-        echo "${tool} --diff"
-        return
-        ;;
-      diff)
-        echo "diff -u --color=always"
-        return
-        ;;
-      *)
-        echo "${tool}"
-        return
-        ;;
-      esac
-    fi
-  done
-}
-
-getDiffTools() {
-  local tools=("code" "cursor" "ag" "codium" "vscode" "meld" "kdiff3" "diffmerge" "kompare" "vimdiff" "colordiff" "diff")
-  local -a validTools=()
-
-  for tool in "${tools[@]}"; do
-    if command -v "${tool}" >/dev/null 2>&1; then
-      case "${tool}" in
-      code | cursor | ag | codium | vscode)
-        validTools+=("${tool} --diff")
-        ;;
-      diff)
-        validTools+=("diff -u --color=always")
-        ;;
-      *)
-        validTools+=("${tool}")
-        ;;
-      esac
-    fi
-  done
-
-  printf '%s\n' "${validTools[@]}"
-}
-
-
-handleDiff() {
-  local original="$1" new="$2" useDiff="${3:-false}"
-  local diffTool
-
-  diffTool=$(getDiffTool)
-
-  if [[ ${useDiff} == 'true' ]]; then
-    printf "\e[33mDifference between original and new:\e[0m\n"
-    diff -u --color=always "${original}" "${new}" | less -R -F -X || true
-  elif [[ ${diffTool} == 'diff' || ${diffTool} == 'colordiff' ]]; then
-    printf "\e[33mDifference between original and new:\e[0m\n"
-    ${diffTool} "${original}" "${new}" | less -R -F -X || true
-  else
-    log-info "Opening diff tool: ${diffTool}"
-    ${diffTool} "${original}" "${new}"
-  fi
-}
-
-handleExistingFile() {
-  local dest="$1" tempFile="$2"
-  local choice
-
-  printf "\e[33mFile '%s' already exists.\e[0m\n" "${dest}"
-
-  choice=$(gum choose --header="What would you like to do?" "Merge" "Overwrite" "Keep original")
-  handleDiff "${dest}" "${tempFile}" true
-
-  case "${choice}" in
-  "Merge")
-    handleDiff "${dest}" "${tempFile}"
-    printf "\n\e[33mPlease merge manually. Press Enter when done.\e[0m\n"
-    read -r
-    rm -f "${tempFile}"
-    ;;
-  "Overwrite")
-    log-info "Overwriting ${dest}"
-    mv "${tempFile}" "${dest}"
-    ;;
-  "Keep original")
-    log-info "Keeping original ${dest}"
-    rm -f "${tempFile}"
-    ;;
-  *)
-    log-info "Keeping original ${dest}"
-    rm -f "${tempFile}"
-    ;;
-  esac
 }
 
 safeFetchRaw() {
