@@ -29,10 +29,12 @@ checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "t" "temp" "Creates the script at /tmp and copies its name to clipboard"
 cmdarg "f?" "file" "Creates the script with the given name in the current working directory"
+cmdarg "q" "quiet" "Supress stdout"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 isTemp="${cmdarg_cfg['temp']}"
 filename="${cmdarg_cfg['file']}"
+quiet="${cmdarg_cfg['quiet']}"
 no_flags=false
 file=""
 
@@ -122,4 +124,4 @@ fi
 
 "${EDITOR}" "${file}"
 
-log-success "Script '$(basename "${file}")' created succefully!"
+[[ "${quiet}" == true ]] || log-success "Script '$(basename "${file}")' created succefully!"
