@@ -79,6 +79,32 @@ cppc hello.cpp
 - **Includes**: Use `eval "$(include "lib/library.sh")"` for including libraries
 - **Script Signature**: Include ASCII art signature with description and dependencies using `./make-signature` script
 - **Exit Codes**: Use appropriate exit codes (0 for success, 1 for errors)
+- **Command Line Arguments**: Use the repository's `cmdarg` library for parsing command line arguments:
+
+  ```bash
+  # Define arguments with optional short options
+  cmdarg "v" "verbose" "Enable verbose output" # Boolean flag
+  cmdarg "m:" "message" "The text to be written on the image" # Required flag (error if not provided)
+  cmdarg "d?" "debounce" "Time to wait for new events" "5s" # Optional flag with a default value
+  cmdarg "c?" "color" "Color of the banner" # Optional flag with no default value (empty string if not provided)
+
+  cmdarg_parse "$@"
+
+  # Access values using cmdarg_cfg associative array
+  color="${cmdarg_cfg['color']}"
+  debounce="${cmdarg_cfg['debounce']}"
+  verbose="${cmdarg_cfg['verbose']}"
+  message="${cmdarg_cfg['message']}"
+  ```
+
+  The `cmdarg` function signature is:
+  - `<option>`: Short option letter, append `?` to make it optional (e.g., "c?") and append `:` to make it required.
+  - `<key>`: Long option name (used to access value from `cmdarg_cfg`)
+  - `<description>`: Text description for help output
+  - `[default value]`: Optional default value for the argument
+  - `[validator function]`: Optional validator function name
+
+  Access all remaining positional arguments via the `argv` array and access their number with `argc` variable.
 
 ### TypeScript/Deno
 
