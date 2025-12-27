@@ -68,68 +68,82 @@ cppc hello.cpp
 - **Variables**: Use `local` for function variables
 - **Logging**: Use repository logging utilities:
 
-  ```bash
-  log-error "Fatal error message"  # Exits with code 1
-  log-warning "Warning message"
-  log-info "Info message"
-  log-success "Success message"
-  log-debug "Debug message"
-  ```
+```bash
+log-error "Fatal error message"  # Exits with code 1
+log-warning "Warning message"
+log-info "Info message"
+log-success "Success message"
+log-debug "Debug message"
+```
+
+**Important**: Never use raw ANSI escape codes (e.g., `\e[33m`) for colored output. Always use the log-\* functions above or functions available in `./lib/loggers.sh` if you need more colors.
 
 - **Includes**: Use `eval "$(include "lib/library.sh")"` for including libraries
 - **Script Signature**: Include ASCII art signature with description and dependencies using `./make-signature` script
 - **Exit Codes**: Use appropriate exit codes (0 for success, 1 for errors)
+- **Creating New Scripts**: Use `./mkscript` script to create new bash scripts. When creating as an agent, set `EDITOR=cat` before running:
+
+```bash
+# create a new script in ~/scripts:
+EDITOR=cat mkscript -q <script-name>
+# create a new script in the current directory:
+EDITOR=cat mkscript -q -f test.sh
+```
+
+This allows the agent to edit the script immediately after creation.
+
 - **Command Line Arguments**: Use the repository's `cmdarg` library for parsing command line arguments:
 
-  ```bash
-  # Define arguments with optional short options
-  cmdarg "v" "verbose" "Enable verbose output" # Boolean flag
-  cmdarg "m:" "message" "The text to be written on the image" # Required flag (error if not provided)
-  cmdarg "d?" "debounce" "Time to wait for new events" "5s" # Optional flag with a default value
-  cmdarg "c?" "color" "Color of the banner" # Optional flag with no default value (empty string if not provided)
+```bash
+# Define arguments with optional short options
+cmdarg "v" "verbose" "Enable verbose output" # Boolean flag
+cmdarg "m:" "message" "The text to be written on the image" # Required flag (error if not provided)
+cmdarg "d?" "debounce" "Time to wait for new events" "5s" # Optional flag with a default value
+cmdarg "c?" "color" "Color of the banner" # Optional flag with no default value (empty string if not provided)
 
-  cmdarg_parse "$@"
+cmdarg_parse "$@"
 
-  # Access values using cmdarg_cfg associative array
-  color="${cmdarg_cfg['color']}"
-  debounce="${cmdarg_cfg['debounce']}"
-  verbose="${cmdarg_cfg['verbose']}"
-  message="${cmdarg_cfg['message']}"
-  ```
+# Access values using cmdarg_cfg associative array
+color="${cmdarg_cfg['color']}"
+debounce="${cmdarg_cfg['debounce']}"
+verbose="${cmdarg_cfg['verbose']}"
+message="${cmdarg_cfg['message']}"
+```
 
-  The `cmdarg` function signature is:
-  - `<option>`: Short option letter, append `?` to make it optional (e.g., "c?") and append `:` to make it required.
-  - `<key>`: Long option name (used to access value from `cmdarg_cfg`)
-  - `<description>`: Text description for help output
-  - `[default value]`: Optional default value for the argument
-  - `[validator function]`: Optional validator function name
+The `cmdarg` function signature is:
 
-  Access all remaining positional arguments via the `argv` array and access their number with `argc` variable.
+- `<option>`: Short option letter, append `?` to make it optional (e.g., "c?") and append `:` to make it required.
+- `<key>`: Long option name (used to access value from `cmdarg_cfg`)
+- `<description>`: Text description for help output
+- `[default value]`: Optional default value for the argument
+- `[validator function]`: Optional validator function name
+
+Access all remaining positional arguments via the `argv` array and access their number with `argc` variable.
 
 ### TypeScript/Deno
 
 - **Imports**: Use Deno-style imports
 
-  ```typescript
-  import process from "node:process";
-  import { createInterface } from "node:readline";
-  ```
+```typescript
+import process from "node:process";
+import { createInterface } from "node:readline";
+```
 
 - **NPM Packages**: Use npm: prefix for external packages installation
 
-  ```bash
-  deno add npm:emoji-regex
-  ```
+```bash
+deno add npm:emoji-regex
+```
 
-  ```typescript
-  import emojiRegex from "emoji-regex";
-  ```
+```typescript
+import emojiRegex from "emoji-regex";
+```
 
 - **Types**: Use TypeScript types explicitly
 
-  ```typescript
-  type CleanedUrl = { cleanedUrl: string; furtherCleanedUrl?: string };
-  ```
+```typescript
+type CleanedUrl = { cleanedUrl: string; furtherCleanedUrl?: string };
+```
 
 - **Error Handling**: Use try-catch blocks and proper error types
 - **Async/Await**: Prefer async/await over promises
@@ -223,7 +237,6 @@ cmdarg_parse "$@"
 # --- Main script logic --- #
 # Implementation here
 
-exit 0
 ```
 
 ### Error Handling Patterns
@@ -275,6 +288,26 @@ async function input(prompt: string): Promise<string> {
   });
 }
 ```
+
+### Reusable Libraries
+
+When creating functionality that might be useful across multiple scripts, extract it to a shared library in `lib/`:
+
+```bash
+# Example: Creating a new library
+cd "${SCRIPTS_DIR:-"$HOME/scripts"}"
+EDITOR=cat mkscript -q -f lib/testing.sh
+
+# Include the library in other scripts
+eval "$(include "lib/my-library.sh")"
+```
+
+**Available Reusable Libraries**:
+
+- `lib/diff-handler.sh`: Functions for handling file diffs when files exist (`getDiffTools`, `selectDiffTool`, `showDiff`, `handleExistingFile`)
+- `lib/cmdarg.sh`: Command line argument parsing
+- `lib/helpers.sh`: Helper functions for common tasks
+- `lib/loggers.sh`: Logging utilities
 
 ## Security Considerations
 

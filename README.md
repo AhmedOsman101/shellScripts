@@ -784,8 +784,8 @@ load-fonts
 - Requires `sudo` privileges
 - Source directory: `~/fonts`
 - Installation paths:
-  - `.ttf` → `/usr/share/fonts/TTF/`
-  - `.otf` → `/usr/share/fonts/OTF/`
+  - `.ttf` -> `/usr/share/fonts/TTF/`
+  - `.otf` -> `/usr/share/fonts/OTF/`
 - Automatic cache refresh ensures immediate availability
 - Recommended workflow:
   1. Place fonts in `~/fonts`
@@ -798,7 +798,7 @@ load-fonts
 
 **Color-coded message handlers for script feedback:**
 
-#### **log-error**
+#### log-error
 
 - Color: Red (31m)
 - Usage: `log-error "message"`
@@ -810,7 +810,7 @@ log-error "File not found"
 # Output: [ERROR]: File not found
 ```
 
-#### **log-warning**
+#### log-warning
 
 - Color: Yellow (33m)
 - Usage: `log-warning "message"`
@@ -822,7 +822,7 @@ log-warning "Low disk space"
 # Output: [WARNING]: Low disk space
 ```
 
-#### **log-info**
+#### log-info
 
 - Color: Blue (34m)
 - Usage: `log-info "message"`
@@ -834,7 +834,7 @@ log-info "Processing data"
 # Output: [INFO]: Processing data
 ```
 
-#### **log-success**
+#### log-success
 
 - Color: Green (32m)
 - Usage: `log-success "message"`
@@ -920,8 +920,6 @@ We welcome contributions! If you have scripts you'd like to share or improvement
 2. Add your script in the appropriate folder.
 3. Update this `README.md` with details about your script.
 4. Submit a pull request.
-
----
 
 ## Feedback
 
