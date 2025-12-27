@@ -77,7 +77,7 @@ addTasks() {
 
 # --- Package manager handlers --- #
 handleNpm() {
-  npm install -D -E '@biomejs/biome@2.0.5'
+  npm install -D -E '@biomejs/biome@2.3.0'
   if is-git-repo --safe >/dev/null 2>&1; then
     npm install --save-dev husky &&
       npx husky init
@@ -88,7 +88,7 @@ handleNpm() {
 }
 
 handlePnpm() {
-  pnpm add -D -E '@biomejs/biome@2.0.5'
+  pnpm add -D -E '@biomejs/biome@2.3.0'
   if is-git-repo --safe >/dev/null 2>&1; then
     pnpm add --save-dev husky &&
       pnpm exec husky init
@@ -100,7 +100,7 @@ handlePnpm() {
 }
 
 handleYarn() {
-  yarn add -D -E '@biomejs/biome@2.0.5'
+  yarn add -D -E '@biomejs/biome@2.3.0'
   if is-git-repo --safe >/dev/null 2>&1; then
     yarn add --dev husky && {
       npx husky init || log-error "See the docs for husky at https://typicode.github.io/husky/get-started.html"
@@ -112,7 +112,7 @@ handleYarn() {
 }
 
 handleBun() {
-  bun add -D -E '@biomejs/biome@2.0.5'
+  bun add -D -E '@biomejs/biome@2.3.0'
   if is-git-repo --safe >/dev/null 2>&1; then
     bun add --dev husky &&
       bunx husky init
@@ -123,7 +123,7 @@ handleBun() {
 }
 
 handleDeno() {
-  deno add -D 'npm:@biomejs/biome@2.0.5'
+  deno add -D 'npm:@biomejs/biome@2.3.0'
   if is-git-repo --safe >/dev/null 2>&1; then
     deno add --dev npm:husky || true
     if [[ ! -f "package.json" ]]; then

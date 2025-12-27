@@ -5,10 +5,19 @@ gitRoot="$(git rev-parse --show-toplevel)"
 
 cd "${gitRoot}" || exit 1
 
-# Formats only the staged files
-git diff --cached --name-only --diff-filter=ACMR | xargs -d '\n' bunx biome check --fix --no-errors-on-unmatched
+declare -a files
+mapfile -t files < <(git diff --cached --name-only --diff-filter=ACMR)
 
-# Adds staged files again (to include the new formatter changes)
-git diff --cached --name-only --diff-filter=ACMR | xargs -d '\n' git add
+# --- Formats only the staged files --- #
+unset BIOME_BINARY &>/dev/null || true
+unset BIOME_CONFIG_PATH &>/dev/null || true
+bunx biome check --fix --no-errors-on-unmatched "${files[@]}" || true
+
+# --- Adds staged files again (to include the new formatter changes) --- #
+git add "${files[@]}"
+
+# --- Do type checking before any commit --- #
+printf "\e[34mDoing type checks...\e[0m\n"
+bun run typecheck || exit 1
 
 exit 0
