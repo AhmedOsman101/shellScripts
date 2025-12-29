@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄                  ▄▄▄▄      ▄▄▄▄         ▄▄▄▄
+#            ██                  ▀▀██      ▀▀██        ██▀▀▀               ██
+#  ▄▄█████▄  ██▄████▄   ▄████▄     ██        ██      ███████   ████▄██▄  ███████
+#  ██▄▄▄▄ ▀  ██▀   ██  ██▄▄▄▄██    ██        ██        ██      ██ ██ ██    ██
+#   ▀▀▀▀██▄  ██    ██  ██▀▀▀▀▀▀    ██        ██        ██      ██ ██ ██    ██
+#  █▄▄▄▄▄██  ██    ██  ▀██▄▄▄▄█    ██▄▄▄     ██▄▄▄     ██      ██ ██ ██    ██▄▄▄
+#   ▀▀▀▀▀▀   ▀▀    ▀▀    ▀▀▀▀▀      ▀▀▀▀      ▀▀▀▀     ▀▀      ▀▀ ▀▀ ▀▀     ▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# A script for formatting bash code and fixing common issues in code
+# --- DEPENDENCIES --- #
+# - shfmt
+# - shellcheck
+# - patch
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "i" "in-place" "Edit file in place"
+cmdarg "f?" "file" "Path to shell script file (default: read from stdin)"
+cmdarg_parse "$@"
+
+# --- Main script logic --- #
+in_place="${cmdarg_cfg['in-place']}"
+file="${cmdarg_cfg['file']}"
+
+tmpfile="$(mktemp)"
+trap 'rm -f $tmpfile' EXIT
+
+read_input() {
+  if [[ -n "${file}" ]]; then
+    if [[ ! -f "${file}" ]]; then
+      log-error "File not found: ${file}"
+    fi
+    cat "${file}"
+  else
+    input
+  fi
+}
+
+write_output() {
+  if [[ "${in_place}" == 'true' && -n "${file}" ]]; then
+    cat >"${file}"
+  else
+    cat
+  fi
+}
+
+input="$(read_input)"
+
+echo "${input}" >"${tmpfile}"
+
+formatted="$(shfmt "${tmpfile}" 2>/dev/null)"
+
+[[ -z "${formatted}" ]] && formatted="${input}"
+
+echo "${formatted}" >"${tmpfile}"
+
+if shellcheck -f diff "${tmpfile}" 2>/dev/null | patch -p0 --no-backup-if-mismatch "${tmpfile}" 2>/dev/null; then
+  # cat "${tmpfile}" | write_output
+  write_output <"${tmpfile}"
+else
+  echo "${formatted}" | write_output
+fi
