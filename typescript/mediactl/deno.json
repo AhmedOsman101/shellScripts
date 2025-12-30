@@ -1,0 +1,10 @@
+{
+  "tasks": {
+    "dev": "deno run -A --watch mediactl.ts"
+  },
+  "imports": {
+    "dbus-next": "npm:dbus-next@^0.10.2"
+  },
+  "nodeModulesDir": "auto",
+  "allowScripts": ["npm:usocket@0.3.0"]
+}

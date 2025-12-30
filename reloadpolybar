@@ -2,4 +2,4 @@
 
 # Terminate already running bar instances
 pkill -USR1 polybar
-"${XDG_CONFIG_HOME}/openbox/themes/launch-bar.sh" &>/dev/null
+# "${XDG_CONFIG_HOME}/openbox/themes/launch-bar.sh" &>/dev/null
