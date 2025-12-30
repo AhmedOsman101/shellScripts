@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#    ██
+#  ███████    ██▄████  ██    ██  ██▄████▄   ▄█████▄
+#    ██       ██▀      ██    ██  ██▀   ██  ██▀    ▀
+#    ██       ██       ██    ██  ██    ██  ██
+#    ██▄▄▄    ██       ██▄▄▄███  ██    ██  ▀██▄▄▄▄█
+#     ▀▀▀▀    ▀▀        ▀▀▀▀ ▀▀  ▀▀    ▀▀    ▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Truncates a string to a given length or adds elipses.
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "l:" "limit" "The limit to trunc the string"
+cmdarg "e?" "ellipsis" "The character to add if the string is longer than limit" "..."
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+text="${argv[*]}"
+ellipsis="${cmdarg_cfg['ellipsis']}"
+limit=$((cmdarg_cfg['limit']))
+
+((limit > ${#ellipsis})) || limit=${#ellipsis} # check if limit is bigger than ellipsis length
+
+awk -v max="${limit}" -v ell="${ellipsis}" '
+  length($0) > max {
+    cut = max - length(ell)
+    if (cut < 0) cut = 0
+    print substr($0, 1, cut) ell
+    next
+  }
+  { print }
+' <<<"${text}"
