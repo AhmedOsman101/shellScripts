@@ -2,3 +2,4 @@
 *.exe
 target
 askpass
+node_modules
