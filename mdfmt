@@ -49,7 +49,6 @@ spinner.sh &
 SPINNER_PID=$!
 
 mdmath -q "${files[@]}" || log-warning "Failed to fix math in ${#file[@]} files"
-command -v emoji-strip &>/dev/null && emoji-strip "${files[@]}" &>/dev/null
 mdclean -q "${files[@]}" || log-warning "Failed to clean ${#file[@]} files"
 
 killwait "${SPINNER_PID}"
