@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#               ██
+#               ▀▀
+#  ██▄███▄    ████     ██▄███▄    ▄████▄    ██▄████            ▄▄█████▄   ▄█████▄  ▀██  ███
+#  ██▀  ▀██     ██     ██▀  ▀██  ██▄▄▄▄██   ██▀                ██▄▄▄▄ ▀   ▀ ▄▄▄██   ██▄ ██
+#  ██    ██     ██     ██    ██  ██▀▀▀▀▀▀   ██        █████     ▀▀▀▀██▄  ▄██▀▀▀██    ████▀
+#  ███▄▄██▀  ▄▄▄██▄▄▄  ███▄▄██▀  ▀██▄▄▄▄█   ██                 █▄▄▄▄▄██  ██▄▄▄███     ███
+#  ██ ▀▀▀    ▀▀▀▀▀▀▀▀  ██ ▀▀▀      ▀▀▀▀▀    ▀▀                  ▀▀▀▀▀▀    ▀▀▀▀ ▀▀     ██
+#  ██                  ██                                                           ███
+#
+# --- DESCRIPTION --- #
+# Text-to-speech script using Piper TTS and mpv
+#
+# --- DEPENDENCIES --- #
+# - piper-tts | piper-tts (piper-tts-git)
+# - mpv
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "l" "list" "Lists available voices"
+cmdarg "v?" "voice" "The voice to use" ""
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+list="${cmdarg_cfg['list']}"
+voice="${cmdarg_cfg['voice']}"
+PIPER_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/piper"
+
+list_voices() {
+  fd '\.onnx$' ~/.local/share/piper |
+    sed "s|${PIPER_DIR}/||" |
+    sed 's|\.onnx$||'
+}
+
+[[ "${list}" == true ]] && {
+  list_voices
+  exit 0
+}
+
+if [[ -z "${voice}" ]]; then
+  mapfile -t voices < <(list_voices)
+  voice="$(gum choose --limit=1 --select-if-one "${voices[@]}")"
+fi
+
+model="${PIPER_DIR}/${voice}.onnx"
+
+if [[ ! -f "${model}" ]]; then
+  log-warning "Voice not found: ${voice}"
+  printYellow "Available voices:" >&2
+  printYellow "$(list_voices)" >&2
+  exit 0
+fi
+
+printf -v text '%b\n' "${argv[@]}"
+[[ -z "$(trim "${text}")" ]] && text="$(gum write)"
+
+out="$(mktemp -t XXXXX-tts.wav)"
+trap 'rm -f $out' EXIT
+
+spinner.sh &
+SPINNER_PID=$!
+
+piper-tts \
+  --model "${model}" \
+  --output_file "${out}" \
+  <<<"${text}" &>/dev/null
+
+killwait "${SPINNER_PID}"
+
+mpv "${out}" >/dev/null 2>&1
