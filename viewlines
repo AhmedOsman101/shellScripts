@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#               ██                         ▄▄▄▄         ██
+#               ▀▀                         ▀▀██         ▀▀
+#  ██▄  ▄██   ████      ▄████▄  ██      ██   ██       ████     ██▄████▄   ▄████▄   ▄▄█████▄
+#   ██  ██      ██     ██▄▄▄▄██ ▀█  ██  █▀   ██         ██     ██▀   ██  ██▄▄▄▄██  ██▄▄▄▄ ▀
+#   ▀█▄▄█▀      ██     ██▀▀▀▀▀▀  ██▄██▄██    ██         ██     ██    ██  ██▀▀▀▀▀▀   ▀▀▀▀██▄
+#    ████    ▄▄▄██▄▄▄  ▀██▄▄▄▄█  ▀██  ██▀    ██▄▄▄   ▄▄▄██▄▄▄  ██    ██  ▀██▄▄▄▄█  █▄▄▄▄▄██
+#     ▀▀     ▀▀▀▀▀▀▀▀    ▀▀▀▀▀    ▀▀  ▀▀      ▀▀▀▀   ▀▀▀▀▀▀▀▀  ▀▀    ▀▀    ▀▀▀▀▀    ▀▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# View a specific line or range of lines from a text file.
+#   viewlines 15 filename     -> Views line 15
+#   viewlines 10 20 filename  -> Views lines 10 through 20
+# --- DEPENDENCIES --- #
+# - awk
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+if ((argc == 2)); then
+  # Single line mode: NR is the current line number
+  awk "NR == $1 {print; exit}" "$2"
+elif ((argc == 3)); then
+  # Range mode: Prints between start and end, then exits
+  awk "NR >= $1 && NR <= $2; NR == $2 {exit}" "$3"
+else
+  log-error "Usage: viewlines [start] [optional_end] filename"
+fi
