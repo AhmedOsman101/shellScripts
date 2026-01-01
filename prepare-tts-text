@@ -65,6 +65,6 @@ prepare_for_tts() {
 if [[ -n "${input_file}" ]]; then
   prepare_for_tts "${input_file}"
 else
-  str="$(cat)"
+  str="$(input "$@")"
   prepare_for_tts "${str}"
 fi

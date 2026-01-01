@@ -158,14 +158,14 @@ fi
 select_player
 cleanup_old_cache
 
+# --- Get input text --- #
 if ((argc)); then
   text="$(prepare-tts-text "${argv[@]}")"
 else
-  text="$(prepare-tts-text)"
+  text="$(gum write --placeholder='Enter some text...' | prepare-tts-text)"
 fi
 
-# --- Get input text --- #
-[[ -z "$(trim "${text}")" ]] && text="$(prepare-tts-text "$(gum write)")"
+[[ -z "$(trim "${text}")" ]] && terminate "Nothing to do!"
 
 hashedText="$(printf '%s:%s' "${model}" "${text}" | b2sum)"
 hashedText="${hashedText%% *}"
@@ -199,3 +199,5 @@ else
 fi
 
 generateCache
+
+exit 0
