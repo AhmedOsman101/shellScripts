@@ -1,6 +1,9 @@
 {
   "tasks": {
-    "dev": "deno run -A --watch mediactl.ts"
+    "dev": "deno run -A --watch mediactl.ts",
+    "debug-dev": "DEBUG=1 deno run -A --watch mediactl.ts",
+    "start": "deno run -A mediactl.ts",
+    "debug": "DEBUG=1 deno run -A mediactl.ts"
   },
   "imports": {
     "dbus-next": "npm:dbus-next@^0.10.2"
