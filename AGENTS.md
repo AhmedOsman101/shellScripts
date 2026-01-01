@@ -2,6 +2,14 @@
 
 This document provides guidelines for AI coding agents working on this repository. It contains build/lint/test commands, code style conventions, and development practices.
 
+## Session Guidelines
+
+- **Read AGENTS.md First**: Always read this document at the start of any session to understand the project's conventions and patterns.
+- **Check Existing Functionality**: Before writing new code, search the repository for existing functionality. For example:
+  - Instead of manually echoing `[DEBUG] Some message`, use the `log-debug` script. Instead of truncating a string manually use the `trunc` script, and so on.
+  - Check for utility functions in `lib/helpers.sh`, `lib/cmdarg.sh`, and other shared libraries
+  - Look for similar patterns in existing scripts before implementing from scratch
+
 ## Build/Lint/Test Commands
 
 ### TypeScript Projects
@@ -92,25 +100,67 @@ EDITOR=cat mkscript -q -f test.sh
 
 This allows the agent to edit the script immediately after creation.
 
-- **Command Line Arguments**: Use the repository's `cmdarg` library for parsing command line arguments:
+#### Script Signature & Metadata
+
+- Keep the existing script signature structure intact (ASCII art, DESCRIPTION, DEPENDENCIES sections)
+- Add a clear, multiline description if needed using the `#` comment format
+- Follow the **Dependencies Rules** strictly (see below)
+
+#### Dependency Declaration Format
+
+- **Exclude** coreutils and basic commands available on any distro (e.g., `grep`, `sed`, `awk`, `cut`, `tr`, `cat`, `echo`)
+- **Format examples:**
+
+  ```bash
+  # Single dependency, same executable & package name:
+  # - ansifilter
+
+  # Single dependency, different executable name:
+  # - sponge (moreutils)
+
+  # Multiple alternatives (chooses the first available option):
+  # - mpv | aplay
+  # - xclip | wl-copy (wl-clipboard) | copyq
+  ```
+
+#### Using `cmdarg` for Argument Parsing
+
+Define arguments between `cmdarg_info "header"` and `cmdarg_parse "$@"`:
 
 ```bash
-# Define arguments with optional short options
-cmdarg "v" "verbose" "Enable verbose output" # Boolean flag
-cmdarg "m:" "message" "The text to be written on the image" # Required flag (error if not provided)
-cmdarg "d?" "debounce" "Time to wait for new events" "5s" # Optional flag with a default value
-cmdarg "c?" "color" "Color of the banner" # Optional flag with no default value (empty string if not provided)
+cmdarg_info "header" "$(get-desc "$0")"
+# Add cmdarg definitions here
+cmdarg_parse "$@"
+```
+
+- Use `${argv[index]}` for positional arguments and `${cmdarg_cfg['flag']}` for flags
+- Avoid using `$@`, `$*`, `$#` after `cmdarg_parse` - these are consumed by the parser
+- Use `${argc}` for argument count
+- `argv` and `argc` variables are auto-generated after running `cmdarg_parse "$@"` - you don't define them, they come automatically
+
+Example:
+
+```bash
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "v" "verbose" "Enable verbose output"
+cmdarg "m:" "message" "The text to be written on the image"
+cmdarg "d?" "debounce" "Time to wait for new events" "5s"
+cmdarg "c?" "color" "Color of the banner"
 
 cmdarg_parse "$@"
 
-# Access values using cmdarg_cfg associative array
 color="${cmdarg_cfg['color']}"
 debounce="${cmdarg_cfg['debounce']}"
 verbose="${cmdarg_cfg['verbose']}"
 message="${cmdarg_cfg['message']}"
+
+# Access positional arguments via argv array
+for ((i = 0; i < argc; i++)); do
+  echo "Positional arg $i: ${argv[$i]}"
+done
 ```
 
-The `cmdarg` function signature is:
+The `cmdarg` function signature:
 
 - `<option>`: Short option letter, append `?` to make it optional (e.g., "c?") and append `:` to make it required.
 - `<key>`: Long option name (used to access value from `cmdarg_cfg`)
@@ -118,7 +168,14 @@ The `cmdarg` function signature is:
 - `[default value]`: Optional default value for the argument
 - `[validator function]`: Optional validator function name
 
-Access all remaining positional arguments via the `argv` array and access their number with `argc` variable.
+#### Modern Bash Best Practices
+
+- Use Bash 5.x+ features
+- Prefer pure Bash string manipulation over external commands where beneficial (see reference tables below)
+- Use `(( ))` for all arithmetic operations and conditionals
+- Keep scripts modular, readable, and well-commented
+- Use `[[ ]]` for string and file tests instead of `[ ]`
+- Use `(( ))` for arithmetic comparisons instead of `[ ]` or `test`
 
 ### TypeScript/Deno
 
@@ -165,6 +222,48 @@ type CleanedUrl = { cleanedUrl: string; furtherCleanedUrl?: string };
 - **Error Handling**: Check return values and use appropriate error codes
 - **Memory Management**: Proper memory allocation/deallocation
 - **Naming**: Use camelCase for variables and functions and PascalCase for type, interfaces, classes, etc.
+
+## Reference Tables
+
+### Pure Bash vs. External Commands
+
+| Task                | Old (external)               | New (pure Bash) |
+| ------------------- | ---------------------------- | --------------- |
+| Get part before `=` | `cut -d= -f1`                | `${var%%=*}`    |
+| Get part after `=`  | `cut -d= -f2-`               | `${var#*=}`     |
+| Get filename        | `basename "$path"`           | `${path##*/}`   |
+| Get directory       | `dirname "$path"`            | `${path%/*}`    |
+| Get file extension  | `rev \| cut -d. -f1 \| rev`  | `${file##*.}`   |
+| Remove extension    | `cut -d. -f1`                | `${file%.*}`    |
+| Lowercase string    | `tr '[:upper:]' '[:lower:]'` | `${var,,}`      |
+| Uppercase string    | `tr '[:lower:]' '[:upper:]'` | `${var^^}`      |
+
+### Bash Parameter Expansion Cheatsheet
+
+| Syntax             | Description                                              | Example                                   | Output         |
+| ------------------ | -------------------------------------------------------- | ----------------------------------------- | -------------- |
+| `${#var}`          | String length (character count).                         | `s="hello"; echo ${#s}`                   | `5`            |
+| `${var:pos}`       | Substring starting from position `pos` (0-based).        | `s="abcdef"; echo ${s:2}`                 | `cdef`         |
+| `${var:pos:len}`   | Substring of length `len` from `pos`.                    | `echo ${s:1:3}`                           | `bcd`          |
+| `${var: -n}`       | Last `n` characters (note space before `-`).             | `echo ${s: -2}`                           | `ef`           |
+| `${var^}`          | Uppercase **first** character.                           | `s="foo"; echo ${s^}`                     | `Foo`          |
+| `${var^^}`         | Uppercase **all** characters.                            | `echo ${s^^}`                             | `FOO`          |
+| `${var,}`          | Lowercase first character.                               | `S="Bar"; echo ${S,}`                     | `bar`          |
+| `${var,,}`         | Lowercase all characters.                                | `S="BAR"; echo ${S,,}`                    | `bar`          |
+| `${var#pattern}`   | Remove _shortest_ match from start.                      | `f="foo/bar/baz"; echo ${f#*/}`           | `bar/baz`      |
+| `${var##pattern}`  | Remove _longest_ match from start.                       | `echo ${f##*/}`                           | `baz`          |
+| `${var%pattern}`   | Remove _shortest_ match from end.                        | `f="foo/bar/baz"; echo ${f%/*}`           | `foo/bar`      |
+| `${var%%pattern}`  | Remove _longest_ match from end.                         | `echo ${f%%/*}`                           | `foo`          |
+| `${var/pat/repl}`  | Replace **first** match of `pat` with `repl`.            | `s="foo bar"; echo ${s/o/a}`              | `fao bar`      |
+| `${var//pat/repl}` | Replace **all** matches.                                 | `echo ${s//o/a}`                          | `faa bar`      |
+| `${var/#pat/repl}` | Replace only if `pat` matches **start**.                 | `s="foobar"; echo ${s/#foo/xxx}`          | `xxxbar`       |
+| `${var/%pat/repl}` | Replace only if `pat` matches **end**.                   | `s="foobar"; echo ${s/%bar/zzz}`          | `foozzz`       |
+| `${var##*/}`       | Basename (strip longest prefix ending with `/`).         | `p="/usr/bin/bash"; echo ${p##*/}`        | `bash`         |
+| `${var%/*}`        | Dirname (strip shortest suffix starting with `/`).       | `echo ${p%/*}`                            | `/usr/bin`     |
+| `${file%%.*}`      | Strip **extension** (everything after first dot).        | `file="archive.tar.gz"; echo ${file%%.*}` | `archive`      |
+| `${file%.*}`       | Strip **last** extension (after last dot).               | `echo ${file%.*}`                         | `archive.tar`  |
+| `${!prefix*}`      | Expands all variable names starting with `prefix`.       | `U_RED=#f00; echo ${!U_*}`                | `U_RED`        |
+| `${!name}`         | Indirect expansion (value of variable named by `$name`). | `ref="PATH"; echo ${!ref}`                | (your `$PATH`) |
 
 ## Development Practices
 
@@ -233,6 +332,10 @@ cmdarg_info "header" "$(get-desc "$0")"
 # Add cmdarg definitions here
 
 cmdarg_parse "$@"
+
+# Access cmdarg_cfg values
+# local value="${cmdarg_cfg['option-name']}"
+# local positional_arg="${argv[0]}"
 
 # --- Main script logic --- #
 # Implementation here
