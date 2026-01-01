@@ -14,7 +14,6 @@
 # --- DESCRIPTION --- #
 # Prepare and clean text for text-to-speech
 # Removes markdown symbols, code blocks, and normalizes sentence structure
-# Supports URLs, files, and raw text input
 # --- DEPENDENCIES --- #
 # - pandoc
 # --- END SIGNATURE --- #
@@ -29,5 +28,43 @@ checkDeps "$0"
 
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "f?" "file" "Input file or URL to read from" ""
 cmdarg_parse "$@"
 # ---  Main script logic --- #
+input_file="${cmdarg_cfg['file']}"
+
+tmp="$(mktemp)"
+trap 'rm -f $tmp' EXIT
+
+prepare_for_tts() {
+  local input="$1"
+
+  if [[ "${input}" =~ ^https?:// ]]; then
+    pandoc "${input}" -t plain --wrap=none -o "${tmp}" 2>/dev/null ||
+      log-error "Failed to process URL: ${input}"
+  elif [[ -f "${input}" ]]; then
+    pandoc "${input}" -t plain --wrap=none -o "${tmp}" 2>/dev/null ||
+      log-error "Failed to process file: ${input}"
+  else
+    echo "${input}" >"${tmp}"
+  fi
+
+  # shellcheck disable=SC2016
+  sed -i '/^    /d;/^```/,/^```/d' "${tmp}"
+  sed -i 's/[*_~`#>\[\]\(\)]+//g' "${tmp}"
+
+  awk '{
+    while(match($0, /[.!?]+/)) {
+      print substr($0, 1, RSTART+RLENGTH-1)
+      $0 = substr($0, RSTART+RLENGTH)
+    }
+    if(length($0)>0) print $0
+  }' "${tmp}" | sed '/^\s*$/d'
+}
+
+if [[ -n "${input_file}" ]]; then
+  prepare_for_tts "${input_file}"
+else
+  str="$(cat)"
+  prepare_for_tts "${str}"
+fi

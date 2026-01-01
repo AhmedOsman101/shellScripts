@@ -55,74 +55,13 @@ list_voices() {
     sed 's|\.onnx$||'
 }
 
-[[ "${list}" == true ]] && {
-  list_voices
-  exit 0
-}
-
-if [[ -z "${voice}" ]]; then
-  mapfile -t voices < <(list_voices)
-  voice="$(gum choose --limit=1 --select-if-one "${voices[@]}")"
-fi
-
-model="${PIPER_VOICES_DIR}/${voice}.onnx"
-
-if [[ ! -f "${model}" ]]; then
-  log-warning "Voice not found: ${voice}"
-  printYellow "Available voices:" >&2
-  printYellow "$(list_voices)" >&2
-  exit 0
-fi
-
-if command -v aplay &>/dev/null; then
-  playerCmd=(aplay --quiet)
-elif command -v mpv &>/dev/null; then
-  playerCmd=(mpv --no-terminal)
-fi
-
-cleanup_old_cache
-
-# --- Helper: prepare text for TTS --- #
-tmp="$(mktemp)"
-trap 'rm $tmp' EXIT
-prepare_for_tts() {
-  local input="$1"
-
-  # 1. Detect if input is URL or file
-  if [[ "${input}" =~ ^https?:// ]] || [[ "${input}" =~ ^https?:// ]]; then
-    pandoc "${input}" -t plain --wrap=none -o "${tmp}"
-  else
-    # raw text from argument
-    echo "${input}" >"${tmp}"
+select_player() {
+  if command -v aplay &>/dev/null; then
+    playerCmd=(aplay --quiet)
+  elif command -v mpv &>/dev/null; then
+    playerCmd=(mpv --no-terminal)
   fi
-
-  # 2. Remove code blocks and markdown symbols
-  # shellcheck disable=SC2016
-  sed -i '/^    /d;/^```/,/^```/d' "${tmp}" # remove indented/fenced code blocks
-  sed -i 's/[*_~`#>\[\]\(\)]+//g' "${tmp}"  # remove markdown symbols
-  # sed -i 's/\s\{2,\}/ /g' "${tmp}"          # normalize whitespace
-
-  # 3. Sentence chunking: one sentence per line
-  awk '{
-    while(match($0, /[.!?]+/)) {
-      print substr($0, 1, RSTART+RLENGTH-1)
-      $0 = substr($0, RSTART+RLENGTH)
-    }
-    if(length($0)>0) print $0
-  }' "${tmp}" | sed '/^\s*$/d'
 }
-
-# --- Get input text --- #
-# printf -v text '%b\n' "${argv[@]}"
-str="$(input "${argv[@]}")"
-text="$(prepare_for_tts "${str}")"
-[[ -z "$(trim "${text}")" ]] && text="$(gum write)"
-
-# --- Prepare Piper command --- #
-piper_cmd=(piper-tts --quiet --model "${model}")
-
-hashedText="$(printf '%s:%s' "${model}" "${text}" | b2sum)"
-hashedText="${hashedText%% *}"
 
 generateCache() {
   mkdir -p "${PIPER_SAY_CACHE_DIR}" &>/dev/null
@@ -133,7 +72,7 @@ EOF
 }
 
 checkCache() {
-  if [[ ! -s "${cacheFile}" || ! -f "${cacheFile}" || $(wc -l < "${cacheFile}") -ne 2 ]]; then
+  if [[ ! -s "${cacheFile}" || ! -f "${cacheFile}" || $(wc -l <"${cacheFile}") -ne 2 ]]; then
     return 1
   fi
 
@@ -184,6 +123,53 @@ checkCache() {
   return 1
 }
 
+generateAudio() {
+  local output_path="$1"
+
+  # --- Prepare Piper command --- #
+  piper_cmd=(piper-tts --quiet --model "${model}")
+
+  if [[ -n "${output_path}" ]]; then
+    piper_cmd+=(--output_file "${output_path}")
+  fi
+
+  "${piper_cmd[@]}" <<<"${text}" >/dev/null
+}
+
+[[ "${list}" == true ]] && {
+  list_voices
+  exit 0
+}
+
+if [[ -z "${voice}" ]]; then
+  mapfile -t voices < <(list_voices)
+  voice="$(gum choose --limit=1 --select-if-one "${voices[@]}")"
+fi
+
+model="${PIPER_VOICES_DIR}/${voice}.onnx"
+
+if [[ ! -f "${model}" ]]; then
+  log-warning "Voice not found: ${voice}"
+  printYellow "Available voices:" >&2
+  printYellow "$(list_voices)" >&2
+  exit 0
+fi
+
+select_player
+cleanup_old_cache
+
+if ((argc)); then
+  text="$(prepare-tts-text "${argv[@]}")"
+else
+  text="$(prepare-tts-text)"
+fi
+
+# --- Get input text --- #
+[[ -z "$(trim "${text}")" ]] && text="$(prepare-tts-text "$(gum write)")"
+
+hashedText="$(printf '%s:%s' "${model}" "${text}" | b2sum)"
+hashedText="${hashedText%% *}"
+
 if ! checkCache; then
   generateCache
 fi
@@ -197,18 +183,15 @@ SPINNER_PID=$!
 trap 'killwait $SPINNER_PID' EXIT
 
 if [[ -n "${out_file}" ]]; then
-
-  piper_cmd+=(--output_file "${out_file}")
-
-  "${piper_cmd[@]}" <<<"${text}" >/dev/null
+  generateAudio "${out_file}"
   killwait "${SPINNER_PID}"
 
   log-success "Audio generated successfully at ${out_file}"
-  gum confirm "Do you want to play the ouput?" && "${playerCmd[@]}" "${out_file}"
+  gum confirm "Do you want to play output?" && "${playerCmd[@]}" "${out_file}"
 else
   out_file="${PIPER_SAY_CACHE_DIR}/output.wav"
 
-  "${piper_cmd[@]}" --output_file "${out_file}" <<<"${text}" >/dev/null
+  generateAudio "${out_file}"
   killwait "${SPINNER_PID}"
 
   log-success "Audio generated successfully!"
