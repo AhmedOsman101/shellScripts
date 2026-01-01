@@ -36,8 +36,8 @@ name="${argv[0]}"
 [[ "${name}" =~ (\.py)$ ]] || name="${name}.py"
 
 nameNoExt="$(strip-ext "${name}" py)"
-fileExists="$(fd-all "${nameNoExt}" -- -e py -p "${dir}")"
-scriptExists=$(fd-all "${nameNoExt}" -- -d 1 -p "${SCRIPTS_DIR}")
+fileExists="$(fd-all "${nameNoExt}" -e py "${dir}")"
+scriptExists=$(fd-all "${nameNoExt}" -d 1 "${SCRIPTS_DIR}")
 
 if [[ -n "${fileExists}" ]]; then
   log-error "File ${name} already exists at ${fileExists}"

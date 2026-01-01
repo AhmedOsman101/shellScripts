@@ -4,7 +4,7 @@ This document provides guidelines for AI coding agents working on this repositor
 
 ## Build/Lint/Test Commands
 
-### Deno/TypeScript Projects
+### TypeScript Projects
 
 ```bash
 # Run with watch mode (development)
@@ -151,16 +151,16 @@ type CleanedUrl = { cleanedUrl: string; furtherCleanedUrl?: string };
 
 ### Python Scripts
 
-- **Use Templates**: Use `./mkpython` script to initalize a new python script
-- **Virtual Environment**: Use venv for isolation
+- **Use Templates**: Use `EDITOR=bat mkpython` script to initalize a new python script
+- **Virtual Environment**: Use `uv` and `venv` for isolation
 - **Requirements**: Document dependencies in `requirements.txt`
 - **Imports**: Group imports (stdlib, third-party, local)
 - **Error Handling**: Use try-except blocks with specific exceptions
-- **Type Hints**: Use type hints where beneficial
+- **Type Hints**: Use type hints
 
 ### C/C++ Code
 
-- **Compilation**: Use clang for C, g++ for C++
+- **Compilation**: Use `clangc` for C, `cppc` for C++
 - **Headers**: Include necessary headers
 - **Error Handling**: Check return values and use appropriate error codes
 - **Memory Management**: Proper memory allocation/deallocation
@@ -170,7 +170,7 @@ type CleanedUrl = { cleanedUrl: string; furtherCleanedUrl?: string };
 
 ### Git Workflow
 
-- **Commits**: Use descriptive commit messages with the `./git-commit --ai --yes` script
+- **Commits**: Use descriptive commit messages with the `git-commit --ai --yes` script
 - **Branching**: Feature branches for new work
 - **Pre-commit**: Use provided pre-commit hooks for formatting (if any)
 
@@ -236,7 +236,6 @@ cmdarg_parse "$@"
 
 # --- Main script logic --- #
 # Implementation here
-
 ```
 
 ### Input/Output Patterns
@@ -251,22 +250,6 @@ input() {
     str="$*"   # read from arguments
   fi
   echo "${str}"
-}
-```
-
-```typescript
-// TypeScript: Read from stdin
-async function input(prompt: string): Promise<string> {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-  return new Promise(resolve => {
-    rl.question(prompt, answer => {
-      rl.close();
-      resolve(answer);
-    });
-  });
 }
 ```
 
