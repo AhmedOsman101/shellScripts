@@ -75,7 +75,7 @@ if "${cancelled}"; then
   terminate "Nothing selected"
 fi
 
-fullpath="$(fd-by-depth "${app}" --type d --min-depth=2 --max-depth=4 "${TUCKR_DIR}/${app}" | tail -n 1)"
+fullpath="$(fd-by-depth "${app}" --hidden --type d --min-depth=2 --max-depth=4 "${TUCKR_DIR}/${app}" | tail -n 1)"
 [[ -z "${fullpath}" ]] && fullpath="${TUCKR_DIR}/${app}"
 
 echo "${fullpath}"
