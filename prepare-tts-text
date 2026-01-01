@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#                                                                                    ██        ██                            ██                            ██
+#  ██▄███▄    ██▄████   ▄████▄   ██▄███▄    ▄█████▄   ██▄████   ▄████▄             ███████   ███████   ▄▄█████▄            ███████    ▄████▄   ▀██  ██▀  ███████
+#  ██▀  ▀██   ██▀      ██▄▄▄▄██  ██▀  ▀██   ▀ ▄▄▄██   ██▀      ██▄▄▄▄██              ██        ██      ██▄▄▄▄ ▀              ██      ██▄▄▄▄██    ████      ██
+#  ██    ██   ██       ██▀▀▀▀▀▀  ██    ██  ▄██▀▀▀██   ██       ██▀▀▀▀▀▀   █████      ██        ██       ▀▀▀▀██▄   █████      ██      ██▀▀▀▀▀▀    ▄██▄      ██
+#  ███▄▄██▀   ██       ▀██▄▄▄▄█  ███▄▄██▀  ██▄▄▄███   ██       ▀██▄▄▄▄█              ██▄▄▄     ██▄▄▄   █▄▄▄▄▄██              ██▄▄▄   ▀██▄▄▄▄█   ▄█▀▀█▄     ██▄▄▄
+#  ██ ▀▀▀     ▀▀         ▀▀▀▀▀   ██ ▀▀▀     ▀▀▀▀ ▀▀   ▀▀         ▀▀▀▀▀                ▀▀▀▀      ▀▀▀▀    ▀▀▀▀▀▀                ▀▀▀▀     ▀▀▀▀▀   ▀▀▀  ▀▀▀     ▀▀▀▀
+#  ██                            ██
+#
+# --- DESCRIPTION --- #
+# Prepare and clean text for text-to-speech
+# Removes markdown symbols, code blocks, and normalizes sentence structure
+# Supports URLs, files, and raw text input
+# --- DEPENDENCIES --- #
+# - pandoc
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
