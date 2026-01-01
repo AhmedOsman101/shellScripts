@@ -176,6 +176,10 @@ The `cmdarg` function signature:
 - Keep scripts modular, readable, and well-commented
 - Use `[[ ]]` for string and file tests instead of `[ ]`
 - Use `(( ))` for arithmetic comparisons instead of `[ ]` or `test`
+- **Naming**: Use only `kebab-case` or `camelCase` for variable and function names
+  - Functions: `kebab-case` or `camelCase` (e.g., `get-deps` or `getDeps`)
+  - Variables: `camelCase` (e.g., `configPath`, `userName`)
+  - Avoid snake_case (`get_deps`) or PascalCase (`GetDeps`) for functions and variables
 
 ### TypeScript/Deno
 
