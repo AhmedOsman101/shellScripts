@@ -40,8 +40,14 @@ voice="${cmdarg_cfg['voice']}"
 out_file="${cmdarg_cfg['output']}"
 
 PIPER_VOICES_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/piper"
-PIPER_SAY_CACHE_DIR="/${XDG_CACHE_HOME:-${HOME}/.cache}/piper-say"
+PIPER_SAY_CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/piper-say"
 cacheFile="${PIPER_SAY_CACHE_DIR}/state.txt"
+
+cleanup_old_cache() {
+  if [[ -d "${PIPER_SAY_CACHE_DIR}" ]]; then
+    find "${PIPER_SAY_CACHE_DIR}" -type f -mtime +7 -delete 2>/dev/null || true
+  fi
+}
 
 list_voices() {
   fd '\.onnx$' ~/.local/share/piper |
@@ -73,6 +79,8 @@ if command -v aplay &>/dev/null; then
 elif command -v mpv &>/dev/null; then
   playerCmd=(mpv --no-terminal)
 fi
+
+cleanup_old_cache
 
 # --- Helper: prepare text for TTS --- #
 tmp="$(mktemp)"
@@ -120,39 +128,64 @@ generateCache() {
   mkdir -p "${PIPER_SAY_CACHE_DIR}" &>/dev/null
   cat >"${cacheFile}" <<EOF
 ${hashedText}
-${out_file:-"${PIPER_SAY_CACHE_DIR}/output.wav"}
+${PIPER_SAY_CACHE_DIR}/output.wav
 EOF
 }
 
-if [[ ! -s "${cacheFile}" || ! -f "${cacheFile}" || $(wc -l "${cacheFile}" | awk '{print $1}') != 2 ]]; then
-  generateCache
-else
+checkCache() {
+  if [[ ! -s "${cacheFile}" || ! -f "${cacheFile}" || $(wc -l < "${cacheFile}") -ne 2 ]]; then
+    return 1
+  fi
+
   declare -A cachedState
-  cachedState[text]="$(viewlines 1 "${cacheFile}")"
-  cachedState[out_file]="$(viewlines 2 "${cacheFile}")"
+  if ! cachedState[text]="$(viewlines 1 "${cacheFile}" 2>/dev/null)" || [[ -z "${cachedState[text]}" ]]; then
+    return 1
+  fi
+
+  if ! cachedState[audio_file]="$(viewlines 2 "${cacheFile}" 2>/dev/null)" || [[ -z "${cachedState[audio_file]}" ]]; then
+    return 1
+  fi
 
   # Check if text is identical
-  # Check if cached output file exists and readable
-  if [[ "${hashedText}" == "${cachedState[text]}" && -f "${cachedState[out_file]}" && -r "${cachedState[out_file]}" ]]; then
-    # Check if the user specified an output file
+  # Check if cached audio file exists and readable
+  if [[ "${hashedText}" == "${cachedState[text]}" && -f "${cachedState[audio_file]}" && -r "${cachedState[audio_file]}" ]]; then
+    # Cache hit
     if [[ -n "${out_file}" ]]; then
-      # Copy from cache to destination and exit
+      # Check if destination exists and compare hashes
       if [[ -f "${out_file}" ]]; then
-        if gum confirm "[WARNING] File '${out_file}' exists, do you want to overwrite?"; then
-          cp -f "${cachedState[out_file]}" "${out_file}" >/dev/null &&
-            terminate "Audio file copied from cache!"
-          terminate
+        local cached_hash
+        local dest_hash
+        cached_hash=$(b2sum "${cachedState[audio_file]}" 2>/dev/null | awk '{print $1}')
+        dest_hash=$(b2sum "${out_file}" 2>/dev/null | awk '{print $1}')
+
+        if [[ "${cached_hash}" == "${dest_hash}" ]] && [[ -n "${cached_hash}" ]]; then
+          # Same content - no action needed
+          terminate "Audio file copied from cache!"
         fi
+
+        # Different content - ask to overwrite
+        if gum confirm "[WARNING] File '${out_file}' exists, do you want to overwrite?"; then
+          cp "${cachedState[audio_file]}" "${out_file}" >/dev/null &&
+            terminate "Audio file copied from cache!"
+        fi
+        terminate
       else
-        cp --update=none-fail "${cachedState[out_file]}" "${out_file}" &>/dev/null &&
+        # Destination doesn't exist - copy from cache
+        cp "${cachedState[audio_file]}" "${out_file}" &>/dev/null &&
           terminate "Audio file copied from cache!"
       fi
     else
-      # Play from cache and exit
+      # Play from cache
       log-info "Audio playing from cache!"
-      "${playerCmd[@]}" "${cachedState[out_file]}" && exit 0
+      "${playerCmd[@]}" "${cachedState[audio_file]}" && exit 0
     fi
   fi
+
+  return 1
+}
+
+if ! checkCache; then
+  generateCache
 fi
 
 if [[ -f "${out_file}" ]]; then
