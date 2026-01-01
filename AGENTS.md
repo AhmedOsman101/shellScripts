@@ -239,25 +239,6 @@ cmdarg_parse "$@"
 
 ```
 
-### Error Handling Patterns
-
-```bash
-# Bash: Check for command existence
-if ! command -v some_command &>/dev/null; then
-  log-error "some_command is required but not installed"
-fi
-```
-
-```typescript
-// TypeScript: Error handling
-try {
-  // risky operation
-} catch (error) {
-  console.error(`Error: ${error.message}`);
-  Deno.exit(1);
-}
-```
-
 ### Input/Output Patterns
 
 ```bash
