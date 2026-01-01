@@ -13,9 +13,11 @@
 #
 # --- DESCRIPTION --- #
 # Text-to-speech script using Piper TTS and mpv
+# Supports Pandoc input, Markdown, Word, PDF, HTML, URLs, and raw text
+# Can pipe audio live or save to WAV
 # --- DEPENDENCIES --- #
 # - piper-tts | piper-tts (piper-tts-git)
-# - mpv
+# - mpv | aplay
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -30,15 +32,20 @@ checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "l" "list" "Lists available voices"
 cmdarg "v?" "voice" "The voice to use" ""
+cmdarg "o?" "output" "Optional output WAV file path" ""
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 list="${cmdarg_cfg['list']}"
 voice="${cmdarg_cfg['voice']}"
-PIPER_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/piper"
+out_file="${cmdarg_cfg['output']}"
+
+PIPER_VOICES_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/piper"
+PIPER_SAY_CACHE_DIR="/${XDG_CACHE_HOME:-${HOME}/.cache}/piper-say"
+cacheFile="${PIPER_SAY_CACHE_DIR}/state.txt"
 
 list_voices() {
   fd '\.onnx$' ~/.local/share/piper |
-    sed "s|${PIPER_DIR}/||" |
+    sed "s|${PIPER_VOICES_DIR}/||" |
     sed 's|\.onnx$||'
 }
 
@@ -52,7 +59,7 @@ if [[ -z "${voice}" ]]; then
   voice="$(gum choose --limit=1 --select-if-one "${voices[@]}")"
 fi
 
-model="${PIPER_DIR}/${voice}.onnx"
+model="${PIPER_VOICES_DIR}/${voice}.onnx"
 
 if [[ ! -f "${model}" ]]; then
   log-warning "Voice not found: ${voice}"
@@ -61,22 +68,118 @@ if [[ ! -f "${model}" ]]; then
   exit 0
 fi
 
+if command -v aplay &>/dev/null; then
+  playerCmd=(aplay --quiet)
+elif command -v mpv &>/dev/null; then
+  playerCmd=(mpv --no-terminal)
+fi
+
+# --- Helper: prepare text for TTS --- #
+tmp="$(mktemp)"
+trap 'rm $tmp' EXIT
+prepare_for_tts() {
+  local input="$1"
+
+  # 1. Detect if input is URL or file
+  if [[ "${input}" =~ ^https?:// ]] || [[ "${input}" =~ ^https?:// ]]; then
+    pandoc "${input}" -t plain --wrap=none -o "${tmp}"
+  else
+    # raw text from argument
+    echo "${input}" >"${tmp}"
+  fi
+
+  # 2. Remove code blocks and markdown symbols
+  # shellcheck disable=SC2016
+  sed -i '/^    /d;/^```/,/^```/d' "${tmp}" # remove indented/fenced code blocks
+  sed -i 's/[*_~`#>\[\]\(\)]+//g' "${tmp}"  # remove markdown symbols
+  # sed -i 's/\s\{2,\}/ /g' "${tmp}"          # normalize whitespace
+
+  # 3. Sentence chunking: one sentence per line
+  awk '{
+    while(match($0, /[.!?]+/)) {
+      print substr($0, 1, RSTART+RLENGTH-1)
+      $0 = substr($0, RSTART+RLENGTH)
+    }
+    if(length($0)>0) print $0
+  }' "${tmp}" | sed '/^\s*$/d'
+}
+
+# --- Get input text --- #
 # printf -v text '%b\n' "${argv[@]}"
 str="$(input "${argv[@]}")"
-text="$(echo "${str}" | ansifilter)"
+text="$(prepare_for_tts "${str}")"
 [[ -z "$(trim "${text}")" ]] && text="$(gum write)"
 
-out="$(mktemp -t XXXXX-tts.wav)"
-trap 'rm -f $out' EXIT
+# --- Prepare Piper command --- #
+piper_cmd=(piper-tts --quiet --model "${model}")
 
-spinner.sh &
+hashedText="$(printf '%s:%s' "${model}" "${text}" | b2sum)"
+hashedText="${hashedText%% *}"
+
+generateCache() {
+  mkdir -p "${PIPER_SAY_CACHE_DIR}" &>/dev/null
+  cat >"${cacheFile}" <<EOF
+${hashedText}
+${out_file:-"${PIPER_SAY_CACHE_DIR}/output.wav"}
+EOF
+}
+
+if [[ ! -s "${cacheFile}" || ! -f "${cacheFile}" || $(wc -l "${cacheFile}" | awk '{print $1}') != 2 ]]; then
+  generateCache
+else
+  declare -A cachedState
+  cachedState[text]="$(viewlines 1 "${cacheFile}")"
+  cachedState[out_file]="$(viewlines 2 "${cacheFile}")"
+
+  # Check if text is identical
+  # Check if cached output file exists and readable
+  if [[ "${hashedText}" == "${cachedState[text]}" && -f "${cachedState[out_file]}" && -r "${cachedState[out_file]}" ]]; then
+    # Check if the user specified an output file
+    if [[ -n "${out_file}" ]]; then
+      # Copy from cache to destination and exit
+      if [[ -f "${out_file}" ]]; then
+        if gum confirm "[WARNING] File '${out_file}' exists, do you want to overwrite?"; then
+          cp -f "${cachedState[out_file]}" "${out_file}" >/dev/null &&
+            terminate "Audio file copied from cache!"
+          terminate
+        fi
+      else
+        cp --update=none-fail "${cachedState[out_file]}" "${out_file}" &>/dev/null &&
+          terminate "Audio file copied from cache!"
+      fi
+    else
+      # Play from cache and exit
+      log-info "Audio playing from cache!"
+      "${playerCmd[@]}" "${cachedState[out_file]}" && exit 0
+    fi
+  fi
+fi
+
+if [[ -f "${out_file}" ]]; then
+  gum confirm "[WARNING] File '${out_file}' exists, do you want to overwrite?" || terminate
+fi
+
+spinner.sh "Generating..." &
 SPINNER_PID=$!
+trap 'killwait $SPINNER_PID' EXIT
 
-piper-tts \
-  --model "${model}" \
-  --output_file "${out}" \
-  <<<"${text}" &>/dev/null
+if [[ -n "${out_file}" ]]; then
 
-killwait "${SPINNER_PID}"
+  piper_cmd+=(--output_file "${out_file}")
 
-mpv "${out}" >/dev/null 2>&1
+  "${piper_cmd[@]}" <<<"${text}" >/dev/null
+  killwait "${SPINNER_PID}"
+
+  log-success "Audio generated successfully at ${out_file}"
+  gum confirm "Do you want to play the ouput?" && "${playerCmd[@]}" "${out_file}"
+else
+  out_file="${PIPER_SAY_CACHE_DIR}/output.wav"
+
+  "${piper_cmd[@]}" --output_file "${out_file}" <<<"${text}" >/dev/null
+  killwait "${SPINNER_PID}"
+
+  log-success "Audio generated successfully!"
+  "${playerCmd[@]}" "${out_file}"
+fi
+
+generateCache
