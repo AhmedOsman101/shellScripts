@@ -36,45 +36,60 @@ quiet="${cmdarg_cfg[quiet]}"
 WPM="${cmdarg_cfg[wpm]}"
 
 total=0
-limit=$((argc == 0 ? 1 : argc))
+processed_count=0
 
+
+# Determine input mode and validate
 if ! [[ -t 0 ]]; then
-  stdin_words="$(input "$@" | pandoc -t plain | wc -w | trim)"
-fi
+  # stdin mode: ignore file arguments
 
-i=0
-for (( ; i < limit; i++)); do
-  file=${argv[${i}]}
-
-  # Read input
-  if [[ -t 0 ]]; then
-    if [[ ! -f "${file}" || ! -r "${file}" ]]; then
-      log-warning "Cannot read file ${file} it's either protected or doesn't exist"
-      continue
-    fi
-    words="$(pandoc "${file}" -t plain | wc -w | trim)"
-  else
-    words="${stdin_words}"
-  fi
-
-  minutes=$(((words + WPM - 1) / WPM))
+  stdin_words="$(input "$@" | pandoc -t plain 2>/dev/null | wc -w | trim)"
+  minutes=$(((stdin_words + WPM - 1) / WPM))
   ((minutes < 1)) && minutes=1
   ((total += minutes))
+  ((++processed_count))
 
   if [[ "${quiet}" != true ]]; then
-    printf '%s min read' "${minutes}"
-    [[ -n "${file}" ]] && printf ' %s' "${file}"
-    printf '\n'
+    printf '%s min read\n' "${minutes}"
   else
     printf '%sm\n' "${minutes}"
   fi
-done
+else
+  # file mode: validate all files first
+  if ((argc == 0)); then
+    log-error "No files provided and stdin is not available"
+  fi
 
-if ((1 < limit)); then
+  # Validate all files before processing
+  for file in "${argv[@]}"; do
+    if [[ ! -r "${file}" ]]; then
+      log-error "Cannot read file ${file} it's either protected or doesn't exist"
+    fi
+  done
+
+  # Process valid files
+  for file in "${argv[@]}"; do
+    # Suppress pandoc warnings for unknown file formats (process substitution)
+    words="$(pandoc "${file}" -t plain 2>/dev/null | wc -w | trim)"
+
+    minutes=$(((words + WPM - 1) / WPM))
+    ((minutes < 1)) && minutes=1
+    ((total += minutes))
+    ((++processed_count))
+
+    if [[ "${quiet}" != true ]]; then
+      printf '%s min read %s\n' "${minutes}" "${file}"
+    else
+      printf '%sm\n' "${minutes}"
+    fi
+  done
+fi
+
+# Show TOTAL only if we processed multiple inputs
+if ((processed_count > 1)); then
   if [[ "${quiet}" != true ]]; then
     printf '%s min read TOTAL\n' "${total}"
   else
     printf '%sm TOTAL\n' "${total}"
   fi
 fi
-
