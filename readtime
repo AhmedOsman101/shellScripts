@@ -46,8 +46,7 @@ countWordsFromStdin() {
 }
 
 countWordsFromFile() {
-  local file="$1"
-  pandoc "${file}" -t plain 2>/dev/null | wc -w | trim
+  pandoc -t plain <"${file}" 2>/dev/null | wc -w | trim
 }
 
 calculateMinutes() {
