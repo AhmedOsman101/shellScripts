@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#                                      ▄▄               ██
+#                                      ██    ██         ▀▀
+#   ██▄████   ▄████▄    ▄█████▄   ▄███▄██  ███████    ████     ████▄██▄   ▄████▄
+#   ██▀      ██▄▄▄▄██   ▀ ▄▄▄██  ██▀  ▀██    ██         ██     ██ ██ ██  ██▄▄▄▄██
+#   ██       ██▀▀▀▀▀▀  ▄██▀▀▀██  ██    ██    ██         ██     ██ ██ ██  ██▀▀▀▀▀▀
+#   ██       ▀██▄▄▄▄█  ██▄▄▄███  ▀██▄▄███    ██▄▄▄   ▄▄▄██▄▄▄  ██ ██ ██  ▀██▄▄▄▄█
+#   ▀▀         ▀▀▀▀▀    ▀▀▀▀ ▀▀    ▀▀▀ ▀▀     ▀▀▀▀   ▀▀▀▀▀▀▀▀  ▀▀ ▀▀ ▀▀    ▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Accepts file(s) or raw text and outputs how long it takes to read in minutes.
+# --- DEPENDENCIES --- #
+# - pandoc
+# - wc
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg 'q' 'quiet' "Quiet output, prints only minutes to read"
+cmdarg 'w?' 'wpm' "Words per minute" '200'
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+quiet="${cmdarg_cfg[quiet]}"
+WPM="${cmdarg_cfg[wpm]}"
+
+total=0
+limit=$((argc == 0 ? 1 : argc))
+
+if ! [[ -t 0 ]]; then
+  stdin_words="$(input "$@" | pandoc -t plain | wc -w | trim)"
+fi
+
+i=0
+for (( ; i < limit; i++)); do
+  file=${argv[${i}]}
+
+  # Read input
+  if [[ -t 0 ]]; then
+    if [[ ! -f "${file}" || ! -r "${file}" ]]; then
+      log-warning "Cannot read file ${file} it's either protected or doesn't exist"
+      continue
+    fi
+    words="$(pandoc "${file}" -t plain | wc -w | trim)"
+  else
+    words="${stdin_words}"
+  fi
+
+  minutes=$(((words + WPM - 1) / WPM))
+  ((minutes < 1)) && minutes=1
+  ((total += minutes))
+
+  if [[ "${quiet}" != true ]]; then
+    printf '%s min read' "${minutes}"
+    [[ -n "${file}" ]] && printf ' %s' "${file}"
+    printf '\n'
+  else
+    printf '%sm\n' "${minutes}"
+  fi
+done
+
+if ((1 < limit)); then
+  if [[ "${quiet}" != true ]]; then
+    printf '%s min read TOTAL\n' "${total}"
+  else
+    printf '%sm TOTAL\n' "${total}"
+  fi
+fi
+
