@@ -35,61 +35,181 @@ cmdarg_parse "$@"
 quiet="${cmdarg_cfg[quiet]}"
 WPM="${cmdarg_cfg[wpm]}"
 
-total=0
-processed_count=0
+hasStdinRedirected() {
+  local stdin_source
+  stdin_source=$(readlink /proc/self/fd/0 2>/dev/null || echo "")
+  echo "DEBUG: stdin_source = '${stdin_source}'" >&2
+  [[ "${stdin_source}" != "/dev/null" ]]
+}
 
+countWordsFromStdin() {
+  pandoc -t plain 2>/dev/null | wc -w | trim
+}
 
-# Determine input mode and validate
-if ! [[ -t 0 ]]; then
-  # stdin mode: ignore file arguments
+countWordsFromFile() {
+  local file="$1"
+  pandoc "${file}" -t plain 2>/dev/null | wc -w | trim
+}
 
-  stdin_words="$(input "$@" | pandoc -t plain 2>/dev/null | wc -w | trim)"
-  minutes=$(((stdin_words + WPM - 1) / WPM))
+calculateMinutes() {
+  local words="$1"
+  local minutes=$(((words + WPM - 1) / WPM))
   ((minutes < 1)) && minutes=1
-  ((total += minutes))
-  ((++processed_count))
+  echo "${minutes}"
+}
+
+outputResult() {
+  local minutes="$1"
+  local label="$2"
 
   if [[ "${quiet}" != true ]]; then
-    printf '%s min read\n' "${minutes}"
+    if [[ -n "${label}" ]]; then
+      printf '%s min read %s\n' "${minutes}" "${label}"
+    else
+      printf '%s min read\n' "${minutes}"
+    fi
   else
     printf '%sm\n' "${minutes}"
   fi
-else
-  # file mode: validate all files first
-  if ((argc == 0)); then
-    log-error "No files provided and stdin is not available"
-  fi
+}
 
-  # Validate all files before processing
-  for file in "${argv[@]}"; do
-    if [[ ! -r "${file}" ]]; then
-      log-error "Cannot read file ${file} it's either protected or doesn't exist"
-    fi
-  done
-
-  # Process valid files
-  for file in "${argv[@]}"; do
-    # Suppress pandoc warnings for unknown file formats (process substitution)
-    words="$(pandoc "${file}" -t plain 2>/dev/null | wc -w | trim)"
-
-    minutes=$(((words + WPM - 1) / WPM))
-    ((minutes < 1)) && minutes=1
-    ((total += minutes))
-    ((++processed_count))
-
-    if [[ "${quiet}" != true ]]; then
-      printf '%s min read %s\n' "${minutes}" "${file}"
-    else
-      printf '%sm\n' "${minutes}"
-    fi
-  done
-fi
-
-# Show TOTAL only if we processed multiple inputs
-if ((processed_count > 1)); then
+outputTotal() {
   if [[ "${quiet}" != true ]]; then
     printf '%s min read TOTAL\n' "${total}"
   else
     printf '%sm TOTAL\n' "${total}"
   fi
-fi
+}
+
+processFile() {
+  local file="$1"
+
+  if [[ ! -r "${file}" ]]; then
+    log-warning "Cannot read: ${file}"
+    failed=$((failed + 1))
+    return 1
+  fi
+
+  local words
+  words=$(countWordsFromFile "${file}")
+
+  if [[ -z "${words}" || "${words}" -eq 0 ]]; then
+    log-warning "No readable content: ${file}"
+    processed=$((processed + 1))
+    return 0
+  fi
+
+  local minutes
+  minutes=$(calculateMinutes "${words}")
+
+  total=$((total + minutes))
+  processed=$((processed + 1))
+
+  outputResult "${minutes}" "${file}"
+}
+
+processStdin() {
+  local words
+  words=$(countWordsFromStdin <&0)
+
+  if [[ -z "${words}" || "${words}" -eq 0 ]]; then
+    log-warning "No readable content"
+    processed=$((processed + 1))
+    return 0
+  fi
+
+  local minutes
+  minutes=$(calculateMinutes "${words}")
+
+  total=$((total + minutes))
+  processed=$((processed + 1))
+
+  outputResult "${minutes}" ""
+}
+
+processStdinFromPeek() {
+  local data
+  local words
+
+  if data=$(hasStdinWithData); then
+    words=$(printf '%s\n' "${data}" | countWordsFromStdin)
+
+    if [[ -z "${words}" || "${words}" -eq 0 ]]; then
+      log-warning "No readable content"
+      processed=$((processed + 1))
+      return 0
+    fi
+
+    local minutes
+    minutes=$(calculateMinutes "${words}")
+
+    total=$((total + minutes))
+    processed=$((processed + 1))
+
+    outputResult "${minutes}" ""
+    return 0
+  fi
+
+  return 1
+}
+
+processMultipleInputs() {
+  for file in "${argv[@]}"; do
+    if [[ ! -r "${file}" ]]; then
+      log-warning "Cannot read: ${file}"
+      failed=$((failed + 1))
+      continue
+    fi
+
+    local words
+    words=$(countWordsFromFile "${file}")
+
+    if [[ -z "${words}" || "${words}" -eq 0 ]]; then
+      log-warning "No readable content: ${file}"
+      continue
+    fi
+
+    local minutes
+    minutes=$(calculateMinutes "${words}")
+
+    total=$((total + minutes))
+    processed=$((processed + 1))
+
+    outputResult "${minutes}" "${file}"
+  done
+}
+
+main() {
+  local total=0
+  local processed=0
+  local failed=0
+
+  if ((argc == 0)); then
+    if ! [[ -t 0 ]]; then
+      processStdin
+    else
+      terminate "No files provided and stdin is not available"
+    fi
+  else
+    if ! [[ -t 0 ]]; then
+      log-warning "Reading from stdin, ignoring file arguments"
+      processStdin
+    else
+      if ((argc == 1)); then
+        processFile "${argv[0]}"
+      else
+        processMultipleInputs
+      fi
+    fi
+  fi
+
+  if ((processed > 1)); then
+    outputTotal
+  fi
+
+  if ((failed > 0)); then
+    exit 1
+  fi
+}
+
+main "$@"
