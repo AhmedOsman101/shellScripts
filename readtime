@@ -38,7 +38,6 @@ WPM="${cmdarg_cfg[wpm]}"
 hasStdinRedirected() {
   local stdin_source
   stdin_source=$(readlink /proc/self/fd/0 2>/dev/null || echo "")
-  echo "DEBUG: stdin_source = '${stdin_source}'" >&2
   [[ "${stdin_source}" != "/dev/null" ]]
 }
 
@@ -192,7 +191,6 @@ main() {
     fi
   else
     if ! [[ -t 0 ]]; then
-      log-warning "Reading from stdin, ignoring file arguments"
       processStdin
     else
       if ((argc == 1)); then
