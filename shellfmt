@@ -70,8 +70,7 @@ formatted="$(shfmt "${tmpfile}" 2>/dev/null)"
 echo "${formatted}" >"${tmpfile}"
 
 if shellcheck -f diff "${tmpfile}" 2>/dev/null | patch -p0 --no-backup-if-mismatch "${tmpfile}" 2>/dev/null; then
-  # cat "${tmpfile}" | write_output
-  write_output <"${tmpfile}"
+  write_output < <(tabs2spaces "${tmpfile}")
 else
-  echo "${formatted}" | write_output
+  echo "${formatted}" | tabs2spaces | write_output
 fi
