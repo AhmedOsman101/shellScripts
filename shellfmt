@@ -69,8 +69,10 @@ formatted="$(shfmt "${tmpfile}" 2>/dev/null)"
 
 echo "${formatted}" >"${tmpfile}"
 
-if shellcheck -f diff "${tmpfile}" 2>/dev/null | patch -p0 --no-backup-if-mismatch "${tmpfile}" 2>/dev/null; then
-  write_output < <(tabs2spaces "${tmpfile}")
+fileDiff=$(shellcheck --rcfile="${HOME}/.config/.shellcheckrc" -f diff "${tmpfile}" 2>/dev/null || true)
+
+if echo "${fileDiff}" | patch -p0 --no-backup-if-mismatch "${tmpfile}" &>/dev/null; then
+  tabs2spaces <"${tmpfile}" | write_output
 else
   echo "${formatted}" | tabs2spaces | write_output
 fi
