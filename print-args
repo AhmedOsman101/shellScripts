@@ -20,5 +20,10 @@ trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/helpers.sh")"
 # ---  Main script logic --- #
-log-debug "$# args"
-(($#)) && printf '|%s|\n' "$@"
+if [[ $1 != '-q' ]]; then
+  log-debug "$# args"
+else
+  shift
+fi
+
+(($#)) && printf '[%s]\n' "$@"
