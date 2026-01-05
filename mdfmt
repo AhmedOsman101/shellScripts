@@ -35,7 +35,7 @@ target="${argv[0]:-.}"
 
 if [[ -d "${target}" ]] || ((argc == 0)); then
   # Populate the array directly from fd output
-  mapfile -t files < <(fd . -e md -e markdown --hidden "${target}")
+  mapfile -t files < <(fd-all . --exclude '.git' -e md -e markdown "${target}")
 else
   for file in "${argv[@]}"; do
     [[ "${file##*.}" =~ ^(md|markdown)$ ]] && files+=("${file}")
@@ -43,13 +43,14 @@ else
 fi
 
 # NOTE: ((0)) fails, while any other number succeeds
-((${#files[@]})) || log-error "No valid markdown files were passed"
+filesCount=${#files[@]}
+((filesCount > 0)) || log-error "No valid markdown files were passed"
 
-spinner.sh &
+spinner.sh "Formatting ${filesCount} files..." &
 SPINNER_PID=$!
 
-mdmath -q "${files[@]}" || log-warning "Failed to fix math in ${#file[@]} files"
-mdclean -q "${files[@]}" || log-warning "Failed to clean ${#file[@]} files"
+mdmath -q "${files[@]}" || log-warning "Failed to fix math in ${filesCount} files"
+mdclean -q "${files[@]}" || log-warning "Failed to clean ${filesCount} files"
 
 killwait "${SPINNER_PID}"
 
