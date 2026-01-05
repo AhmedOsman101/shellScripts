@@ -31,27 +31,32 @@ input() {
   echo "${str}"
 }
 
+logDebug() {
+  printMagenta "[DEBUG] $(input "$@")"
+}
+
+logSuccess() {
+  colorOnlyPrefix printGreen "SUCCESS" "$(input "$@")"
+}
+
 logInfo() {
-  local str="$(input "$@")"
-  printPurple "[INFO] ${str}"
+  colorOnlyPrefix printPurple "INFO" "$(input "$@")"
 }
 
 logWarning() {
-  local str="$(input "$@")"
-  printYellow "[WARNING] ${str}"
+  colorOnlyPrefix printYellow "WARNING" "$(input "$@")" 2
 }
 
 logError() {
-  local str="$(input "$@")"
-  printRed "[ERROR] ${str}" 1>&2
+  colorOnlyPrefix printRed "ERROR" "$(input "$@")" 2
 
   # Exit with failure code
   exit 1
 }
 
 logSafeError() {
-  local str="$(input "$@")"
-  printRed "[ERROR] ${str}" 1>&2
+  colorOnlyPrefix printRed "ERROR" "$(input "$@")" 2
+  return 1
 }
 
 terminate() {

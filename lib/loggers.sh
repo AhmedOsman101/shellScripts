@@ -277,14 +277,14 @@ printHex() {
   printRGB "${rgb}" "$@"
 }
 
-# colorOnlyPrefix "<COLOR_FUNC>" "<LEVEL>" "<MESSAGE>" [stderr]
+# colorOnlyPrefix "<COLOR_FUNC>" "<LEVEL>" "<MESSAGE>" [FD]
 colorOnlyPrefix() {
-  local colorFunc=$1
-  local level=$2
-  local message=$3
-  local output=${4:-1} # default stdout
+  local colorFunc level message fd
+  colorFunc="$1"
+  level="$2"
+  message="$3"
+  fd="${4:-1}"
 
-  # Print colored prefix and reset color, then append message in default color
-  ${colorFunc} -n "[${level}]" >&"${output}"
-  printf " %b\n" "${message}" >&"${output}"
+  ${colorFunc} -n "[${level}]" >&"${fd}"
+  printf " %b\n" "${message}" >&"${fd}"
 }
