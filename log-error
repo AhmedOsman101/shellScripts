@@ -29,7 +29,7 @@ eval "$(include "check-deps")"
 checkDeps "$0"
 # ---  Main script logic --- #
 # Print error message in red
-printRed "[ERROR] $(input "$@")" 1>&2
+colorOnlyPrefix printRed "ERROR" "$(input "$@")" 2
 
 if ! isInteractiveShell; then
   # Get parent PID (script that called log-error) and send SIGUSR1

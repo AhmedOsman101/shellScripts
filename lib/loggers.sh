@@ -276,3 +276,15 @@ printHex() {
   rgb="$(hex_to_rgb "${hex}")" || log-error "Invalid hex color"
   printRGB "${rgb}" "$@"
 }
+
+# colorOnlyPrefix "<COLOR_FUNC>" "<LEVEL>" "<MESSAGE>" [stderr]
+colorOnlyPrefix() {
+  local colorFunc=$1
+  local level=$2
+  local message=$3
+  local output=${4:-1} # default stdout
+
+  # Print colored prefix and reset color, then append message in default color
+  ${colorFunc} -n "[${level}]" >&"${output}"
+  printf " %b\n" "${message}" >&"${output}"
+}
