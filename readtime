@@ -15,6 +15,7 @@
 # Accepts file(s) or raw text and outputs how long it takes to read in minutes.
 # --- DEPENDENCIES --- #
 # - pandoc
+# - pdftotext
 # - wc
 # --- END SIGNATURE --- #
 
@@ -46,7 +47,15 @@ countWordsFromStdin() {
 }
 
 countWordsFromFile() {
-  pandoc -t plain <"${file}" 2>/dev/null | wc -w | trim
+  local temp
+  if [[ $(file --mime-type --brief "${file}") == "application/pdf" ]]; then
+    temp="$(mktemp)"
+    pdftotext -enc UTF-8 -eol unix -q "${file}" "${temp}"
+    mdclean -q "${temp}"
+    pandoc "${temp}" -t plain 2>/dev/null | wc -w | trim
+  else
+    pandoc "${file}" -t plain 2>/dev/null | wc -w | trim
+  fi
 }
 
 calculateMinutes() {
