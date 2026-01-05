@@ -14,10 +14,7 @@
 # --- DESCRIPTION --- #
 # Prints error messages in red with a '[ERROR] ' prefix to stderr, signals parent with SIGUSR1, and exits with failure
 # --- DEPENDENCIES --- #
-# - tput
-# - ps
-# - xargs
-# - kill
+#
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -28,8 +25,7 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 # ---  Main script logic --- #
-# Print error message in red
-colorOnlyPrefix printRed "ERROR" "$(input "$@")" 2
+log.sh "ERROR" "$(input "$@")"
 
 if ! isInteractiveShell; then
   # Get parent PID (script that called log-error) and send SIGUSR1

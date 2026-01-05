@@ -25,4 +25,4 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 # ---  Main script logic --- #
-colorOnlyPrefix printGreen "SUCCESS" "$(input "$@")"
+log.sh "SUCCESS" "$(input "$@")"

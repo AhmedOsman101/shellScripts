@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#
 # --- SCRIPT SIGNATURE --- #
 #
 # ▄▄▄▄                                       ██                  ▄▄▄▄
@@ -11,9 +12,9 @@
 #                      ▀████▀▀
 #
 # --- DESCRIPTION --- #
-# Prints blue info text
+# Prints purple info text
 # --- DEPENDENCIES --- #
-# - tput
+#
 # --- END SIGNATURE --- #
 
 eval "$(include "lib/helpers.sh")"
@@ -21,4 +22,4 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 # ---  Main script logic --- #
-colorOnlyPrefix printPurple "INFO" "$(input "$@")"
+log.sh "INFO" "$(input "$@")"
