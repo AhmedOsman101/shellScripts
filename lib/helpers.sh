@@ -316,3 +316,21 @@ randstr() {
   base64 /dev/urandom | tr -dc 'A-Za-z0-9' | head -c "${len}"
   printf '\n'
 }
+
+# Returns 0 if colors should be enabled, 1 otherwise
+supportsColor() {
+  # Explicit opt-out (standard)
+  [[ -n "${NO_COLOR}" ]] && return 1
+
+  # CI environments usually want plain logs
+  [[ -n "${CI}" ]] && return 1
+
+  # Must be a TTY
+  [[ ! -t 1 && ! -t 2 ]] && return 1
+
+  # TERM must support color
+  case "${TERM:-}" in
+  dumb | "") return 1 ;;
+  *) return 0 ;;
+  esac
+}

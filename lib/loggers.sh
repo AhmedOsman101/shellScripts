@@ -40,7 +40,9 @@ printer() {
   local str="$2"
   local noNewline="${3:-false}"
 
-  tput setaf "${color}"
+  if supportsColor; then
+    tput setaf "${color}"
+  fi
 
   printf '%b' "${str}"
   [[ "${noNewline}" != "true" ]] && printf '\n'
@@ -263,8 +265,12 @@ printRGB() {
 
   str="$(input "$@")"
 
-  printf "%b%b" "\e[38;2;${r};${g};${b}m" "${str}"
-  tput sgr0
+  if supportsColor; then
+    printf "%b%b" "\e[38;2;${r};${g};${b}m" "${str}"
+    tput sgr0
+  else
+    printf "%b" "${str}"
+  fi
 
   ((noNewLine)) || printf '\n'
 }
