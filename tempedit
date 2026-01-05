@@ -24,24 +24,23 @@ eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 
 checkDeps "$0"
+cmdarg "p" "preserve" "Keep the file after the editing is done, the default is deleting it."
 cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
 # ---  Main script logic --- #
 
-cmdarg "p" "preserve" "Keep the file after the editing is done, the default is deleting it."
-
-cmdarg_parse "$@"
-
 # Store option values
-preserve=${cmdarg_cfg['preserve']}
+preserve="${cmdarg_cfg['preserve']}"
 
-extension=${argv[0]:-md}
+extension="${argv[0]:-md}"
 
-EDITOR=${EDITOR:-nano}
+EDITOR="${EDITOR:-nano}"
 
+file=$(mktemp -t "tempedit-XXXXX.${extension}")
 if [[ ${preserve} == true ]]; then
-  file=$(mktemp "XXXXXX.${extension}")
+  clipcopy "${file}"
+  log-info "File name copied to clipboard!"
 else
-  file=$(mktemp -t "XXXXXX.${extension}")
   trap 'rm -f $file' EXIT
 fi
 
