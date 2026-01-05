@@ -21,4 +21,5 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 # ---  Main script logic --- #
-printPurple "[INFO] $(input "$@")"
+printPurple -n "[INFO] "
+printf '%b\n' "$(input "$@")"

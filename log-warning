@@ -25,4 +25,5 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 # ---  Main script logic --- #
-printYellow "[WARNING] $(input "$@")" 1>&2
+printYellow -n "[WARNING] " 1>&2
+printf '%b\n' "$(input "$@")" 1>&2
