@@ -33,10 +33,12 @@ cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "l" "list" "Lists available voices"
 cmdarg "v?" "voice" "The voice to use" ""
 cmdarg "o?" "output" "Optional output WAV file path" ""
+cmdarg "y" "yes" "Answer all questions with yes"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 list="${cmdarg_cfg['list']}"
 voice="${cmdarg_cfg['voice']}"
+acceptAll="${cmdarg_cfg['yes']}"
 out_file="${cmdarg_cfg['output']}"
 
 PIPER_VOICES_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/piper"
@@ -103,7 +105,7 @@ checkCache() {
         fi
 
         # Different content - ask to overwrite
-        if gum confirm "[WARNING] File '${out_file}' exists, do you want to overwrite?"; then
+        if [[ "${acceptAll}" == "true" ]] || gum confirm "[WARNING] File '${out_file}' exists, do you want to overwrite?"; then
           cp "${cachedState[audio_file]}" "${out_file}" >/dev/null &&
             terminate "Audio file copied from cache!"
         fi
@@ -116,7 +118,8 @@ checkCache() {
     else
       # Play from cache
       log-info "Audio playing from cache!"
-      "${playerCmd[@]}" "${cachedState[audio_file]}" && exit 0
+      "${playerCmd[@]}" "${cachedState[audio_file]}" || terminate
+      exit 0
     fi
   fi
 
@@ -175,7 +178,9 @@ if ! checkCache; then
 fi
 
 if [[ -f "${out_file}" ]]; then
-  gum confirm "[WARNING] File '${out_file}' exists, do you want to overwrite?" || terminate
+  [[ "${acceptAll}" == "true" ]] || {
+    gum confirm "[WARNING] File '${out_file}' exists, do you want to overwrite?" || terminate
+  }
 fi
 
 spinner.sh "Generating..." &
@@ -187,7 +192,9 @@ if [[ -n "${out_file}" ]]; then
   killwait "${SPINNER_PID}"
 
   log-success "Audio generated successfully at ${out_file}"
-  gum confirm "Do you want to play output?" && "${playerCmd[@]}" "${out_file}"
+  [[ "${acceptAll}" == "true" ]] || {
+    gum confirm "Do you want to play output?" && "${playerCmd[@]}" "${out_file}"
+  }
 else
   out_file="${PIPER_SAY_CACHE_DIR}/output.wav"
 
