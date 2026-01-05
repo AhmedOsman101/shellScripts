@@ -12,7 +12,7 @@
 #                                ██
 #
 # --- DESCRIPTION --- #
-# Creates a temporary file to edit with the given extesnsion
+# Creates a temporary file to edit with the given extension
 # --- DEPENDENCIES --- #
 # - nano
 # --- END SIGNATURE --- #
@@ -28,20 +28,27 @@ cmdarg "p" "preserve" "Keep the file after the editing is done, the default is d
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
-
-# Store option values
 preserve="${cmdarg_cfg['preserve']}"
-
 extension="${argv[0]:-md}"
 
 EDITOR="${EDITOR:-nano}"
 
-file=$(mktemp -t "tempedit-XXXXX.${extension}")
+# Validate the extension is safe (no path components)
+if [[ "${extension}" == */* ]]; then
+  log-error "Extension cannot contain path separators"
+fi
+
+file="$(mktemp -t "tempedit-XXXXX.${extension}")"
 if [[ ${preserve} == true ]]; then
   clipcopy "${file}"
   log-info "File name copied to clipboard!"
 else
-  trap 'rm -f $file' EXIT
+  trap 'rm -f "$file"' EXIT
 fi
 
-${EDITOR} "${file}"
+# Validate EDITOR exists
+if ! command -v "${EDITOR}" &>/dev/null; then
+  log-error "Editor '${EDITOR}' not found"
+else
+  "${EDITOR}" "${file}"
+fi
