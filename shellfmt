@@ -45,7 +45,7 @@ read_input() {
     if [[ ! -f "${file}" ]]; then
       log-error "File not found: ${file}"
     fi
-    cat "${file}"
+    cat -- "${file}"
   else
     input
   fi
@@ -63,7 +63,8 @@ input="$(read_input)"
 
 echo "${input}" >"${tmpfile}"
 
-formatted="$(shfmt "${tmpfile}" 2>/dev/null)"
+logFile="/tmp/shellfmt.log"
+formatted="$(shfmt "${tmpfile}" 2>"${logFile}" || true)"
 
 [[ -z "${formatted}" ]] && formatted="${input}"
 
@@ -76,3 +77,9 @@ if echo "${fileDiff}" | patch -p0 --no-backup-if-mismatch "${tmpfile}" &>/dev/nu
 else
   echo "${formatted}" | tabs2spaces | write_output
 fi
+
+while IFS= read -r line; do
+  log-error --safe "${line}"
+done <"${logFile}"
+
+exit 0
