@@ -25,13 +25,37 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 # ---  Main script logic --- #
+isNoKill=false
+isNoError=false
+
+while ((0 < $#)); do
+  case "$1" in
+  --no-kill)
+    isNoKill=true
+    shift
+    ;;
+  --no-error)
+    isNoError=true
+    shift
+    ;;
+  --safe)
+    isNoKill=true
+    isNoError=true
+    shift
+    ;;
+  *) break ;; # Stop processing flags if an unknown argument is met
+  esac
+done
+
 log.sh "ERROR" "$(input "$@")"
 
-if ! isInteractiveShell; then
+if ! isInteractiveShell && [[ "${isNoKill}" == false ]]; then
   # Get parent PID (script that called log-error) and send SIGUSR1
   kill -SIGUSR1 "${PPID}" &>/dev/null || true
   wait "${PPID}" &>/dev/null || true
 fi
+
+[[ "${isNoError}" == true ]] && exit 0
 
 # Exit with failure code (fallback if signal is ignored)
 exit 1
