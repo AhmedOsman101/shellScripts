@@ -79,7 +79,7 @@ outputResult() {
 
   if [[ "${quiet}" != true ]]; then
     if [[ -n "${label}" ]]; then
-      printf '%s min read %s\n' "${minutes}" "${label}"
+      printf '%s min read %s\n' "${minutes}" "$(humanQuote "${label}")"
     else
       printf '%s min read\n' "${minutes}"
     fi
