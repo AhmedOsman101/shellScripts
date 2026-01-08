@@ -44,7 +44,7 @@ printer() {
     tput setaf "${color}"
   fi
 
-  printf '%b' "${str}"
+  printf '%s' "${str}"
   [[ "${noNewline}" != "true" ]] && printf '\n'
 
   tput sgr0
@@ -266,10 +266,10 @@ printRGB() {
   str="$(input "$@")"
 
   if supportsColor; then
-    printf "%b%b" "\e[38;2;${r};${g};${b}m" "${str}"
+    printf "%b%s" "\e[38;2;${r};${g};${b}m" "${str}"
     tput sgr0
   else
-    printf "%b" "${str}"
+    printf "%s" "${str}"
   fi
 
   ((noNewLine)) || printf '\n'
@@ -292,5 +292,5 @@ colorOnlyPrefix() {
   fd="${4:-1}"
 
   ${colorFunc} -n "[${level}]" >&"${fd}"
-  printf " %b\n" "${message}" >&"${fd}"
+  printf " %s\n" "${message}" >&"${fd}"
 }
