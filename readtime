@@ -31,10 +31,18 @@ checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg 'q' 'quiet' "Quiet output, prints only minutes to read"
 cmdarg 'w?' 'wpm' "Words per minute" '200'
+cmdarg 's' 'sort' "Sort the output (ascending)"
+cmdarg 'r' 'reverse' "Sort the output (descending)"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 quiet="${cmdarg_cfg[quiet]}"
 WPM="${cmdarg_cfg[wpm]}"
+TOTAL=0
+PROCESSED=0
+sortMode='none'
+
+[[ "${cmdarg_cfg[sort]}" == "true" ]] && sortMode='asc'
+[[ "${cmdarg_cfg[reverse]}" == "true" ]] && sortMode='desc'
 
 hasStdinRedirected() {
   local stdin_source
@@ -81,11 +89,14 @@ outputResult() {
 }
 
 outputTotal() {
-  if [[ "${quiet}" != true ]]; then
-    printf '%s min read TOTAL\n' "${total}"
-  else
-    printf '%sm TOTAL\n' "${total}"
+  if ((PROCESSED > 1)); then
+    if [[ "${quiet}" != true ]]; then
+      printf '%s min read TOTAL\n' "${TOTAL}"
+    else
+      printf '%sm TOTAL\n' "${TOTAL}"
+    fi
   fi
+  return 0
 }
 
 processFile() {
@@ -209,13 +220,18 @@ main() {
     fi
   fi
 
-  if ((processed > 1)); then
-    outputTotal
-  fi
+  TOTAL="${total}"
+  PROCESSED="${processed}"
 
   if ((failed > 0)); then
     exit 1
   fi
 }
 
-main "$@"
+case "${sortMode}" in
+asc) main "$@" > >(sort -h) ;;
+desc) main "$@" > >(sort -hr) ;;
+? | *) main "$@" ;;
+esac
+
+sleep 0.1 && outputTotal
