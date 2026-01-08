@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 
 # ---  Main script logic --- #
+sanitizedPrint() {
+  local str="$1"
+  str=${str//\\n/$'\n'}
+  str=${str//\\t/$'\t'}
+  str=${str//\\a/$'\a'}
+  printf '%s' "${str}"
+}
 
 # Convert hex to RGB
 hex_to_rgb() {
@@ -44,7 +51,7 @@ printer() {
     tput setaf "${color}"
   fi
 
-  printf '%s' "${str}"
+  sanitizedPrint "${str}"
   [[ "${noNewline}" != "true" ]] && printf '\n'
 
   tput sgr0
@@ -266,10 +273,11 @@ printRGB() {
   str="$(input "$@")"
 
   if supportsColor; then
-    printf "%b%s" "\e[38;2;${r};${g};${b}m" "${str}"
+    printf "%b" "\e[38;2;${r};${g};${b}m"
+    sanitizedPrint "${str}"
     tput sgr0
   else
-    printf "%s" "${str}"
+    sanitizedPrint "${str}"
   fi
 
   ((noNewLine)) || printf '\n'
@@ -292,5 +300,5 @@ colorOnlyPrefix() {
   fd="${4:-1}"
 
   ${colorFunc} -n "[${level}]" >&"${fd}"
-  printf " %s\n" "${message}" >&"${fd}"
+  sanitizedPrint " ${message}\n" >&"${fd}"
 }

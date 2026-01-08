@@ -334,3 +334,30 @@ supportsColor() {
   *) return 0 ;;
   esac
 }
+
+shellQuote() {
+  printf '%q' "$1"
+}
+
+shellQoute() { shellQuote "$1"; }
+
+humanQuote() {
+  local str=$1
+
+  # Escape backslashes, double quotes, control chars
+  str=${str//\\/\\\\}   # backslash
+  str=${str//\"/\\\"}   # double quote
+  str=${str//$'\n'/\\n} # newline
+  str=${str//$'\t'/\\t} # tab
+  str=${str//$'\r'/\\r} # carriage return
+
+  # Quote if: contains whitespace, starts with dash, or contains only non-alnum chars
+  if [[ "${str}" =~ [[:space:]] || "${str}" == -* || ! "${str}" =~ [a-zA-Z0-9_.-] ]]; then
+    printf '"%s"' "${str}"
+  else
+    # Otherwise return normally
+    printf '%s' "${str}"
+  fi
+}
+
+humanQoute() { humanQuote "$1"; }
