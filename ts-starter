@@ -118,27 +118,60 @@ addTasks() {
 
 # --- Package manager handlers --- #
 handleNpm() {
+  if is-git-repo --safe >/dev/null 2>&1; then
+    npm install --save-dev husky && npx husky init
+    rm '.husky/pre-commit' &>/dev/null || true
+  fi
   npm install -D -E "@biomejs/biome@${biomeVersion}"
   addScripts
 }
 
 handlePnpm() {
+  if is-git-repo --safe >/dev/null 2>&1; then
+    pnpm add --save-dev husky && pnpm exec husky init
+    rm '.husky/pre-commit' &>/dev/null || true
+  fi
+
   pnpm add -D -E "@biomejs/biome@${biomeVersion}"
   addScripts
   pnpm approve-builds
 }
 
 handleYarn() {
+  if is-git-repo --safe >/dev/null 2>&1; then
+    yarn add --dev husky && {
+      npx husky init || log-error "See the docs for husky at https://typicode.github.io/husky/get-started.html"
+    }
+    rm '.husky/pre-commit' &>/dev/null || true
+  fi
+
   yarn add -D -E "@biomejs/biome@${biomeVersion}"
   addScripts
 }
 
 handleBun() {
+  if is-git-repo --safe >/dev/null 2>&1; then
+    bun add --dev husky && bunx husky init
+    rm '.husky/pre-commit' &>/dev/null || true
+  fi
+
   bun add -D -E "@biomejs/biome@${biomeVersion}"
   addScripts
 }
 
 handleDeno() {
+  if is-git-repo --safe >/dev/null 2>&1; then
+    deno add --dev npm:husky || true
+    if [[ ! -f "package.json" ]]; then
+      pnpm init
+      pnpm dlx husky init || true
+      rm "package.json"
+    else
+      pnpm dlx husky init || true
+    fi
+    rm '.husky/pre-commit' &>/dev/null || true
+  fi
+
   deno add -D "npm:@biomejs/biome@${biomeVersion}"
   if [[ -f "deno.json" ]]; then
     addTasks "deno.json"
@@ -166,39 +199,16 @@ fi
 
 eval "${cmd}" || terminate
 
-if is-git-repo --safe >/dev/null 2>&1; then
-  case "${pkgMgr}" in
-  npm)
-    npm install --save-dev husky && npx husky init
-    ;;
-  pnpm)
-    pnpm add --save-dev husky && pnpm exec husky init
-    ;;
-  yarn)
-    yarn add --dev husky && {
-      npx husky init || log-error "See the docs for husky at https://typicode.github.io/husky/get-started.html"
-    }
-    ;;
-  bun)
-    bun add --dev husky && bunx husky init
-    ;;
-  deno)
-    deno add --dev npm:husky || true
-    if [[ ! -f "package.json" ]]; then
-      pnpm init
-      pnpm dlx husky init || true
-      printf '' >'.husky/pre-commit'
-      rm "package.json"
-    else
-      pnpm dlx husky init || true
-    fi
-    ;;
-  *)
-    log-warning "Unknown package manager: ${pkgMgr}"
-    return 1
-    ;;
-  esac
+case "${pkgMgr}" in
+npm) handleNpm ;;
+pnpm) handlePnpm ;;
+yarn) handleYarn ;;
+bun) handleBun ;;
+deno) handleDeno ;;
+*) log-warning "Unknown package manager: ${pkgMgr}" && return 1 ;;
+esac
 
+if is-git-repo --safe >/dev/null 2>&1; then
   safeFetchRaw "AhmedOsman101/shellScripts" "templates/pre-commit-${pkgMgr}.sh" ".husky/pre-commit"
 fi
 
