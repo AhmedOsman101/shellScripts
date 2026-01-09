@@ -46,15 +46,16 @@ printer() {
   local color="$1"
   local str="$2"
   local noNewline="${3:-false}"
+  local message newLine=''
+  message="$(sanitizedPrint "${str}")"
+
+  [[ "${noNewline}" == "false" ]] && newLine='\n'
 
   if supportsColor; then
-    tput setaf "${color}"
+    printf '\e[%dm%s\e[0m%b' "$((color + 30))" "${message}" "${newLine}"
+  else
+    printf '%s%b' "${message}" "${newLine}"
   fi
-
-  sanitizedPrint "${str}"
-  [[ "${noNewline}" != "true" ]] && printf '\n'
-
-  tput sgr0
 }
 
 printBlack() {
@@ -254,8 +255,10 @@ printPurple() {
 }
 
 printRGB() {
-  local rgb r g b noNewLine=0
-  (($# < 1)) && log-error "Missing color code"
+  local rgb r g b message
+  local newLine='\n'
+
+  (($#)) || log-error "Missing color code"
 
   rgb=$1
   shift
@@ -267,20 +270,17 @@ printRGB() {
 
   if [[ "$1" == "-n" ]]; then
     shift
-    noNewLine=1
+    newLine=''
   fi
 
   str="$(input "$@")"
+  message="$(sanitizedPrint "${str}")"
 
   if supportsColor; then
-    printf "%b" "\e[38;2;${r};${g};${b}m"
-    sanitizedPrint "${str}"
-    tput sgr0
+    printf "\e[38;2;%d;%d;%dm%s\e[0m%b" "${r}" "${g}" "${b}" "${message}" "${newLine}"
   else
-    sanitizedPrint "${str}"
+    printf '%s%b' "${message}" "${newLine}"
   fi
-
-  ((noNewLine)) || printf '\n'
 }
 
 printHex() {
@@ -299,6 +299,5 @@ colorOnlyPrefix() {
   message="$3"
   fd="${4:-1}"
 
-  ${colorFunc} -n "[${level}]" >&"${fd}"
-  sanitizedPrint " ${message}\n" >&"${fd}"
+  printf '%b %s\n' "$(${colorFunc} -n "[${level}]")" "$(sanitizedPrint "${message}")" >&"${fd}"
 }
