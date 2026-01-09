@@ -26,43 +26,56 @@ eval "$(include "lib/helpers.sh")"
 eval "$(include "check-deps")"
 
 checkDeps "$0"
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "q" "quiet" "Supress output"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 # Check if the correct number of arguments is passed
-if ((argc < 1)); then
+if ! ((argc)); then
   cmdarg_usage
   exit 1
 fi
 
 isQuiet="${cmdarg_cfg['quiet']}"
 
-for file in "${argv[@]}"; do
-  # Check if the file exists
-  if [[ ! -f ${file} ]]; then
-    log-warning "File '${file}' was not found!"
-    continue
-  fi
+# Count occurrences of all delimiters to be replaced
+total_count_display=$(grep -c '\\\[' "${argv[@]}" || true)
+total_count_inline=$(grep -c '\\(' "${argv[@]}" || true)
+total_count=$((total_count_display + total_count_inline))
 
-  # Count occurrences of all delimiters to be replaced
-  count_display=$(grep -o '\\\[' "${file}" | wc -l || true)
-  count_inline=$(grep -o '\\(' "${file}" | wc -l || true)
+main() {
+  local file count count_display count_inline
+  for file in "$@"; do
+    # Check if the file exists
+    if [[ ! -f ${file} ]]; then
+      log-warning "File '${file}' was not found!"
+      continue
+    fi
 
-  count=$((count_display + count_inline))
+    count_display=$(grep -c '\\\[' "${file}" || true)
+    count_inline=$(grep -c '\\(' "${file}" || true)
+    count=$((count_display + count_inline))
 
-  if ! ((count)); then
-    [[ "${isQuiet}" == true ]] || log-info "Nothing to do!"
-    continue
-  fi
+    if ! ((count)); then
+      [[ "${isQuiet}" == true ]] || log-info "Nothing to do!"
+      continue
+    fi
 
-  # Perform the replacements
-  sed -i -e 's~\\\[~$$~g' \
-    -e 's~\\\]~$$~g' \
-    -e 's~ \\)~$~g' \
-    -e 's~\\( ~$~g' \
-    -e 's~\\(~$~g' \
-    -e 's~\\)~$~g' "${file}"
+    # Perform the replacements
+    sed -i -e 's~\\\[~$$~g' \
+      -e 's~\\\]~$$~g' \
+      -e 's~ \\)~$~g' \
+      -e 's~\\( ~$~g' \
+      -e 's~\\(~$~g' \
+      -e 's~\\)~$~g' "${file}"
+  done
+}
 
-  [[ "${isQuiet}" == true ]] || log-success "${count} Replacements made"
-done
+export -f main
+export isQuiet
+
+printf '%s\0' "${argv[@]}" | parallel -0 -j "$(nproc 2>/dev/null || echo 1)" -k -m --tty main
+
+[[ "${isQuiet}" == true ]] || log-success "${total_count} Replacements made"

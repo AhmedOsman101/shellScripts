@@ -16,6 +16,7 @@
 # --- DEPENDENCIES --- #
 # - sponge (moreutils)
 # - perl
+# - parallel
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -33,33 +34,42 @@ cmdarg_parse "$@"
 # ---  Main script logic --- #
 isQuiet="${cmdarg_cfg['quiet']}"
 
-for file in "${argv[@]}"; do
-  if [[ ! -f ${file} ]]; then
-    log-warning "File '${file}' was not found!"
-    continue
-  fi
+main() {
+  local file
+  for file in "$@"; do
 
-  # Remove form-feed characters
-  tr -d '\f' <"${file}" | sponge "${file}"
+    if [[ ! -f ${file} ]]; then
+      log-warning "File '${file}' was not found!"
+      continue
+    fi
 
-  # Strip LTR/RTL and directional Unicode markers
-  perl -CSD -pe 's/[\x{202A}-\x{202E}\x{200F}\x{2066}-\x{2069}]//g' "${file}" | sponge "${file}"
+    # Remove form-feed characters
+    tr -d '\f' <"${file}" | sponge "${file}"
 
-  # 1. Normalize bullets and arrows
-  # 2. Remove bold from headers
-  # 3. Normalize qoutes (single and double)
-  # 4. Remove Arabic college name
-  # 5. Remove preceding horizontal rule (---) before H2 only
-  sed -E -i \
-    -e 's/→/->/g' \
-    -e 's/•[[:space:]]*/- /g' \
-    -e 's/^(#{1,6}[[:space:]]+)\*\*(.+)\*\*$/\1\2/' \
-    -e '/^#{1,6}[[:space:]]/s/\*\*([^*]+)\*\*/\1/g' \
-    -e "s|[‘’]|'|g" \
-    -e 's|[“”]|"|g' \
-    -e 's|كلية تكنولوجيا الصناعة والطاقة||g' \
-    -e ':a; /---[[:space:]]*$/ { N; /\n[[:space:]]*$/ ba; s/---\n([[:space:]]*\n)*##[[:space:]]/\n## /; P; D }' \
-    "${file}"
+    # Strip LTR/RTL and directional Unicode markers
+    perl -CSD -pe 's/[\x{202A}-\x{202E}\x{200F}\x{2066}-\x{2069}]//g' "${file}" | sponge "${file}"
 
-  [[ "${isQuiet}" == true ]] || log-success "file '${file}' was cleaned successfully"
-done
+    # 1. Normalize bullets and arrows
+    # 2. Remove bold from headers
+    # 3. Normalize qoutes (single and double)
+    # 4. Remove Arabic college name
+    # 5. Remove preceding horizontal rule (---) before H2 only
+    sed -E -i \
+      -e 's/→/->/g' \
+      -e 's/[•◦][[:space:]]*/- /g' \
+      -e 's/^(#{1,6}[[:space:]]+)\*\*(.+)\*\*$/\1\2/' \
+      -e '/^#{1,6}[[:space:]]/s/\*\*([^*]+)\*\*/\1/g' \
+      -e "s|[‘’]|'|g" \
+      -e 's|[“”]|"|g' \
+      -e 's|كلية تكنولوجيا الصناعة والطاقة||g' \
+      -e ':a; /---[[:space:]]*$/ { N; /\n[[:space:]]*$/ ba; s/---\n([[:space:]]*\n)*##[[:space:]]/\n## /; P; D }' \
+      "${file}"
+
+    [[ "${isQuiet}" == true ]] || log-success "file '${file}' was cleaned successfully"
+  done
+}
+
+export -f main
+export isQuiet
+
+printf '%s\0' "${argv[@]}" | parallel -0 -j "$(nproc 2>/dev/null || echo 1)" -k -m --tty main

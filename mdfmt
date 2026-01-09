@@ -35,7 +35,7 @@ target="${argv[0]:-.}"
 
 if [[ -d "${target}" ]] || ((argc == 0)); then
   # Populate the array directly from fd output
-  mapfile -t files < <(fd-all . --exclude '.git' -e md -e markdown "${target}")
+  mapfile -t files < <(fd.sh . -I -e md -e markdown "${target}")
 else
   for file in "${argv[@]}"; do
     [[ "${file##*.}" =~ ^(md|markdown)$ ]] && files+=("${file}")
