@@ -264,9 +264,9 @@ printRGB() {
   shift
   read -r r g b < <(echo "${rgb}")
 
-  isUnsignedInt "${r}" || log-error "Invalid Red code"
-  isUnsignedInt "${g}" || log-error "Invalid Green code"
-  isUnsignedInt "${b}" || log-error "Invalid Blue code"
+  isPositiveInt "${r}" || log-error "Invalid Red code"
+  isPositiveInt "${g}" || log-error "Invalid Green code"
+  isPositiveInt "${b}" || log-error "Invalid Blue code"
 
   if [[ "$1" == "-n" ]]; then
     shift

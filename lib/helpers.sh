@@ -89,7 +89,7 @@ getPackageManager() {
 
   # Parse /etc/os-release to determine the distribution
   if [[ -f /etc/os-release ]]; then
-    . /etc/os-release
+    source /etc/os-release
   else
     logError "/etc/os-release not found."
   fi
@@ -199,7 +199,7 @@ getPackageManager() {
       fi
       ;;
     *)
-      logError "Unsupported distribution: ${PRETTY_NAME}" >&2
+      logError "Unsupported distribution: ${PRETTY_NAME:-${NAME:-Unknown}}" >&2
       ;;
     esac
     ;;
@@ -214,25 +214,17 @@ Trim() {
   echo "${str}" | sed -e "s|^[[:space:]]*||" -e "s|[[:space:]]*$||"
 }
 
-isInt() { [[ $1 =~ ^[+-]?[0-9]+$ ]]; }
-isUnsignedInt() { [[ "$1" != -* && "$1" =~ ^[0-9]+$ ]]; }
-
-isFloat() { [[ $1 =~ ^[+-]?([0-9]*\.[0-9]+|[0-9]+)$ ]]; }
-isUnsignedFloat() { [[ "$1" != -* && $1 =~ ^([0-9]*\.[0-9]+|[0-9]+)$ ]]; }
-
 # NOTE: zero is considered positive
-isPositive() {
-  local num="$1"
-  [[ -z "${num}" ]] && return 1
-  isUnsignedFloat "${num}" || return 1
-}
+isInt() { [[ "$1" =~ ^[+-]?[0-9]+$ ]]; }
+isPositiveInt() { [[ "$1" =~ ^[0-9]+$ ]]; }
+isNegativeInt() { [[ "$1" =~ ^- ]] && isInt "$1"; }
 
-isNegative() {
-  local num="$1"
-  [[ -z "${num}" ]] && return 1
-  isFloat "${num}" || return 1
-  [[ $(echo "${num} < 0" | bc -l) -eq 1 ]]
-}
+isFloat() { [[ "$1" =~ ^[+-]?([0-9]*\.[0-9]+|[0-9]+)$ ]]; }
+isPositiveFloat() { [[ "$1" =~ ^([0-9]*\.[0-9]+|[0-9]+)$ ]]; }
+isNegativeFloat() { [[ "$1" =~ ^- ]] && isFloat "$1"; }
+
+isPositive() { isPositiveFloat "$1"; }
+isNegative() { isNegativeFloat "$1"; }
 
 isInteractiveShell() {
   [[ -t 0 ]] && [[ -t 1 ]] && ps -o stat= -p "${PPID}" | grep -q 's'
@@ -242,6 +234,7 @@ benchmark() {
   local start=$(date +%s.%N)
 
   local iters="$1"
+  isPositiveInt "${iters}" || return 1
   shift
 
   tmp="$(mktemp)"
@@ -259,7 +252,7 @@ benchmark() {
       if(NR == 1 || $1 > max) max=$1
       }
       END {
-      printf "runs: %d\navg: %.6fs\nmin: %.6fs\nmax: %.6fs\n", NR, sum / NR, min, max
+      printf "runs: %d\navg: %.6fs\nmin: %.6fs\nmax: %.6fs\n", NR / 2, sum / NR, min, max
     }
   ' "${tmp}"
 
@@ -268,6 +261,8 @@ benchmark() {
 
 eraseLine() {
   n="${1:-1}"
+  isPositiveInt "${n}" || return 1
+
   for ((i = 0; i < n; i++)); do
     printf '\r'
     printf '\e[1A'
@@ -289,10 +284,9 @@ mapColor() {
     [gray]=8
     [grey]=8
   )
+
   if [[ -v "colors[${color}]" ]]; then
-    echo "${colors[${color}]}"
-  else
-    return 1
+    echo "3${colors[${color}]}"
   fi
 }
 
@@ -311,10 +305,37 @@ touch() {
   done
 }
 
-randstr() {
+randStr() {
   local len="${1:-16}"
-  base64 /dev/urandom | tr -dc 'A-Za-z0-9' | head -c "${len}"
+  isPositiveInt "${len}" || return 1
+  ((len > 0)) || return 1
+
+  # Secure random string using kernel RNG
+  tr -dc 'A-Za-z0-9' </dev/urandom | head -c "${len}"
   printf '\n'
+}
+
+randRange() {
+  local min=${1:-1}
+  local max=${2:-10}
+
+  isInt "${min}" || return 1
+  isInt "${max}" || return 1
+
+  ((min <= max)) || return 1
+
+  local range=$((max - min + 1))
+  ((range <= 32768)) || return 1
+
+  local limit=$((32768 / range * range))
+  local r
+
+  while :; do
+    r=${RANDOM}
+    ((r < limit)) && break
+  done
+
+  printf '%d\n' $((min + r % range))
 }
 
 # Returns 0 if colors should be enabled, 1 otherwise
