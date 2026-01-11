@@ -56,7 +56,9 @@ main() {
     # 5. Remove preceding horizontal rule (---) before H2 only
     sed -E -i \
       -e 's/→/->/g' \
-      -e 's/[•◦][[:space:]]*/- /g' \
+      -e 's/←/<-/g' \
+      -e 's/↔/<->/g' \
+      -e 's/[•◦][[:space:]]*/- /g' \
       -e 's/^(#{1,6}[[:space:]]+)\*\*(.+)\*\*$/\1\2/' \
       -e '/^#{1,6}[[:space:]]/s/\*\*([^*]+)\*\*/\1/g' \
       -e "s|[‘’]|'|g" \
@@ -72,4 +74,4 @@ main() {
 export -f main
 export isQuiet
 
-printf '%s\0' "${argv[@]}" | parallel -0 -j "$(nproc 2>/dev/null || echo 1)" -k -m --tty main
+printf '%s\0' "${argv[@]}" | parallel -0 -j "$(nproc)" -k -m --tty main

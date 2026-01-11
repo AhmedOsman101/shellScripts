@@ -46,7 +46,7 @@ fi
 filesCount=${#files[@]}
 ((filesCount > 0)) || log-error "No valid markdown files were passed"
 
-spinner.sh "Formatting ${filesCount} files..." &
+spinner.sh "Formatting ${filesCount} files..." 1>&2 &
 SPINNER_PID=$!
 
 mdmath -q "${files[@]}" || log-warning "Failed to fix math in ${filesCount} files"
