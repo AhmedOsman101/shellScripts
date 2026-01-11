@@ -13,9 +13,10 @@
 #
 # --- DESCRIPTION --- #
 # Replaces LaTeX math delimiters with Obsidian's delimiters in a given file
-# Usage: mdmath <file>
+# Usage: mdmath <files>
 # --- DEPENDENCIES --- #
-#
+# - grep
+# - parallel
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -41,8 +42,12 @@ fi
 isQuiet="${cmdarg_cfg['quiet']}"
 
 # Count occurrences of all delimiters to be replaced
-total_count_display=$(grep -c '\\\[' "${argv[@]}" || true)
-total_count_inline=$(grep -c '\\(' "${argv[@]}" || true)
+get_total_count() {
+  grep -hc "$1" "${argv[@]}" 2>/dev/null | awk '{s+=$1} END {print s}' || printf '0'
+}
+
+total_count_display=$(get_total_count '\\\[' | tr -d '\n')
+total_count_inline=$(get_total_count '\\(' | tr -d '\n')
 total_count=$((total_count_display + total_count_inline))
 
 main() {
@@ -76,6 +81,6 @@ main() {
 export -f main
 export isQuiet
 
-printf '%s\0' "${argv[@]}" | parallel -0 -j "$(nproc 2>/dev/null || echo 1)" -k -m --tty main
+printf '%s\0' "${argv[@]}" | parallel -0 -j "$(nproc)" -k -m --tty main
 
 [[ "${isQuiet}" == true ]] || log-success "${total_count} Replacements made"
