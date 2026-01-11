@@ -62,7 +62,7 @@ fi
 
 # Normalize `origin/` input
 for i in "${!targetBranches[@]}"; do
-  targetBranches[i]=$(echo "${targetBranches[${i}]}" | replace "origin/" '' | trim)
+  targetBranches[i]=$(echo "${targetBranches[${i}]}" | replace.sh "origin/" '' | trim)
 done
 
 for branch in "${targetBranches[@]}"; do

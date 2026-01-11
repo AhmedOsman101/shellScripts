@@ -35,5 +35,5 @@ else
 fi
 
 sed -n '/# --- DEPENDENCIES --- #/,/# --- END SIGNATURE --- #/{/\# - /p;}' "${file}" |
-  replace '# - ' '' |
+  replace.sh '# - ' '' |
   grep -v " --- " || echo "x-none"

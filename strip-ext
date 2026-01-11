@@ -37,7 +37,7 @@ else
   filename="${file}"
   for ext in "$@"; do
     filename=$(basename -s ".${ext}" "${filename}")
-    filename=$(echo "${filename}" | replace ".${ext}" "")
+    filename=$(echo "${filename}" | replace.sh ".${ext}" "")
   done
 fi
 
