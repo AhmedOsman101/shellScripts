@@ -14,10 +14,9 @@
 # --- DESCRIPTION --- #
 # Repeats a given command or block of code for n times
 # --- DEPENDENCIES --- #
-# - bash
+# - gum
 # --- END SIGNATURE --- #
 
-set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
@@ -41,15 +40,15 @@ iterations="${cmdarg_cfg['iterations']}"
 cmd="${argv[*]}"
 # ---  Main script logic --- #
 # validate the iterations
-isUnsignedInt "${iterations}" || log-error "Number of iterations must be a valid integer."
-isPositive "${iterations}" || log-error "Number of iterations must be at least 1."
+isPositiveInt "${iterations}" || log-error "Number of iterations must be a valid integer."
+((0 < iterations)) || log-error "Number of iterations must be at least 1."
 
 # validate the delay if defined
 if [[ -n "${delay}" ]]; then
   isPositive "${delay}" || log-error "Delay must be a positive number"
 fi
 
-# Get and parse the command
+# Get the command
 if [[ -z "${cmd}" ]]; then
   cmd="$(gum write --placeholder "enter a command to repeat...")"
 fi
@@ -60,7 +59,7 @@ fi
 for ((count = 0; count < iterations; count++)); do
   [[ -n "${delay}" ]] && ((0 < count)) && sleep "${delay}"
   [[ "${clear}" == true ]] && ((0 < count)) && clear
-  bash -c "${cmd}" || true
+  bash -c "${cmd}"
 done
 
 exit 0

@@ -30,12 +30,14 @@ cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "n" "notify" "Play the terminal's bell when the command finishes"
 cmdarg "p" "preserve" "Preserve output between retries (don't clear the screen)"
 cmdarg "d?" "delay" "Delay in seconds between retries" "5"
+cmdarg "t?" "tries" "If command didn't complete after n tries, exit" ""
 
 cmdarg_parse "$@"
 
 preserve="${cmdarg_cfg['preserve']}"
 notify="${cmdarg_cfg['notify']}"
 delay="${cmdarg_cfg['delay']}"
+tries="${cmdarg_cfg['tries']}"
 cmd="${argv[*]}"
 [[ "${notify}" == true ]] && trap 'printf "\a"' EXIT
 
@@ -44,10 +46,13 @@ if [[ -n "${delay}" ]]; then
   isPositive "${delay}" || log-error "Delay must be a positive number"
 fi
 
+# validate the tries count if defined
+if [[ -n "${tries}" ]]; then
+  isPositiveInt "${tries}" || log-error "Tries must be a positive number"
+fi
+
 if [[ -z "${cmd}" ]]; then
   cmd="$(gum write --placeholder "enter a command to repeat...")"
-  # Evaluate the command to parse variables
-  cmd="$(eval echo "${cmd}")"
 fi
 
 # Check if the command is empty
@@ -56,7 +61,7 @@ fi
 counter=1
 # Infinite loop: repeat until success or interruption
 while true; do
-  if eval "${cmd}"; then
+  if bash -c "${cmd}"; then
     if ((counter > 1)); then
       printf '\n'
       log-success "Done after ${counter} retries 🚀!"
@@ -64,16 +69,19 @@ while true; do
     break
   fi
 
+  if [[ "${counter}" == "${tries}" ]]; then
+    terminate "Program terminated after ${counter} retries"
+  fi
+
   # Run gum spin, and check its exit status
   if ! gum spin \
     --title "Retrying '${cmd}' in ${delay}s..." \
     -- sleep "${delay}"; then
     # If gum spin fails (e.g., due to Ctrl+C), exit
+    printf '\n'
     if ((counter > 1)); then
-      printf '\n'
       terminate "Program terminated after ${counter} retries"
     else
-      printf '\n'
       terminate
     fi
   fi

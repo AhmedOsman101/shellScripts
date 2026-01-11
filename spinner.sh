@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=2183
 # --- SCRIPT SIGNATURE --- #
 #
 #                         ██                                                                 ▄▄
@@ -17,7 +16,7 @@
 #
 # --- END SIGNATURE --- #
 
-set -o pipefail
+set -eo pipefail
 shopt checkwinsize &>/dev/null
 (:) # A little hack to trigger checkwinsize to work
 
@@ -48,7 +47,7 @@ cleanup() {
   printf '\e[?25h' # show cursor
 
   if [[ "${sig}" != TERM ]]; then
-    printf '\e[3%sm' "${colorCode}"                                  # set the foreground color
+    printf '\e[%dm' "${colorCode}"                                  # set the foreground color
     printf '%s %s%s' "${currentSpinner}" "${msg%$'\n'}" "${padding}" # print the progress bar
     printf '\e[0m'                                                   # reset the foreground color
   fi
@@ -72,12 +71,12 @@ idx=0
 currentSpinner="${sp:idx:1}"
 while :; do
   pad=$((COLUMNS - msgLength))
-  ((pad > 0)) && printf -v padding "%*s" "${pad}"
+  ((pad > 0)) && printf -v padding "%*s" "${pad}" ' '
   currentSpinner="${sp:idx%${#sp}:1}"
 
   printf '\e[s'                                                    # save the cursor location
   printf '\e[2K'                                                   # clear the line
-  printf '\e[3%sm' "${colorCode}"                                  # set the foreground color
+  printf '\e[%dm' "${colorCode}"                                  # set the foreground color
   printf '%s %s%s' "${currentSpinner}" "${msg%$'\n'}" "${padding}" # print the progress bar
   printf '\e[0m'                                                   # reset the foreground color
   printf '\e[u'                                                    # restore the cursor location
