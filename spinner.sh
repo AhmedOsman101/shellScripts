@@ -28,10 +28,12 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 cmdarg "c?" "color" "Color of the spinner (black, red, green, yellow, blue, magenta, cyan, white, gray)" "green"
+cmdarg "t?" "theme" "The theme of the spinner (available: dots, bar, circle)" "dots"
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 color=${cmdarg_cfg['color']}
+theme=${cmdarg_cfg['theme']}
 msg=${argv[*]:-Loading...}
 [[ -z ${msg} ]] && log-error "Message is required"
 
@@ -56,8 +58,14 @@ trap 'cleanup INT' INT
 trap 'cleanup TERM' TERM
 trap 'cleanup SIGUSR1' SIGUSR1
 
-sp='⣾⣽⣻⢿⡿⣟⣯⣷'
-msgLength=$((${#msg} + 2))
+case "${theme}" in
+dots) sp=("⣾" "⣽" "⣻" "⢿" "⡿" "⣟" "⣯" "⣷") ;;
+circle) sp=("⢎ " "⠎⠁" "⠊⠑" "⠈⠱" " ⡱" "⢀⡰" "⢄⡠" "⢆⡀") ;;
+bar) sp=("▰▱▱▱▱▱▱" "▰▰▱▱▱▱▱" "▰▰▰▱▱▱▱" "▰▰▰▰▱▱▱" "▰▰▰▰▰▱▱" "▰▰▰▰▰▰▱" "▰▰▰▰▰▰▰" "▰▱▱▱▱▱▱") ;;
+? | *) sp=("⣾" "⣽" "⣻" "⢿" "⡿" "⣟" "⣯" "⣷") ;;
+esac
+
+msgLength=$((${#msg} + ${#sp[0]} + 1))
 
 colorCode="$(mapColor "${color}")" || log-error "Invalid color '${color}'"
 
@@ -65,11 +73,13 @@ colorCode="$(mapColor "${color}")" || log-error "Invalid color '${color}'"
 printf '\e[?25l'
 
 idx=0
-currentSpinner="${sp:idx:1}"
+currentIdx=0
+currentSpinner="${sp[${currentIdx}]}"
 while :; do
   pad=$((COLUMNS - msgLength))
   ((pad > 0)) && printf -v padding "%*s" "${pad}" ' '
-  currentSpinner="${sp:idx%${#sp}:1}"
+  currentIdx=$((idx % ${#sp[@]}))
+  currentSpinner="${sp[${currentIdx}]}"
 
   printf '\e[s'                                                    # save the cursor location
   printf '\e[2K'                                                   # clear the line
