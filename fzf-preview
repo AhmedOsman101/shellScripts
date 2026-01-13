@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#     ▄▄▄▄                ▄▄▄▄                                                        ██
+#    ██▀▀▀               ██▀▀▀                                                        ▀▀
+#  ███████   ████████  ███████             ██▄███▄    ██▄████   ▄████▄   ██▄  ▄██   ████      ▄████▄  ██      ██
+#    ██          ▄█▀     ██                ██▀  ▀██   ██▀      ██▄▄▄▄██   ██  ██      ██     ██▄▄▄▄██ ▀█  ██  █▀
+#    ██        ▄█▀       ██       █████    ██    ██   ██       ██▀▀▀▀▀▀   ▀█▄▄█▀      ██     ██▀▀▀▀▀▀  ██▄██▄██
+#    ██      ▄██▄▄▄▄▄    ██                ███▄▄██▀   ██       ▀██▄▄▄▄█    ████    ▄▄▄██▄▄▄  ▀██▄▄▄▄█  ▀██  ██▀
+#    ▀▀      ▀▀▀▀▀▀▀▀    ▀▀                ██ ▀▀▀     ▀▀         ▀▀▀▀▀      ▀▀     ▀▀▀▀▀▀▀▀    ▀▀▀▀▀    ▀▀  ▀▀
+#                                          ██
+#
+# --- DESCRIPTION --- #
+# Script for previewing files in Ctrl-t menu
+# --- DEPENDENCIES --- #
+# - eza
+# - fd
+# - mdcat | glow
+# - bat
+# - kitty | catimg | ffprobe (ffmpeg)
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+# ---  Main script logic --- #
+target="$(printf '%s\n' "$1" | head -n 1)"
+mime=$(file --mime-type -Lb "${target}")
+
+# --- FZF ---- #
+if [[ -d "${target}" ]]; then
+  eza --all \
+    --color=auto \
+    --long --icons \
+    --no-time --no-user \
+    --sort name \
+    --group-directories-first \
+    --total-size \
+    --ignore-glob="node_modules|.turbo|dist|build|.next|.nuxt|.git|vendor" \
+    --no-permissions --tree \
+    "${target}" | head -n 200
+
+elif [[ "${target}" =~ \.(md|markdown)$ ]]; then
+  if command -v mdcat 2>/dev/null; then
+    head -n 500 "${target}" | mdcat
+  elif command -v glow 2>/dev/null; then
+    head -n 500 "${target}" | glow
+  elif command -v bat 2>/dev/null; then
+    bat --color=always --line-range :500 "${target}"
+  else
+    head -n 500 "${target}"
+  fi
+elif [[ "${mime}" == image/* ]]; then
+  if [[ "${TERM}" == xterm-kitty ]]; then
+    kitty +kitten icat \
+      --clear \
+      --transfer-mode=memory \
+      "${target}" 2>/dev/null
+  elif command -v catimg &>/dev/null; then
+    catimg -w "${FZF_PREVIEW_COLUMNS}" "${target}"
+  elif command -v ffprobe 2>/dev/null; then
+    ffprobe -v error \
+      -select_streams v:0 \
+      -show_entries stream=width,height,codec_name \
+      -of default=noprint_wrappers=1:nokey=0 "${target}"
+  else
+    file "${target}"
+  fi
+else
+  if command -v bat 2>/dev/null; then
+    bat --color=always --line-range :500 "${target}" || file "${target}"
+  else
+    head -n 500 "${target}"
+  fi
+fi

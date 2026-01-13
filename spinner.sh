@@ -28,7 +28,7 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 cmdarg "c?" "color" "Color of the spinner (black, red, green, yellow, blue, magenta, cyan, white, gray)" "green"
-cmdarg "t?" "theme" "The theme of the spinner (available: dots, bar, circle)" "dots"
+cmdarg "t?" "theme" "The theme of the spinner (available: dots, bar, circle)" "circle"
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
