@@ -27,13 +27,10 @@ eval "$(include "lib/helpers.sh")"
 eval "$(include "check-deps")"
 
 checkDeps "$0"
-cmdarg_info "header" "$(get-desc "$0")"
-# ---  Main script logic --- #
-
 cmdarg "c?" "color" "Color of the spinner (black, red, green, yellow, blue, magenta, cyan, white, gray)" "green"
-
+cmdarg_info "header" "$(get-desc "$0")"
 cmdarg_parse "$@"
-
+# ---  Main script logic --- #
 color=${cmdarg_cfg['color']}
 msg=${argv[*]:-Loading...}
 [[ -z ${msg} ]] && log-error "Message is required"
@@ -47,7 +44,7 @@ cleanup() {
   printf '\e[?25h' # show cursor
 
   if [[ "${sig}" != TERM ]]; then
-    printf '\e[%dm' "${colorCode}"                                  # set the foreground color
+    printf '\e[%dm' "${colorCode}"                                   # set the foreground color
     printf '%s %s%s' "${currentSpinner}" "${msg%$'\n'}" "${padding}" # print the progress bar
     printf '\e[0m'                                                   # reset the foreground color
   fi
@@ -76,7 +73,7 @@ while :; do
 
   printf '\e[s'                                                    # save the cursor location
   printf '\e[2K'                                                   # clear the line
-  printf '\e[%dm' "${colorCode}"                                  # set the foreground color
+  printf '\e[%dm' "${colorCode}"                                   # set the foreground color
   printf '%s %s%s' "${currentSpinner}" "${msg%$'\n'}" "${padding}" # print the progress bar
   printf '\e[0m'                                                   # reset the foreground color
   printf '\e[u'                                                    # restore the cursor location
