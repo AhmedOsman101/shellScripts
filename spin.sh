@@ -12,23 +12,13 @@
 #            ██
 #
 # --- DESCRIPTION --- #
-# Displays a customizable colored spinner with a message.
-# --- DEPENDENCIES --- #
-#
+# Displays a customizable colored spinner with a message. (source the files)
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/cmdarg.sh")"
 eval "$(include "lib/helpers.sh")"
-eval "$(include "check-deps")"
-
-checkDeps "$0"
-cmdarg "c?" "color" "Color of the banner (black, red, green, yellow, blue, magenta, cyan, white, gray)" "green"
-cmdarg_info "header" "$(get-desc "$0")"
-cmdarg_parse "$@"
 # ---  Main script logic --- #
 # ---- internal state ----
 __spinner_pid=
@@ -57,11 +47,11 @@ __spinner_loop() {
 
     currentSpinner="${sp:idx%${#sp}:1}"
 
-    printf '\e[s'
-    printf '\e[%dm' "${colorCode}"
-    printf '%s %s%s' "${currentSpinner}" "${__spinner_msg%$'\n'}" "${padding}"
-    printf '\e[0m'
-    printf '\e[u'
+    printf '\e[s'                                                              # save the cursor location
+    printf '\e[%dm' "${colorCode}"                                             # set the foreground color
+    printf '%s %s%s' "${currentSpinner}" "${__spinner_msg%$'\n'}" "${padding}" # print the progress bar
+    printf '\e[0m'                                                             # reset the foreground color
+    printf '\e[u'                                                              # restore the cursor location
 
     sleep 0.1
     ((++idx))
@@ -94,9 +84,18 @@ __spinner_cleanup() {
 
 # ---- public API ----
 spinnerStart() {
-  local color="${1:-green}"
-  shift || true
-  local msg="${*:-Loading...}"
+  local opt OPTARG OPTIND color msg
+
+  while getopts 'c:' opt; do
+    case "${opt}" in
+    c) color="$(OPTARG)" ;;
+    *) true ;;
+    esac
+  done
+  shift "$((OPTIND - 1))"
+
+  color="${color:-green}"
+  msg="${*:-Loading...}"
 
   isInteractiveShell || return 0
   ((__spinner_active)) && return 0
@@ -104,17 +103,17 @@ spinnerStart() {
   __spinner_color="${color}"
   __spinner_msg="${msg}"
 
-  __spinner_loop &
+  __spinner_loop 1>&2 &
   __spinner_pid=$!
   __spinner_active=1
 
-  trap '__spinner_cleanup INT' INT
-  trap '__spinner_cleanup TERM' TERM
-  trap '__spinner_cleanup SIGUSR1' SIGUSR1
-  trap '__spinner_cleanup EXIT' EXIT
+  trap '__spinner_cleanup INT 1>&2' INT
+  trap '__spinner_cleanup TERM 1>&2' TERM
+  trap '__spinner_cleanup SIGUSR1 1>&2' SIGUSR1
+  trap '__spinner_cleanup EXIT 1>&2' EXIT
 }
 
 spinnerEnd() {
-  __spinner_cleanup TERM
+  __spinner_cleanup TERM 1>&2
   trap - INT TERM SIGUSR1 EXIT
 }
