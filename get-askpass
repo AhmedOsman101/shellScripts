@@ -49,7 +49,7 @@ checkTerminal() {
 if [[ -n "${DISPLAY}" || -n "${WAYLAND_DISPLAY}" ]]; then
   # Check for zenity
   if command -v zenity >/dev/null 2>&1; then
-    cmd="zenity --password --title='Authentication Required' --timeout=30"
+    cmd="zenity --password --title='Authentication Required' --timeout=30 2>/dev/null"
   # Check for kdialog
   elif command -v kdialog >/dev/null 2>&1; then
     cmd="kdialog --password 'Authentication Required'"

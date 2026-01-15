@@ -56,7 +56,6 @@ logError() {
 
 logSafeError() {
   colorOnlyPrefix printRed "ERROR" "$(input "$@")" 2
-  return 1
 }
 
 terminate() {
