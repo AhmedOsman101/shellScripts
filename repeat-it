@@ -25,14 +25,17 @@ eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
 
 checkDeps "$0"
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
-# ---  Main script logic --- #
+
 cmdarg "n" "notify" "Play the terminal's bell when the command finishes"
 cmdarg "p" "preserve" "Preserve output between retries (don't clear the screen)"
 cmdarg "d?" "delay" "Delay in seconds between retries" "5"
 cmdarg "t?" "tries" "If command didn't complete after n tries, exit" ""
 
 cmdarg_parse "$@"
+# ---  Main script logic --- #
 
 preserve="${cmdarg_cfg['preserve']}"
 notify="${cmdarg_cfg['notify']}"
@@ -86,6 +89,6 @@ while true; do
     fi
   fi
 
-  [[ "${preserve}" != true ]] && clear
+  "${preserve}" || clear
   ((counter++))
 done
