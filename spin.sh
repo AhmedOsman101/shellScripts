@@ -25,6 +25,8 @@ __spinner_pid=
 __spinner_active=0
 __spinner_color=
 __spinner_msg=
+__spinner_parent_pid=
+__spinner_intentional_end=0
 
 # ---- spinner worker ----
 __spinner_loop() {
@@ -42,16 +44,22 @@ __spinner_loop() {
   printf '\e[?25l'
 
   while :; do
+    # Check if parent process is still alive
+    if ! kill -0 "${__spinner_parent_pid}" 2>/dev/null; then
+      # Parent died, exit cleanly
+      printf '\e[?25h'
+      exit 0
+    fi
+
     pad=$((COLUMNS - msgLength))
     ((pad > 0)) && printf -v padding "%*s" "${pad}" ' '
 
     currentSpinner="${sp:idx%${#sp}:1}"
 
-    printf '\e[s'                                                              # save the cursor location
     printf '\e[%dm' "${colorCode}"                                             # set the foreground color
     printf '%s %s%s' "${currentSpinner}" "${__spinner_msg%$'\n'}" "${padding}" # print the progress bar
     printf '\e[0m'                                                             # reset the foreground color
-    printf '\e[u'                                                              # restore the cursor location
+    printf '\r'                                                                # move to start of line
 
     sleep 0.1
     ((++idx))
@@ -64,12 +72,24 @@ __spinner_cleanup() {
 
   ((__spinner_active)) || return 0
 
-  kill -9 "${__spinner_pid}" 2>/dev/null || true
+  # Try graceful termination first
+  kill -TERM "${__spinner_pid}" 2>/dev/null || true
+
+  # Wait a bit for graceful shutdown
+  local count=0
+  while kill -0 "${__spinner_pid}" &>/dev/null && ((count < 5)); do
+    sleep 0.05
+    ((count++))
+  done
+
+  # Force kill if still running
+  kill -KILL "${__spinner_pid}" 2>/dev/null || true
   wait "${__spinner_pid}" 2>/dev/null || true
 
   printf '\e[?25h' # show cursor
 
-  if [[ "${sig}" != TERM ]]; then
+  # Only show success message for unexpected termination, not intentional end
+  if ! ((__spinner_intentional_end)); then
     local colorCode
     colorCode="$(mapColor "${__spinner_color}")" || true
     printf '\r'
@@ -79,7 +99,9 @@ __spinner_cleanup() {
   fi
 
   __spinner_pid=
+  __spinner_parent_pid=
   __spinner_active=0
+  __spinner_intentional_end=0
 }
 
 # ---- public API ----
@@ -102,10 +124,14 @@ spinnerStart() {
 
   __spinner_color="${color}"
   __spinner_msg="${msg}"
+  __spinner_parent_pid=$$
 
+  # Start spinner in a new process group for better signal handling
+  set -m
   __spinner_loop 1>&2 &
   __spinner_pid=$!
   __spinner_active=1
+  set +m
 
   trap '__spinner_cleanup INT 1>&2' INT
   trap '__spinner_cleanup TERM 1>&2' TERM
@@ -114,6 +140,7 @@ spinnerStart() {
 }
 
 spinnerEnd() {
+  __spinner_intentional_end=1
   __spinner_cleanup TERM 1>&2
   trap - INT TERM SIGUSR1 EXIT
 }
