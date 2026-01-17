@@ -70,7 +70,6 @@ function cmdarg {
   else
     CMDARG_FLAGS[${shortopt}]=${CMDARG_FLAG_NOARG}
     CMDARG_TYPES[${key}]=${CMDARG_TYPE_BOOLEAN}
-    cmdarg_cfg[${key}]=false
   fi
 
   CMDARG["${shortopt}"]=$2
@@ -82,7 +81,14 @@ function cmdarg {
   else
     CMDARG_OPTIONAL+=("${shortopt}")
   fi
-  cmdarg_cfg["$2"]="${4:-}"
+
+  # Set empty boolean flags to false
+  if [[ ${CMDARG_TYPES[${key}]} -eq ${CMDARG_TYPE_BOOLEAN} ]]; then
+    cmdarg_cfg["$2"]="false"
+  else
+    cmdarg_cfg["$2"]="${4:-}"
+  fi
+
   local validatorfunc
   validatorfunc=${5:-}
   if [[ "${validatorfunc}" != "" ]] && [[ "$(declare -F "${validatorfunc}")" == "" ]]; then
