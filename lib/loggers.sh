@@ -48,6 +48,7 @@ printer() {
   local noNewline="${3:-false}"
   local message newLine=''
   message="$(sanitizedPrint "${str}")"
+  ((color = color > 30 ? color - 30 : color))
 
   [[ "${noNewline}" == "false" ]] && newLine='\n'
 
