@@ -45,7 +45,7 @@ AUTH_HEADER="Authorization: Bearer $(pass show vercel/token)"
 
 response=$(
   gum spin \
-    --title "Fetcheng..." \
+    --title "Fetching..." \
     --title.foreground="${U_GREEN}" \
     -- curl -sH "${AUTH_HEADER}" "https://api.vercel.com/v6/deployments?limit=${limit}"
 )
