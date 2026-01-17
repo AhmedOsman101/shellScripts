@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=all
+# shellcheck disable=2016,2181,2209
 if ((BASH_VERSINFO[0] < 4)); then
   log-error "cmdarg is incompatible with bash versions < 4, please upgrade bash"
 fi
@@ -34,7 +34,7 @@ function cmdarg {
     log-error "-h is reserved for cmdarg usage" >&2
     ${CMDARG_ERROR_BEHAVIOR} 1
   fi
-  if [[ "$(type -t cmdarg_${key})" != "" ]] ||
+  if [[ "$(type -t "cmdarg_${key}")" != "" ]] ||
     [[ "${CMDARG_FLAGS[${shortopt}]}" != "" ]] ||
     [[ "${CMDARG_TYPES[${key}]}" != "" ]]; then
     log-error "command line key '${shortopt} (${key})' is reserved by cmdarg or defined twice" >&2
@@ -51,14 +51,14 @@ function cmdarg {
   elif [[ "${argtype}" != "" ]]; then
     CMDARG_FLAGS[${shortopt}]=${argtypemap["${argtype}"]}
     if [[ "${1:2:4}" == "[]" ]]; then
-      declare -p ${key} >/dev/null 2>&1
+      declare -p "${key}" >/dev/null 2>&1
       if [[ $? -ne 0 ]]; then
         log-error 'Array variable '"${key}"' does not exist. Array variables MUST be declared by the user!' >&2
         ${CMDARG_ERROR_BEHAVIOR} 1
       fi
       CMDARG_TYPES[${key}]=${CMDARG_TYPE_ARRAY}
     elif [[ "${1:2:4}" == "{}" ]]; then
-      declare -p ${key} >/dev/null 2>&1
+      declare -p "${key}" >/dev/null 2>&1
       if [[ $? -ne 0 ]]; then
         log-error 'Hash variable '"${key}"' does not exist. Hash variables MUST be declared by the user!' >&2
         ${CMDARG_ERROR_BEHAVIOR} 1
@@ -78,14 +78,14 @@ function cmdarg {
   CMDARG_DESC["${shortopt}"]=$3
   CMDARG_DEFAULT["${shortopt}"]=${4:-}
   if [[ ${CMDARG_FLAGS[${shortopt}]} -eq ${CMDARG_FLAG_REQARG} ]] && [[ "${4:-}" == "" ]]; then
-    CMDARG_REQUIRED+=(${shortopt})
+    CMDARG_REQUIRED+=("${shortopt}")
   else
-    CMDARG_OPTIONAL+=(${shortopt})
+    CMDARG_OPTIONAL+=("${shortopt}")
   fi
   cmdarg_cfg["$2"]="${4:-}"
   local validatorfunc
   validatorfunc=${5:-}
-  if [[ "${validatorfunc}" != "" ]] && [[ "$(declare -F ${validatorfunc})" == "" ]]; then
+  if [[ "${validatorfunc}" != "" ]] && [[ "$(declare -F "${validatorfunc}")" == "" ]]; then
     log-error "Validators must be bash functions accepting 1 argument (not '${validatorfunc}')" >&2
     ${CMDARG_ERROR_BEHAVIOR} 1
   fi
@@ -115,7 +115,7 @@ function cmdarg_describe {
   local flags="${CMDARG_FLAGS[${opt}]}"
   local validator="${CMDARG_VALIDATORS[${opt}]}"
 
-  ${cmdarg_helpers['describe']} ${longopt} ${opt} ${argtype} "${default}" "${description}" "${flags}" "${validator}"
+  ${cmdarg_helpers['describe']} "${longopt}" "${opt}" "${argtype}" "${default}" "${description}" "${flags}" "${validator}"
 }
 
 function cmdarg_describe_default {
@@ -133,16 +133,16 @@ function cmdarg_describe_default {
     default="(Default \"${default}\")"
   fi
   case ${argtype} in
-  ${CMDARG_TYPE_STRING})
+  "${CMDARG_TYPE_STRING}")
     echo "-${opt},--${longopt} v : String. ${description} ${default}"
     ;;
-  ${CMDARG_TYPE_BOOLEAN})
+  "${CMDARG_TYPE_BOOLEAN}")
     echo "-${opt},--${longopt} : Boolean. ${description} ${default}"
     ;;
-  ${CMDARG_TYPE_ARRAY})
+  "${CMDARG_TYPE_ARRAY}")
     echo "-${opt},--${longopt} v[, ...] : Array. ${description}. Pass this argument multiple times for multiple values. ${default}"
     ;;
-  ${CMDARG_TYPE_HASH})
+  "${CMDARG_TYPE_HASH}")
     echo "-${opt},--${longopt} k=v{, ..} : Hash. ${description}. Pass this argument multiple times for multiple key/value pairs. ${default}"
     ;;
   *)
@@ -161,7 +161,7 @@ function cmdarg_usage {
     CMDARG_INFO["author"]="${AUTHOR} <${AUTHOR_EMAIL}>"
   fi
   fallbackCopyRight="(c) 2024-$(date +%Y)"
-  echo "$(basename $0) ${CMDARG_INFO['copyright']:-${fallbackCopyRight}}: ${CMDARG_INFO['author']}"
+  echo "$(basename "$0") ${CMDARG_INFO['copyright']:-${fallbackCopyRight}}: ${CMDARG_INFO['author']}"
   echo
   echo "${CMDARG_INFO['header']}"
   echo
@@ -169,14 +169,14 @@ function cmdarg_usage {
   if [[ "${#CMDARG_REQUIRED[@]}" -ne 0 ]]; then
     echo "Required Arguments:"
     for key in "${CMDARG_REQUIRED[@]}"; do
-      echo "    $(cmdarg_describe ${key})"
+      echo "    $(cmdarg_describe "${key}")"
     done
     echo
   fi
   if [[ "${#CMDARG_OPTIONAL[@]}" -ne 0 ]]; then
     echo "Optional Arguments":
     for key in "${CMDARG_OPTIONAL[@]}"; do
-      echo "    $(cmdarg_describe ${key})"
+      echo "    $(cmdarg_describe "${key}")"
     done
   fi
   echo
@@ -208,22 +208,22 @@ function cmdarg_set_opt {
   set +u
 
   case ${CMDARG_TYPES[${key}]} in
-  ${CMDARG_TYPE_STRING})
+  "${CMDARG_TYPE_STRING}")
     cmdarg_cfg[${key}]=${arg}
     cmdarg_validate "${key}" "${arg}" || ${CMDARG_ERROR_BEHAVIOR} 1
     ;;
-  ${CMDARG_TYPE_BOOLEAN})
+  "${CMDARG_TYPE_BOOLEAN}")
     cmdarg_cfg[${key}]=true
-    cmdarg_validate "${key}" "${arg}" || ${CMDARG_ERROR_BEHAVIOR} 1
+    cmdarg_validate "${key}" "${arg:-false}" || ${CMDARG_ERROR_BEHAVIOR} 1
     ;;
-  ${CMDARG_TYPE_ARRAY})
+  "${CMDARG_TYPE_ARRAY}")
     local arrname="${key}"
     local str='${#'"${arrname}"'[@]}'
     local prevlen=$(eval "echo ${str}")
     eval "${arrname}[$((prevlen + 1))]=\"${arg}\""
     cmdarg_validate "${key}" "${arg}" || ${CMDARG_ERROR_BEHAVIOR} 1
     ;;
-  ${CMDARG_TYPE_HASH})
+  "${CMDARG_TYPE_HASH}")
     local k=${arg%%=*}
     local v=${arg#*=}
     if [[ "${k}" == "${arg}" ]] && [[ "${v}" == "${arg}" ]] && [[ "${k}" == "${v}" ]]; then
@@ -247,18 +247,18 @@ function cmdarg_check_empty {
   local type=${CMDARG_TYPES[${longopt}]}
 
   case ${type} in
-  ${CMDARG_TYPE_STRING})
-    echo ${cmdarg_cfg[${longopt}]}
+  "${CMDARG_TYPE_STRING}")
+    echo "${cmdarg_cfg[${longopt}]}"
     ;;
-  ${CMDARG_TYPE_BOOLEAN})
-    echo ${cmdarg_cfg[${longopt}]}
+  "${CMDARG_TYPE_BOOLEAN}")
+    echo "${cmdarg_cfg[${longopt}]:-false}"
     ;;
-  ${CMDARG_TYPE_ARRAY})
+  "${CMDARG_TYPE_ARRAY}")
     local arrname="${longopt}"
     local lval='${!'"${arrname}"'[@]}'
     eval "echo ${lval}"
     ;;
-  ${CMDARG_TYPE_HASH})
+  "${CMDARG_TYPE_HASH}")
     local arrname="${longopt}"
     local lval='${!'"${arrname}"'[@]}'
     eval "echo ${lval}"
@@ -294,7 +294,7 @@ function cmdarg_parse {
     fi
 
     if [[ "${fullopt}" == "--" ]] && [[ ${parsing} -eq 0 ]]; then
-      argv+=($@)
+      argv+=("$@")
       break
     elif [[ "${fullopt:0:2}" == "--" ]]; then
       longopt=${fullopt:2}
@@ -307,7 +307,7 @@ function cmdarg_parse {
       continue
     else
       ${cmdarg_helpers['usage']} >&2
-      log-error "Malformed argument: ${fullopt} \nWhile parsing: $@"
+      log-error "Malformed argument: ${fullopt} \nWhile parsing: $*"
       ${CMDARG_ERROR_BEHAVIOR} 1
     fi
 
@@ -340,7 +340,7 @@ function cmdarg_parse {
 
   local key
   for key in "${CMDARG_REQUIRED[@]}"; do
-    if [[ "$(cmdarg_check_empty ${key})" == "" ]]; then
+    if [[ "$(cmdarg_check_empty "${key}")" == "" ]]; then
       missing="${missing} -${key}"
       failed=$((failed + 1))
     fi
@@ -363,12 +363,12 @@ function cmdarg_traceback {
   local FRAMES=${#BASH_LINENO[@]}
   # FRAMES-2 skips main, the last one in arrays
   for ((i = FRAMES - 2; i >= 1; i--)); do
-    echo '  File' \"${BASH_SOURCE[i + 1]}\", line "${BASH_LINENO[i]}", probably in ${FUNCNAME[i + 1]} >&2
+    echo "  File \"${BASH_SOURCE[$((i + 1))]}\", line \"${BASH_LINENO[${i}]}\", probably in \"${FUNCNAME[$((i + 1))]}\"" 1>&2
     # Grab the source code of the line
-    sed -n "${BASH_LINENO[i]}{s/^/    /;p}" "${BASH_SOURCE[i + 1]}" >&2
+    sed -n "${BASH_LINENO[${i}]}{s/^/    /;p}" "${BASH_SOURCE[$((i + 1))]}" >&2
   done
   unset FRAMES
-  log-error "  Error: ${LASTERR}"
+  log-error --safe "  ${LASTERR}"
 }
 
 function cmdarg_dump {
@@ -380,9 +380,9 @@ function cmdarg_dump {
   local ref
   local value
 
-  for key in ${!cmdarg_cfg[@]}; do
+  for key in "${!cmdarg_cfg[@]}"; do
     repr="${key}:${CMDARG_TYPES[${key}]}"
-    if [[ ${CMDARG_TYPES[${key}]} == ${CMDARG_TYPE_ARRAY} ]] || [[ ${CMDARG_TYPES[${key}]} == ${CMDARG_TYPE_HASH} ]]; then
+    if [[ ${CMDARG_TYPES[${key}]} == "${CMDARG_TYPE_ARRAY}" ]] || [[ ${CMDARG_TYPES[${key}]} == "${CMDARG_TYPE_HASH}" ]]; then
       arrname="${key}"
       echo "${repr} => "
       keys='${!'"${arrname}"'[@]}'
