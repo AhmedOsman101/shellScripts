@@ -229,35 +229,6 @@ isInteractiveShell() {
   [[ -t 0 ]] && [[ -t 1 ]] && ps -o stat= -p "${PPID}" | grep -q 's'
 }
 
-benchmark() {
-  local start=$(date +%s.%N)
-
-  local iters="$1"
-  isPositiveInt "${iters}" || return 1
-  shift
-
-  tmp="$(mktemp)"
-  trap 'rm -rf $tmp' EXIT
-
-  loop -n "${iters}" "command time -f '%e' -o ${tmp} -a $* >/dev/null 2>&1"
-
-  local end=$(date +%s.%N)
-  local elapsed="$(bc <<<"${end} - ${start}")"
-
-  awk '
-    {
-      sum+=$1
-      if(NR == 1 || $1 < min) min=$1
-      if(NR == 1 || $1 > max) max=$1
-      }
-      END {
-      printf "runs: %d\navg: %.6fs\nmin: %.6fs\nmax: %.6fs\n", NR / 2, sum / NR, min, max
-    }
-  ' "${tmp}"
-
-  echo "total: $(sec2time "${elapsed}" --short)"
-}
-
 eraseLine() {
   n="${1:-1}"
   isPositiveInt "${n}" || return 1

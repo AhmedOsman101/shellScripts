@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄                                      ▄▄                                      ▄▄
+#  ██                                      ██                                      ██
+#  ██▄███▄    ▄████▄   ██▄████▄   ▄█████▄  ██▄████▄  ████▄██▄   ▄█████▄   ██▄████  ██ ▄██▀
+#  ██▀  ▀██  ██▄▄▄▄██  ██▀   ██  ██▀    ▀  ██▀   ██  ██ ██ ██   ▀ ▄▄▄██   ██▀      ██▄██
+#  ██    ██  ██▀▀▀▀▀▀  ██    ██  ██        ██    ██  ██ ██ ██  ▄██▀▀▀██   ██       ██▀██▄
+#  ███▄▄██▀  ▀██▄▄▄▄█  ██    ██  ▀██▄▄▄▄█  ██    ██  ██ ██ ██  ██▄▄▄███   ██       ██  ▀█▄
+#  ▀▀ ▀▀▀      ▀▀▀▀▀   ▀▀    ▀▀    ▀▀▀▀▀   ▀▀    ▀▀  ▀▀ ▀▀ ▀▀   ▀▀▀▀ ▀▀   ▀▀       ▀▀   ▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Benchmarks a command by running it multiple times and collecting statistics
+# --- DEPENDENCIES --- #
+# - bc
+# - awk
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+has-bash-version 5 3
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "n:" "iterations" "Number of iterations to run"
+cmdarg_parse "$@"
+# --- Main script logic --- #
+iterations="${cmdarg_cfg['iterations']}"
+cmd="${argv[*]}"
+
+isPositiveInt "${iterations}" || log-error "Number of iterations must be a valid integer."
+((0 < iterations)) || log-error "Number of iterations must be at least 1."
+
+[[ -z "${cmd}" ]] && log-error "No command specified."
+
+start="${ date +%s.%N; }"
+
+tmp="$(mktemp)"
+trap 'rm -f $tmp' EXIT
+
+loop -n "${iterations}" "command time -f '%e' -o ${tmp} -a ${cmd} &>/dev/null"
+
+end="${ date +%s.%N; }"
+elapsed=${ bc <<<"${end} - ${start}"; }
+
+awk '
+  {
+    sum+=$1
+    if(NR == 1 || $1 < min) min=$1
+    if(NR == 1 || $1 > max) max=$1
+  }
+  END {
+    printf "runs: %d\navg: %.6fs\nmin: %.6fs\nmax: %.6fs\n", NR, sum / NR, min, max
+  }
+' "${tmp}"
+
+echo "total: ${ sec2time "${elapsed}" --short; }"
