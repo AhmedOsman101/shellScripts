@@ -40,42 +40,90 @@ isPositiveInt "${iterations}" || log-error "Number of iterations must be a valid
 
 (( ${#cmd[@]} )) || log-error "No command specified."
 
-start="${ date +%s.%N; }"
+bench_cmd() {
+  local tmp start end elapsed label
+  label="${ echo "$1" | trim; }"
+  shift
+  local cmd=("$@")
 
-tmp="$(mktemp)"
-trap 'rm -f "$tmp"' EXIT
+  tmp=$(mktemp)
+  trap 'rm -f "$tmp"' RETURN EXIT
 
-for ((i=0; i < iterations; i++)); do
-  # command time -f '%e' -o "${tmp}" -a -- "${cmd[@]}" &>/dev/null
-  t1=${EPOCHREALTIME}
-  "${cmd[@]}" &>/dev/null
-  t2=${EPOCHREALTIME}
-  awk "BEGIN {print ${t2} - ${t1}}" >>"${tmp}"
+  start="${EPOCHREALTIME}"
+  for ((i=0; i < iterations; i++)); do
+    t1=${EPOCHREALTIME}
+    "${cmd[@]}" &>/dev/null
+    t2=${EPOCHREALTIME}
+    awk "BEGIN {print ${t2} - ${t1}}" >>"${tmp}"
+  done
+  end="${EPOCHREALTIME}"
+  elapsed=${ awk "BEGIN { print ${end} - ${start} }"; }
+
+  awk -v label="${label}" '
+    {
+      sum+=$1
+      if (NR==1 || $1<min) min=$1
+      if (NR==1 || $1>max) max=$1
+    }
+    END {
+      avg = sum / NR
+      unit="s"; scale=1
+      if (avg < 1e-3) { unit="µs"; scale=1e6 }
+      else if (avg < 1) { unit="ms"; scale=1e3 }
+
+      printf "%s:\n", label
+      printf "  runs: %d\n", NR
+      printf "  avg:  %.3f%s\n", avg*scale, unit
+      printf "  min:  %.3f%s\n", min*scale, unit
+      printf "  max:  %.3f%s\n", max*scale, unit
+      printf "AVG=%f\n", avg
+
+    }
+  ' "${tmp}"
+  printf "  total: %s\n" "${ sec2time "${elapsed}" --short; }"
+}
+
+declare -a cmd1=()
+declare -a cmd2=()
+
+currentCmd=1
+for arg in "${argv[@]}"; do
+  if [[ "${arg}" == ":::" ]]; then
+    (( ${#cmd1[@]} )) || log-error "Empty command before :::"
+    currentCmd=2
+  else
+    if ((currentCmd == 1)); then
+      cmd1+=("${arg}")
+    else
+      cmd2+=("${arg}")
+    fi
+  fi
 done
 
-end="${ date +%s.%N; }"
-elapsed=${ awk "BEGIN {print ${end} - ${start}}"; }
+if ((currentCmd == 2)); then
+  ((${#cmd2[@]})) || log-error "Empty command after :::"
+fi
 
-awk '
-  {
-    sum+=$1
-    if(NR == 1 || $1 < min) min=$1
-    if(NR == 1 || $1 > max) max=$1
-  }
-  END {
-    avg = sum / NR
+if ((${#cmd2[@]})); then
+  out1=${ bench_cmd "${cmd1[*]}" "${cmd1[@]}"; }
 
-    unit = "s"
-    scale = 1
+  avg1=${ grep '^AVG=' <<<"${out1}" | cut -d= -f2; }
+  printf '%s\n' "${out1}" | sed '/^AVG=/d'
 
-    if (avg < 1e-3) { unit = "µs"; scale = 1e6 }
-    else if (avg < 1) { unit = "ms"; scale = 1e3 }
+  out2=${ bench_cmd "${cmd2[*]}" "${cmd2[@]}"; }
+  avg2=${ grep '^AVG=' <<<"${out2}" | cut -d= -f2; }
+  printf '%s\n' "${out2}" | sed '/^AVG=/d'
 
-    printf "runs: %d\n", NR
-    printf "avg: %.3f%s\n", avg * scale, unit
-    printf "min: %.3f%s\n", min * scale, unit
-    printf "max: %.3f%s\n", max * scale, unit
-  }
-' "${tmp}"
-
-printf "total: %s\n" "${ sec2time "${elapsed}" --short; }"
+  awk -v a1="${avg1}" -v a2="${avg2}" \
+    -v c1="${cmd1[*]}" -v c2="${cmd2[*]}" '
+    BEGIN {
+      if (a1 < a2) {
+        printf "\n\"%s\"\n is %.2fx faster\n", c1, a2 / a1, c2
+      } else {
+        printf "\n\"%s\"\n is %.2fx faster\n", c2, a1 / a2
+      }
+    }'
+else
+  bench_cmd "${cmd1[*]}" "${cmd1[@]}" | sed '/^AVG=/d'
+  exit 0
+fi
