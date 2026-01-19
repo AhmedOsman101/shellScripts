@@ -42,7 +42,7 @@ if [[ ${#argv[@]} -eq 0 || ${file} == "-" ]]; then
   [[ -z ${input} ]] && printf '' && exit 0
   echo "${input}" | sed -e "s|^${trimStrEscaped}*||" -e "s|${trimStrEscaped}*$||"
 elif [[ -f ${file} ]]; then
-  if [[ ${useBackup} == true ]]; then
+  if ${useBackup}; then
     cp -i "${file}" "${file}.bak"
     sed -e "s|^${trimStrEscaped}*||" -e "s|${trimStrEscaped}*$||" -i "${file}"
     log-success "Trimmed '${trimStr}' from '${file}'. Backup created at '${file}.bak'."

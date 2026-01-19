@@ -57,12 +57,12 @@ elif [[ "${branch}" != "${currentBranch}" ]]; then
   fi
 fi
 
-[[ "${onlyStaged}" != true ]] && git add --all
+"${onlyStaged}" || git add --all
 
 # Check for changes before attempting to commit
 if [[ -n "$(git status --porcelain)" ]]; then
 
-  if [[ "${hasMsg}" == true ]]; then
+  if "${hasMsg}"; then
     msg=$(gum write --placeholder "Write the commit message...")
     gum confirm "Add timestamps?" && msg="${msg} $(now)"
   else

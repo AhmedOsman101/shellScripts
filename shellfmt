@@ -52,7 +52,7 @@ read_input() {
 }
 
 write_output() {
-  if [[ "${in_place}" == 'true' && -n "${file}" ]]; then
+  if "${in_place}" && [[ -n "${file}" ]]; then
     cat >"${file}"
   else
     cat

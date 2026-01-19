@@ -77,7 +77,7 @@ outputResult() {
   local minutes="$1"
   local label="$2"
 
-  if [[ "${quiet}" != true ]]; then
+  if ! "${quiet}"; then
     if [[ -n "${label}" ]]; then
       printf '%s min read %s\n' "${minutes}" "$(humanQuote "${label}")"
     else
@@ -90,7 +90,7 @@ outputResult() {
 
 outputTotal() {
   if ((PROCESSED > 1)); then
-    if [[ "${quiet}" != true ]]; then
+    if ! "${quiet}"; then
       printf '%s min read TOTAL\n' "${TOTAL}"
     else
       printf '%sm TOTAL\n' "${TOTAL}"

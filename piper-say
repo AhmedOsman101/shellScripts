@@ -139,7 +139,7 @@ generateAudio() {
   "${piper_cmd[@]}" <<<"${text}" >/dev/null
 }
 
-[[ "${list}" == true ]] && {
+"${list}" && {
   list_voices
   exit 0
 }

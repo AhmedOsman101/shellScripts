@@ -64,7 +64,7 @@ main() {
     count=$((count_display + count_inline))
 
     if ! ((count)); then
-      [[ "${isQuiet}" == true ]] || log-info "Nothing to do!"
+      "${isQuiet}" || log-info "Nothing to do!"
       continue
     fi
 
@@ -83,4 +83,4 @@ export isQuiet
 
 printf '%s\0' "${argv[@]}" | parallel -0 -j "$(nproc)" -k -m --tty main
 
-[[ "${isQuiet}" == true ]] || log-success "${total_count} Replacements made"
+"${isQuiet}" || log-success "${total_count} Replacements made"

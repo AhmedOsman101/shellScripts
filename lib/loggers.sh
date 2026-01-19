@@ -50,7 +50,7 @@ printer() {
   message="$(sanitizedPrint "${str}")"
   ((color = color > 30 ? color - 30 : color))
 
-  [[ "${noNewline}" == "false" ]] && newLine='\n'
+  "${noNewline}" || newLine='\n'
 
   if supportsColor; then
     printf '\e[%dm%s\e[0m%b' "$((color + 30))" "${message}" "${newLine}"

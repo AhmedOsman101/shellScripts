@@ -43,7 +43,7 @@ file="${argv[0]}"
 
 # Function to process input and remove duplicates
 remove_duplicates() {
-  if [[ "${useArray}" == true ]]; then
+  if "${useArray}"; then
     tr ' ' '\n' |
       awk '
     {
@@ -79,21 +79,21 @@ else
   trap 'rm -f $tmpfile' EXIT
   # Read from file
   if [[ -f "${file}" ]]; then
-    if [[ "${useBackup}" == true ]]; then
+    if "${useBackup}"; then
       cp "${file}" "${file}.bak"
-      [[ "${quiet}" == true ]] || log-info "Backup created as ${file}.bak"
+      "${quiet}" || log-info "Backup created as ${file}.bak"
     fi
 
     remove_duplicates <"${file}" >"${tmpfile}"
 
     # override the input file
-    if [[ "${force}" == true ]]; then
+    if "${force}"; then
       mv "${tmpfile}" "${file}"
     else
       mv -i "${tmpfile}" "${file}"
     fi
 
-    [[ "${quiet}" == true ]] || log-info "Filtered unique lines from '${file}'!"
+    "${quiet}" || log-info "Filtered unique lines from '${file}'!"
   else
     log-error "${file} was not found!"
   fi

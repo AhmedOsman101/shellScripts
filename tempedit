@@ -39,7 +39,7 @@ if [[ "${extension}" == */* ]]; then
 fi
 
 file="$(mktemp -t "tempedit-XXXXX.${extension}")"
-if [[ ${preserve} == true ]]; then
+if ${preserve}; then
   clipcopy "${file}"
   log-info "File name copied to clipboard!"
 else

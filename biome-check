@@ -69,8 +69,8 @@ elif [[ -n ${configFile} && -f ${configFile} ]]; then
   true
 fi
 
-[[ "${summary}" == true ]] && cmdArray+=(--reporter=summary)
-[[ "${unsafe}" == true ]] && cmdArray+=(--unsafe)
+"${summary}" && cmdArray+=(--reporter=summary)
+"${unsafe}" && cmdArray+=(--unsafe)
 
 cmdArray+=("${argv[@]}")
 

@@ -37,9 +37,9 @@ showDirs="${cmdarg_cfg[directories]}"
 [[ -z ${package} ]] && log-error "Must provide a package name"
 
 while read -r entry; do
-  if [[ "${showAll}" == true ]]; then
+  if "${showAll}"; then
     echo "${entry}"
-  elif [[ "${showDirs}" == true ]]; then
+  elif "${showDirs}"; then
     [[ -d "${entry}" ]] && echo "${entry}"
   elif [[ ! -d "${entry}" ]]; then
     echo "${entry}"

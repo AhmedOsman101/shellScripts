@@ -100,7 +100,7 @@ if ! git status --porcelain | rg '^[A-Z]' &>/dev/null; then
   done
 fi
 
-if [[ "${useAi}" == true ]]; then
+if "${useAi}"; then
   logFile=$(mktemp -t commit-sage-XXXXX.log)
 
   # Another implementation
@@ -131,7 +131,7 @@ else
       cut -d ':' -f 1
   ) || terminate
 
-  if [[ "${edit}" == true ]]; then
+  if "${edit}"; then
     summary="${type}: "
     details=""
   else
@@ -145,7 +145,7 @@ else
   fi
 fi
 
-if [[ "${edit}" == true ]]; then
+if "${edit}"; then
   if git commit -m "${summary}" -m "${details}" -e; then
     log-success "Committed Changes Locally!"
   else
@@ -156,7 +156,7 @@ else
 
   echo -e "${summary}\n\n${details}\n\n" | mdcat
 
-  if [[ "${noConfirm}" != true ]]; then
+  if ! "${noConfirm}"; then
     gum confirm "Commit changes?" || terminate
   fi
 
@@ -168,8 +168,8 @@ else
   fi
 fi
 
-if [[ -n "$(git remote -v)" && "${local}" != true ]]; then
-  if [[ "${noConfirm}" != true ]]; then
+if ! "${local}" && [[ -n "$(git remote -v)" ]]; then
+  if ! "${noConfirm}"; then
     gum confirm "Push changes?" || terminate
   fi
 

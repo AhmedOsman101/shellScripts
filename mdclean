@@ -67,7 +67,7 @@ main() {
       -e ':a; /---[[:space:]]*$/ { N; /\n[[:space:]]*$/ ba; s/---\n([[:space:]]*\n)*##[[:space:]]/\n## /; P; D }' \
       "${file}"
 
-    [[ "${isQuiet}" == true ]] || log-success "file '${file}' was cleaned successfully"
+    "${isQuiet}" || log-success "file '${file}' was cleaned successfully"
   done
 }
 

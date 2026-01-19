@@ -47,7 +47,7 @@ getExtensions() {
 
 # Check if the file already exists
 if [[ -f "${file}" ]]; then
-  if [[ "${overwrite}" == true ]]; then
+  if "${overwrite}"; then
     getExtensions >"${file}"
     log-info "${file} has been overwritten."
   else

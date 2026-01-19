@@ -41,7 +41,7 @@ if [[ ${file} == "-" ]] || ((argc == 0)); then
   [[ -z ${str} ]] && printf '' && exit 0
   echo "${str}" | awk 'NF'
 elif [[ -f ${file} ]]; then
-  if [[ ${useBackup} == true ]]; then
+  if ${useBackup}; then
     cp -i "${file}" "${file}.bak"
     awk 'NF' "${file}" | sponge "${file}"
     log-success "Removed blank lines from '${file}'. Backup created at '${file}.bak'."

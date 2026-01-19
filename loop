@@ -58,7 +58,7 @@ fi
 
 for ((count = 0; count < iterations; count++)); do
   [[ -n "${delay}" ]] && ((0 < count)) && sleep "${delay}"
-  [[ "${clear}" == true ]] && ((0 < count)) && clear
+  "${clear}" && ((0 < count)) && clear
   bash -c "${cmd}"
 done
 

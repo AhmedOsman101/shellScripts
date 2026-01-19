@@ -36,11 +36,10 @@ image=${argv[0]}
 
 [[ -f "${image}" ]] || log-error "file '${image}' was not found!"
 
-if [[ ${saveToFile} == true ]]; then
-
+if ${saveToFile}; then
   imgNameWithoutExt="$(strip-ext "${image}" png jpg jpeg webp svg gif)"
 
-  tesseract "${image}" "${imgNameWithoutExt}" 2 &>/dev/null ||
+  tesseract "${image}" "${imgNameWithoutExt}" &>/dev/null ||
     log-error "Tesseract failed on '${image}'."
 
   log-success "Result saved as '${imgNameWithoutExt}.txt'"
@@ -48,7 +47,7 @@ else
   outputFile="$(mktemp -t ocr-XXXXX)"
   trap 'rm -f $outputFile' EXIT
 
-  if ! tesseract "${image}" "${outputFile}" 2 &>/dev/null; then
+  if ! tesseract "${image}" "${outputFile}" &>/dev/null; then
     log-error "Tesseract failed on '${image}'."
   fi
 

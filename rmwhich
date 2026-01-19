@@ -34,10 +34,10 @@ file="${argv[0]}"
 [[ -z "${file}" ]] && log-error "No valid input was given!"
 
 if path=$(command -v "${file}" 2>/dev/null); then
-  if [[ "${force}" == true ]]; then
-    sudo rm -i "${path}"
+  if "${force}"; then
+    sudo rm -fv "${path}"
   else
-    sudo rm -f "${path}"
+    sudo rm -i "${path}"
   fi
 else
   log-error "Script ${file} doesn't exist!"

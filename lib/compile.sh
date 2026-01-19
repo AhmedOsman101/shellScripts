@@ -126,7 +126,7 @@ compile_and_run() {
 
   # If we're in compile-only mode, compile into outfile, else into cached_output
   if [[ -n "${cached_output:-}" ]]; then
-    if [[ "${compile_flag}" == true ]]; then
+    if "${compile_flag}"; then
       outfile="${outfile:-${filename}.out}"
     else
       outfile="${cached_output}"
@@ -150,7 +150,7 @@ compile_and_run() {
 
   # If cache exists and we're in compile-only mode, copy and exit; if run mode, execute cached file
   if [[ -n "${cached_output:-}" && -f "${cached_output}" ]]; then
-    if [[ "${compile_flag}" == true ]]; then
+    if "${compile_flag}"; then
       [[ "${cached_output}" != "${outfile}" ]] && cp -f -- "${cached_output}" "${outfile}"
       log-success "Using cached binary: ${outfile}"
       return 0
@@ -167,7 +167,7 @@ compile_and_run() {
     stderr_log="$(dirname "${cached_output}")/stderr.log"
   fi
 
-  if [[ "${quiet_flag}" == true || "${quiet_flag}" == "true" ]]; then
+  if "${quiet_flag}"; then
     if [[ -n "${stderr_log}" ]]; then
       "${cmdArray[@]}" >/dev/null 2>"${stderr_log}" || compile_exit=$?
     else
@@ -197,7 +197,7 @@ compile_and_run() {
       [[ "${cached_output}" != "${outfile}" ]] && cp -f -- "${outfile}" "${cached_output}"
     fi
 
-    if [[ "${compile_flag}" == true ]]; then
+    if "${compile_flag}"; then
       log-success "Compilation succeeded!"
       return 0
     else

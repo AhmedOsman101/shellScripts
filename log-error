@@ -49,13 +49,14 @@ done
 
 log.sh "ERROR" "$(input "$@")"
 
-if ! isInteractiveShell && [[ "${isNoKill}" == false ]]; then
+# If not interactive and isNoKill set to false
+if ! { isInteractiveShell || "${isNoKill}"; }; then
   # Get parent PID (script that called log-error) and send SIGUSR1
   kill -SIGUSR1 "${PPID}" &>/dev/null || true
   wait "${PPID}" &>/dev/null || true
 fi
 
-[[ "${isNoError}" == true ]] && exit 0
+"${isNoError}" && exit 0
 
 # Exit with failure code (fallback if signal is ignored)
 exit 1

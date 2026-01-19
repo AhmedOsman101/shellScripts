@@ -42,7 +42,7 @@ notify="${cmdarg_cfg['notify']}"
 delay="${cmdarg_cfg['delay']}"
 tries="${cmdarg_cfg['tries']}"
 cmd="${argv[*]}"
-[[ "${notify}" == true ]] && trap 'printf "\a"' EXIT
+"${notify}" && trap 'printf "\a"' EXIT
 
 # validate the delay if defined
 if [[ -n "${delay}" ]]; then

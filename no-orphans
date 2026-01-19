@@ -44,7 +44,7 @@ mapfile -t removablePkgs < <(
   paru -Rps --print-format "%n" "${orphanPkgs[@]}"
 )
 
-if [[ "${force}" != true ]]; then
+if ! "${force}"; then
   mapfile -t keepPkgs < <(
     gum choose \
       --header='Choose what to KEEP' \

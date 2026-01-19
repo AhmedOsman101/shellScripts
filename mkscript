@@ -60,7 +60,7 @@ validateAndCreateFile() {
   chmod u+x "${file}" || log-error "Failed to make '$(basename "${file}")' executable"
 }
 
-if [[ "${isTemp}" == true ]]; then
+if "${isTemp}"; then
   file=$(mktemp -t XXXXX-script.sh)
 
   chmod u+x "${file}" || log-error "Failed to make '$(basename "${file}")' executable"
@@ -70,7 +70,7 @@ if [[ "${isTemp}" == true ]]; then
   scriptContent >"${file}"
   log-info "The script name was copied to clipboard"
 
-elif [[ "${no_flags}" == true ]]; then
+elif "${no_flags}"; then
   if [[ -n ${argv[0]} ]]; then
     name=${argv[0]}
   else
@@ -124,4 +124,4 @@ fi
 
 "${EDITOR}" "${file}"
 
-[[ "${quiet}" == true ]] || log-success "Script '$(basename "${file}")' created succefully!"
+"${quiet}" || log-success "Script '$(basename "${file}")' created succefully!"

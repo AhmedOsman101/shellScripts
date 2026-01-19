@@ -42,11 +42,11 @@ local=${cmdarg_cfg['local']}
 version=${cmdarg_cfg['version']}
 pkg=${argv[0]}
 
-if [[ "${online}" == true ]]; then
+if "${online}"; then
   ${pkgManager} -Ss "${pkg}"
 else
 
-  if [[ "${version}" == true ]]; then
+  if "${version}"; then
     ${pkgManager} -Q | rg -i "${pkg}" && exit 0
   else
     ${pkgManager} -Qq | rg -i "${pkg}" && exit 0
@@ -54,7 +54,7 @@ else
 
   log-warning "The package: '${pkg}' was not found"
 
-  if [[ "${local}" != true ]]; then
+  if ! "${local}"; then
     if gum confirm "Try to search online?"; then
       printf '\n\n'
       ${pkgManager} -Ss "${pkg}"

@@ -139,7 +139,7 @@ createBranch() {
 
   local cmd=('git' 'checkout')
   local clearPrev=0
-  if [[ "${isOrphan}" == true ]]; then
+  if "${isOrphan}"; then
     cmd+=('--orphan' "${branchName}")
     gum confirm "Do you want to remove all tracked files from index?" || clearPrev=1
   else
@@ -158,9 +158,9 @@ createBranch() {
   fi
 }
 
-if [[ "${createNew}" == true ]]; then
+if "${createNew}"; then
   createBranch "${branchParam}"
-elif [[ "${createOrphan}" == true ]]; then
+elif "${createOrphan}"; then
   createBranch "${branchParam}" true
 else
   switchBranch "${branchParam}"

@@ -67,7 +67,7 @@ for file in "${files[@]}"; do
 
   if isInteractiveShell; then
     # Create backup and perform replacement
-    if [[ "${backup}" == true ]]; then
+    if "${backup}"; then
       cp -f "${file}" "${file}.bak" 2>/dev/null || log-error "Backup failed for ${file}"
     fi
   fi
