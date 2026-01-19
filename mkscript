@@ -35,10 +35,11 @@ cmdarg_parse "$@"
 isTemp="${cmdarg_cfg['temp']}"
 filename="${cmdarg_cfg['file']}"
 quiet="${cmdarg_cfg['quiet']}"
-no_flags=false
+no_flags='false'
 file=""
 
-[[ -z "${isTemp}" && -z "${filename}" ]] && no_flags=true
+[[ -z "${isTemp}" && -z "${filename}" ]] && no_flags='true'
+{ ${isTemp} && [[ -n "${filename}" ]]; } || no_flags='true'
 
 scriptContent() {
   cat <<'EOF'
