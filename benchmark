@@ -41,9 +41,7 @@ isPositiveInt "${iterations}" || log-error "Number of iterations must be a valid
 (( ${#cmd[@]} )) || log-error "No command specified."
 
 bench_cmd() {
-  local tmp start end elapsed label
-  label="${ echo "$1" | trim; }"
-  shift
+  local tmp start end elapsed
   local cmd=("$@")
 
   tmp=$(mktemp)
@@ -59,7 +57,7 @@ bench_cmd() {
   end="${EPOCHREALTIME}"
   elapsed=${ awk "BEGIN { print ${end} - ${start} }"; }
 
-  awk -v label="${label}" '
+  awk -v label="${ shellJoinHumanQuote "$@"; }" '
     {
       sum+=$1
       if (NR==1 || $1<min) min=$1
@@ -79,7 +77,7 @@ bench_cmd() {
       printf "AVG=%f\n", avg
 
     }
-  ' "${tmp}"
+  ' "${tmp}" 2>/dev/null
   printf "  total: %s\n" "${ sec2time "${elapsed}" --short; }"
 }
 
@@ -105,25 +103,25 @@ if ((currentCmd == 2)); then
 fi
 
 if ((${#cmd2[@]})); then
-  out1=${ bench_cmd "${cmd1[*]}" "${cmd1[@]}"; }
+  out1=${ bench_cmd "${cmd1[@]}"; }
 
   avg1=${ grep '^AVG=' <<<"${out1}" | cut -d= -f2; }
   printf '%s\n' "${out1}" | sed '/^AVG=/d'
 
-  out2=${ bench_cmd "${cmd2[*]}" "${cmd2[@]}"; }
+  out2=${ bench_cmd "${cmd2[@]}"; }
   avg2=${ grep '^AVG=' <<<"${out2}" | cut -d= -f2; }
   printf '%s\n' "${out2}" | sed '/^AVG=/d'
 
   awk -v a1="${avg1}" -v a2="${avg2}" \
-    -v c1="${cmd1[*]}" -v c2="${cmd2[*]}" '
+    -v c1="$(shellJoinQuote "${cmd1[@]}")" -v c2="$(shellJoinQuote "${cmd2[@]}")" '
     BEGIN {
       if (a1 < a2) {
         printf "\n\"%s\"\n is %.2fx faster\n", c1, a2 / a1, c2
       } else {
-        printf "\n\"%s\"\n is %.2fx faster\n", c2, a1 / a2
+        printf "\n%s\n is %.2fx faster\n", c2, a1 / a2
       }
-    }'
+    }' 2>/dev/null
 else
-  bench_cmd "${cmd1[*]}" "${cmd1[@]}" | sed '/^AVG=/d'
+  bench_cmd "${cmd1[@]}" | sed '/^AVG=/d'
   exit 0
 fi
