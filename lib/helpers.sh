@@ -353,6 +353,25 @@ humanQuote() {
 
 humanQoute() { humanQuote "$1"; }
 
+# Helper to join and quote an array for human display
+shellJoinQuote() {
+  local arr=("$@")
+  local a result=""
+  for a in "${arr[@]}"; do
+    result+=$(shellQuote "${a}")" "
+  done
+  # remove trailing space
+  printf '%s' "${result%" "}"
+}
+
+shellJoinHumanQuote() {
+  local arr=("$@") result="" a
+  for a in "${arr[@]}"; do
+    result+=$(humanQuote "${a}")" "
+  done
+  printf '%s' "${result%" "}"
+}
+
 has-bash-version() {
   if ((BASH_VERSINFO[0] < $1 || BASH_VERSINFO[1] < $2)); then
     log-error "This script requires Bash v$1.$2 or later, you have Bash v${BASH_VERSION}"
