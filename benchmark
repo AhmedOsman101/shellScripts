@@ -18,7 +18,6 @@
 # - awk
 # --- END SIGNATURE --- #
 
-set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 eval "$(include "lib/cmdarg.sh")"
@@ -34,22 +33,28 @@ cmdarg "n:" "iterations" "Number of iterations to run"
 cmdarg_parse "$@"
 # --- Main script logic --- #
 iterations="${cmdarg_cfg['iterations']}"
-cmd="${argv[*]}"
+cmd=("${argv[@]}")
 
 isPositiveInt "${iterations}" || log-error "Number of iterations must be a valid integer."
 ((0 < iterations)) || log-error "Number of iterations must be at least 1."
 
-[[ -z "${cmd}" ]] && log-error "No command specified."
+(( ${#cmd[@]} )) || log-error "No command specified."
 
 start="${ date +%s.%N; }"
 
 tmp="$(mktemp)"
-trap 'rm -f $tmp' EXIT
+trap 'rm -f "$tmp"' EXIT
 
-loop -n "${iterations}" "command time -f '%e' -o ${tmp} -a ${cmd} &>/dev/null"
+for ((i=0; i < iterations; i++)); do
+  # command time -f '%e' -o "${tmp}" -a -- "${cmd[@]}" &>/dev/null
+  t1=${EPOCHREALTIME}
+  "${cmd[@]}" &>/dev/null
+  t2=${EPOCHREALTIME}
+  awk "BEGIN {print ${t2} - ${t1}}" >>"${tmp}"
+done
 
 end="${ date +%s.%N; }"
-elapsed=${ bc <<<"${end} - ${start}"; }
+elapsed=${ awk "BEGIN {print ${end} - ${start}}"; }
 
 awk '
   {
@@ -58,8 +63,19 @@ awk '
     if(NR == 1 || $1 > max) max=$1
   }
   END {
-    printf "runs: %d\navg: %.6fs\nmin: %.6fs\nmax: %.6fs\n", NR, sum / NR, min, max
+    avg = sum / NR
+
+    unit = "s"
+    scale = 1
+
+    if (avg < 1e-3) { unit = "µs"; scale = 1e6 }
+    else if (avg < 1) { unit = "ms"; scale = 1e3 }
+
+    printf "runs: %d\n", NR
+    printf "avg: %.3f%s\n", avg * scale, unit
+    printf "min: %.3f%s\n", min * scale, unit
+    printf "max: %.3f%s\n", max * scale, unit
   }
 ' "${tmp}"
 
-echo "total: ${ sec2time "${elapsed}" --short; }"
+printf "total: %s\n" "${ sec2time "${elapsed}" --short; }"
