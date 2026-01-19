@@ -381,3 +381,9 @@ humanQuote() {
 }
 
 humanQoute() { humanQuote "$1"; }
+
+has-bash-version() {
+  if ((BASH_VERSINFO[0] < $1 || BASH_VERSINFO[1] < $2)); then
+    log-error "This script requires Bash v$1.$2 or later, you have Bash v${BASH_VERSION}"
+  fi
+}
