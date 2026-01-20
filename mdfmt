@@ -54,4 +54,7 @@ mdclean -q "${files[@]}" || log-warning "Failed to clean ${filesCount} files"
 
 killwait "${SPINNER_PID}"
 
-prettier --write --config "${PRETTIERRC}" "${files[@]}"
+prettier --write \
+  --ignore-path '/dev/null' \
+  --ignore-unknown='false' \
+  --config "${PRETTIERRC}" "${files[@]}"
