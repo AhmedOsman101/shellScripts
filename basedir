@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄                                            ▄▄     ██
+#  ██                                            ██     ▀▀
+#  ██▄███▄    ▄█████▄  ▄▄█████▄   ▄████▄    ▄███▄██   ████      ██▄████
+#  ██▀  ▀██   ▀ ▄▄▄██  ██▄▄▄▄ ▀  ██▄▄▄▄██  ██▀  ▀██     ██      ██▀
+#  ██    ██  ▄██▀▀▀██   ▀▀▀▀██▄  ██▀▀▀▀▀▀  ██    ██     ██      ██
+#  ███▄▄██▀  ██▄▄▄███  █▄▄▄▄▄██  ▀██▄▄▄▄█  ▀██▄▄███  ▄▄▄██▄▄▄   ██
+#  ▀▀ ▀▀▀     ▀▀▀▀ ▀▀   ▀▀▀▀▀▀     ▀▀▀▀▀     ▀▀▀ ▀▀  ▀▀▀▀▀▀▀▀   ▀▀
+#
+#
+# --- DESCRIPTION --- #
+#
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "l" "last" "Prints only the last component"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+pwd="${argv[0]:-${PWD}}"
+pwd="${pwd/#"${HOME}"/\~}"
+lastOnly="${cmdarg_cfg[last]}"
+
+trimPath() {
+  local path="$1"
+  local IFS='/'
+  read -ra parts <<<"${path}" # split path by /
+  local n="${#parts[@]}"
+  local result=""
+
+  for ((i = 0; i < n; i++)); do
+    part="${parts[i]}"
+
+    # skip empty parts (root or leading ~)
+    [[ -z "${part}" ]] && continue
+
+    if ((i == 0)) && [[ "${part}" == "~" ]]; then
+      result="~"
+      continue
+    fi
+
+    # last component stays full
+    if ((i == n - 1)); then
+      result+="/${part}"
+      break
+    fi
+
+    # hidden folder (.something) keeps dot + first char
+    if [[ "${part}" == .* ]]; then
+      result+="/${part:0:2}"
+    else
+      result+="/${part:0:1}"
+    fi
+  done
+
+  echo "${result}"
+}
+
+if "${lastOnly}"; then
+  printf '%s\n' "${pwd##*/}"
+elif ((${#pwd} > 20)); then
+  trimPath "${pwd}"
+else
+  printf '%s\n' "${pwd}"
+fi
