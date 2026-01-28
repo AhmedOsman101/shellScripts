@@ -386,8 +386,9 @@ function cmdarg_dump {
   local ref
   local value
 
+  echo "Flags: "
   for key in "${!cmdarg_cfg[@]}"; do
-    repr="${key}:${CMDARG_TYPES[${key}]}"
+    repr="  ${key}:${CMDARG_TYPES[${key}]}"
     if [[ ${CMDARG_TYPES[${key}]} == "${CMDARG_TYPE_ARRAY}" ]] || [[ ${CMDARG_TYPES[${key}]} == "${CMDARG_TYPE_HASH}" ]]; then
       arrname="${key}"
       echo "${repr} => "
@@ -395,11 +396,16 @@ function cmdarg_dump {
       for idx in $(eval "echo ${keys}"); do
         ref='${'"${arrname}"'[$idx]}'
         value=$(eval "echo ${ref}")
-        echo "        ${idx} => ${value}"
+        echo "  ${idx} => ${value}"
       done
     else
       echo "${repr} => ${cmdarg_cfg[${key}]}"
     fi
+  done
+
+  echo "Positional Args: "
+  for key in "${!argv[@]}"; do
+    echo "  ${key} => ${argv[${key}]}"
   done
 }
 
