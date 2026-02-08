@@ -22,10 +22,10 @@ set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
-SCRIPTS_DIR="$(dirname "$0")"
+SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
 DOTFILES="${HOME}/dotfiles"
 
-export PATH="${PATH}:${SCRIPTS_DIR}:/mnt/main/pnpm"
+export PATH="${PATH}:${SCRIPTS_DIR}:${HOME}/.local/share/pnpm"
 export TERM=xterm
 
 eval "$(include "check-deps")"
