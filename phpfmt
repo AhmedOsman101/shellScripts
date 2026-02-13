@@ -12,10 +12,9 @@
 #  ██                  ██
 #
 # --- DESCRIPTION --- #
-# Formats PHP files using phpcbf, auto-discovers .php/.inc files
+# Formats PHP files using phpcbf; accepts files, directories, or reads from stdin
 # --- DEPENDENCIES --- #
 # - phpcbf (php-codesniffer)
-# - fd | fdfind (fd-find)
 # --- END SIGNATURE --- #
 
 trap 'exit 1' SIGUSR1
@@ -26,6 +25,7 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "q" "quiet" "Supress output"
 cmdarg "b" "backup" "Create backup with suffix"
@@ -35,36 +35,20 @@ cmdarg_parse "$@"
 isQuiet="${cmdarg_cfg['quiet']}"
 backup="${cmdarg_cfg['backup']}"
 
-declare -a files
-target="${argv[0]}"
+cmd=(phpcbf -n -p --parallel=$(($(nproc) / 2 + 1)))
 
-if [[ -d "${target}" ]]; then
-  mapfile -t files < <(fd.sh . -I -e php -e inc "${target}")
-else
-  for file in "${argv[@]}"; do
-    [[ -s "${file}" && "${file##*.}" =~ ^(php|inc)$ ]] && files+=("${file}")
-  done
-fi
-
-filesCount=${#files[@]}
-
-if ((filesCount == 0)); then
-  phpcbf '--stdin-path=file.php' -n -
-  exit 0
-  log-error "No valid php files were passed"
-fi
-
-cmd=(
-  phpcbf
-  -n
-  -p
-  --parallel=$(($(nproc) / 2 + 1))
-)
-
+"${isQuiet}" && cmd+=(-q)
 "${backup}" && cmd+=("--suffix=.bak")
 
-cmd+=("${files[@]}")
+if ((argc == 0)); then
+  if [[ ! -t 0 ]]; then
+    cmd+=(--stdin-path=file.php -)
+    "${cmd[@]}"
+    exit 0
+  fi
+  cmd+=(.)
+else
+  cmd+=("${argv[@]}")
+fi
 
 "${cmd[@]}"
-
-"${isQuiet}" || log-success "Formatted ${filesCount} files"
