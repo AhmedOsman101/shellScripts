@@ -77,8 +77,8 @@ cppc hello.cpp
 - **Logging**: Use repository logging utilities:
 
 ```bash
-log-error "Fatal error message"  # Exits with code 1
-log-warning "Warning message"
+log-error "Fatal error message"  # Exits with code 1, writes to stderr
+log-warning "Warning message"    # Exits with code 0, writes to stderr
 log-info "Info message"
 log-success "Success message"
 log-debug "Debug message"
@@ -93,7 +93,7 @@ log-debug "Debug message"
 
 ```bash
 # create a new script in ~/scripts:
-EDITOR=cat mkscript -q <script-name>
+EDITOR=cat mkscript -q script-name
 # create a new script in the current directory:
 EDITOR=cat mkscript -q -f test.sh
 ```
@@ -167,6 +167,25 @@ The `cmdarg` function signature:
 - `<description>`: Text description for help output
 - `[default value]`: Optional default value for the argument
 - `[validator function]`: Optional validator function name
+
+#### Boolean Flags (Real Booleans)
+
+Boolean flags in cmdarg are implemented as real bash booleans. When the flag is NOT set, the value is the string `"false"`. When the flag IS set, the value is the bash builtin `true` command. This allows you to use them directly in conditionals:
+
+```bash
+cmdarg "b" "backup" "Create a backup"
+
+if ${cmdarg_cfg['backup']}; then
+  echo "Backup enabled"
+else
+  echo "No backup"
+fi
+```
+
+You can also use them as commands directly:
+```bash
+${cmdarg_cfg['backup']} && echo "flag is set" || echo "flag is not set"
+```
 
 #### Modern Bash Best Practices
 
@@ -309,6 +328,8 @@ type CleanedUrl = { cleanedUrl: string; furtherCleanedUrl?: string };
 
 ### Script Template (Bash)
 
+Don't ever remove any comment from this template.
+
 ```bash
 #!/usr/bin/env bash
 #
@@ -334,30 +355,14 @@ eval "$(include "lib/helpers.sh")"
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 # Add cmdarg definitions here
-
 cmdarg_parse "$@"
 
 # Access cmdarg_cfg values
-# local value="${cmdarg_cfg['option-name']}"
-# local positional_arg="${argv[0]}"
+value="${cmdarg_cfg['option-name']}"
+positional_arg="${argv[0]}"
 
 # --- Main script logic --- #
-# Implementation here
-```
-
-### Input/Output Patterns
-
-```bash
-# Bash: Handle stdin or arguments (this function available in ./lib/helpers.sh)
-input() {
-  local str
-  if [[ $# -eq 0 || $1 == "-" ]]; then
-    str=$(cat)  # read from stdin
-  else
-    str="$*"   # read from arguments
-  fi
-  echo "${str}"
-}
+# TODO: add code here
 ```
 
 ### Reusable Libraries
