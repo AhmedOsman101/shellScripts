@@ -42,9 +42,8 @@ else
   done
 fi
 
-# NOTE: ((0)) fails, while any other number succeeds
 filesCount=${#files[@]}
-((filesCount > 0)) || log-error "No valid markdown files were passed"
+((0 < filesCount)) || log-error "No valid markdown files were passed"
 
 spinner.sh "Formatting ${filesCount} files..." 1>&2 &
 SPINNER_PID=$!
