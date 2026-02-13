@@ -12,40 +12,59 @@
 #  ██                  ██
 #
 # --- DESCRIPTION --- #
-# Formats php files using php-codesniffer via stdin
+# Formats PHP files using phpcbf, auto-discovers .php/.inc files
 # --- DEPENDENCIES --- #
 # - phpcbf (php-codesniffer)
-# - diff
+# - fd | fdfind (fd-find)
 # --- END SIGNATURE --- #
 
-# set -eo pipefail
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/helpers.sh")"
 eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
 eval "$(include "check-deps")"
 
 checkDeps "$0"
+
 cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "q" "quiet" "Supress output"
+cmdarg "b" "backup" "Create backup with suffix"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
-code="$(input "$@")"
 
-file="/tmp/php-fmt-input.php"
-formattedFile="/tmp/php-fmt-result.php"
+isQuiet="${cmdarg_cfg['quiet']}"
+backup="${cmdarg_cfg['backup']}"
 
-[[ ! -f "${file}" ]] && touch "${file}"
-[[ ! -f "${formattedFile}" ]] && touch "${formattedFile}"
+declare -a files
+target="${argv[0]}"
 
-echo "${code}" >"${file}"
-
-diff=$(diff "${file}" "${formattedFile}")
-
-if [[ -n "${diff}" ]]; then
-  # shellcheck disable=2002
-  cat "${file}" | phpcbf --stdin-path="file.php" - >"${formattedFile}"
+if [[ -d "${target}" ]]; then
+  mapfile -t files < <(fd.sh . -I -e php -e inc "${target}")
+else
+  for file in "${argv[@]}"; do
+    [[ -s "${file}" && "${file##*.}" =~ ^(php|inc)$ ]] && files+=("${file}")
+  done
 fi
 
-cat "${formattedFile}"
+filesCount=${#files[@]}
 
-exit 0
+if ((filesCount == 0)); then
+  phpcbf '--stdin-path=file.php' -n -
+  exit 0
+  log-error "No valid php files were passed"
+fi
+
+cmd=(
+  phpcbf
+  -n
+  -p
+  --parallel=$(($(nproc) / 2 + 1))
+)
+
+"${backup}" && cmd+=("--suffix=.bak")
+
+cmd+=("${files[@]}")
+
+"${cmd[@]}"
+
+"${isQuiet}" || log-success "Formatted ${filesCount} files"
