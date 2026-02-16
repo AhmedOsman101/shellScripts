@@ -184,7 +184,7 @@ compile_and_run() {
   if ((compile_exit)); then
     # If there is a stderr log, show it for debugging
     if [[ -n "${stderr_log}" && -s "${stderr_log}" ]]; then
-      logSafeError "Compilation failed. Compiler output:"
+      log-error --safe "Compilation failed. Compiler output:"
       less -FRX "${stderr_log}"
       exit "${compile_exit}"
     fi
