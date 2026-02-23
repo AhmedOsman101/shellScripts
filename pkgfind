@@ -31,7 +31,7 @@ cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "o" "online" "Search online instead of installed packages"
 cmdarg "l" "local" "Search in installed packages, no prompt for searching online"
 cmdarg "v" "version" "Display the package version"
-cmdarg "m?" "manager" "Which package manager to use (paru, pacman, yay)" "paru"
+cmdarg "m?" "manager" "Which package manager to use (paru, pacman, yay)" "pacman"
 
 cmdarg_parse "$@"
 

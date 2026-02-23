@@ -33,15 +33,15 @@ cmdarg_parse "$@"
 isSafe="${cmdarg_cfg['safe']}"
 
 if "${isSafe}"; then
-  action='log-error --no-kill'
+  action=(log-error --no-kill)
 else
-  action='log-error'
+  action=(log-error)
 fi
 
 # returns true if it's a git repo and false otherwise
-isGitRepo="$(git rev-parse --is-inside-work-tree 2>/dev/null)" || "${action}" "$(pwd) is not a git repository."
+isGitRepo="$(git rev-parse --is-inside-work-tree 2>/dev/null)" || "${action[@]}" "$(pwd) is not a git repository."
 
 # check if the user is inside .git directory
-"${isGitRepo}" || "${action}" "Not in a work tree."
+"${isGitRepo}" || "${action[@]}" "Not in a work tree."
 
 exit 0
