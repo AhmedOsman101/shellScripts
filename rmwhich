@@ -25,10 +25,10 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
-cmdarg "force" "f" "Deletes without confirmation"
+cmdarg "f" "force" "Deletes without confirmation"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
-force="${cmdarg_cfg['force']}"
+force="${cmdarg_cfg[force]}"
 file="${argv[0]}"
 
 [[ -z "${file}" ]] && log-error "No valid input was given!"

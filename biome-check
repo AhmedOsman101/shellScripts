@@ -43,7 +43,7 @@ configFile="${BIOME_CONFIG_PATH:-${HOME}/.config/biome/biome.json}"
 declare result
 
 # Take the one at top-level
-if is-git-repo --safe; then
+if is-git-repo --safe &>/dev/null; then
   cd "$(git-root)"
   result="$(fd-by-depth --type f biome.json . | head -n 1)"
   # NOTE: Go to previous directory
@@ -61,12 +61,9 @@ cmdArray=(
   --max-diagnostics "${maxDiagnostics}"
 )
 
-if [[ -n ${result} && -f ${result} ]]; then
+if [[ -s ${result} ]]; then
   unset BIOME_CONFIG_PATH
-  # cmdArray+=("--config-path=${result}")
-elif [[ -n ${configFile} && -f ${configFile} ]]; then
-  # cmdArray+=("--config-path=${configFile}")
-  true
+  cmdArray+=("--config-path=${result}")
 fi
 
 "${summary}" && cmdArray+=(--reporter=summary)
