@@ -101,7 +101,7 @@ if ! git status --porcelain | rg '^[A-Z]' &>/dev/null; then
 fi
 
 if "${useAi}"; then
-  logFile=$(mktemp -t commit-sage-XXXXX.log)
+  logFile="$(mktemp -t commit-sage-XXXXX.log)"
 
   # Another implementation
   spinner.sh &
@@ -119,10 +119,13 @@ if "${useAi}"; then
     log-error "$(sed 's|\[ERROR\] ||' "${logFile}")"
   fi
 
-  transformed=$(tr "\n" "#" <"${logFile}")
+  # Read first line as summary (standard git commit format: first line = subject)
+  read -r summary <"${logFile}"
+  # Remove any carriage returns (for Windows line endings)
+  summary="${summary//$'\r'/}"
 
-  summary=$(echo "${transformed}" | awk -F "##" '{print $1}' | sed 's|#$||g')
-  details=$(echo "${transformed}" | awk -F "##" '{print $2}' | tr "#" "\n")
+  # Read remaining lines as details (everything after the first line)
+  details="$(tail -n +2 "${logFile}")"
 
 else
   type=$(
