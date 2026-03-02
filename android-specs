@@ -12,9 +12,10 @@
 #                                                                                            ██
 #
 # --- DESCRIPTION --- #
-# Prints out the specs of the connected anrdoid device using adb.
+# Prints out the specs of the connected android device using adb.
 # --- DEPENDENCIES --- #
 # - adb (android-tools)
+# - grep
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -27,19 +28,83 @@ checkDeps "$0"
 
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "s" "short" "Show only essential info"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
-cmd="$(
-  cat <<'EOF'
-echo CPU ABI: "$(getprop ro.product.cpu.abi)"
-echo ABI List: "$(getprop ro.product.cpu.abilist)"
-echo Android: "$(getprop ro.build.version.release)"
-echo API: "$(getprop ro.build.version.sdk)"
-echo GLES: "$(dumpsys SurfaceFlinger | grep GLES)"
-echo RAM: "$(cat /proc/meminfo | grep 'MemTotal:')"
-EOF
-)"
 
-adb shell "${cmd}"
+short="${cmdarg_cfg['short']}"
+
+cmd() {
+  cat <<'EOF'
+echo "========== DEVICE =========="
+echo Model: $(getprop ro.product.model)
+echo Device: $(getprop ro.product.device)
+echo Brand: $(getprop ro.product.brand)
+echo Manufacturer: $(getprop ro.product.manufacturer)
+echo Hardware: $(getprop ro.hardware)
+echo Board: $(getprop ro.product.board)
+
+echo ""
+echo "========== SOFTWARE =========="
+echo Android: $(getprop ro.build.version.release)
+echo API Level: $(getprop ro.build.version.sdk)
+echo Security Patch: $(getprop ro.build.version.security_patch)
+echo Build ID: $(getprop ro.build.id)
+echo Build Type: $(getprop ro.build.type)
+echo Build Fingerprint: $(getprop ro.build.fingerprint | sed 's/.*\(........\)$/\1/')
+
+echo ""
+echo "========== CPU =========="
+echo ABI: $(getprop ro.product.cpu.abi)
+echo ABI List: $(getprop ro.product.cpu.abilist)
+echo Processor: $(cat /proc/cpuinfo | grep -m1 "Hardware" | cut -d: -f2 | tr -d ' ')
+echo Processor Cores: $(grep -c ^processor /proc/cpuinfo)
+echo Max Frequency: $(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq | awk '{print $1/1000000" GHz"}')
+echo Min Frequency: $(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq | awk '{print $1/1000000" GHz"}')
+
+echo ""
+echo "========== MEMORY =========="
+echo Total RAM: $(cat /proc/meminfo | grep MemTotal | awk '{printf "%.1f GB", $2/1024/1024}')
+echo Available RAM: $(cat /proc/meminfo | grep MemAvailable | awk '{printf "%.1f GB", $2/1024/1024}')
+
+echo ""
+echo "========== STORAGE =========="
+echo Internal Storage: $(df /data | tail -1 | awk '{printf "%.1f GB", $2/1024/1024}')
+echo Available Storage: $(df /data | tail -1 | awk '{printf "%.1f GB", $4/1024/1024}')
+
+echo ""
+echo "========== DISPLAY =========="
+echo Resolution: $(wm size | cut -d: -f2 | tr -d ' ')
+echo Density: $(wm density 2>/dev/null | grep "Physical density" | awk '{print $3}')
+echo Refresh Rate: $(dumpsys display 2>/dev/null | grep "mDefaultPeakRefreshRate" | head -1 | awk '{print $2}' | tr -d ' ')
+
+echo ""
+echo "========== BATTERY =========="
+echo Status: $(dumpsys battery | grep -m1 "status:" | cut -d: -f2 | sed 's/ 2/Discharging/;s/ 3/Not charging/;s/ 4/Unknown/;s/ 5/Full/' | tr -d ' ')
+echo Level: $(dumpsys battery | grep -m1 "level:" | cut -d: -f2)%$(dumpsys battery | grep -m1 "scale:" | cut -d: -f2 | awk '{print " / "$1}')
+echo Health: $(dumpsys battery | grep -m1 "health:" | cut -d: -f2 | sed 's/ 1/Unknown/;s/ 2/Good/;s/ 3/Overheat/;s/ 4/Dead/;s/ 5/Over voltage/;s/ 6/Unspecified failure/;s/ 7/Cold/' | tr -d ' ')
+echo Temperature: $(dumpsys battery | grep -m1 "temperature:" | cut -d: -f2 | awk '{print $1/10"°C"}')
+echo Voltage: $(dumpsys battery | grep -m1 "voltage:" | cut -d: -f2 | awk '{print $1" mV"}')
+echo Technology: $(dumpsys battery | grep -m1 "technology:" | cut -d: -f2 | tr -d ' ')
+
+echo ""
+echo "========== KERNEL =========="
+echo Version: $(uname -r | cut -d- -f1)
+echo Build: $(uname -r | cut -d- -f2-)
+
+echo ""
+echo "========== SYSTEM =========="
+echo SELinux: $(getenforce 2>/dev/null || echo "N/A")
+echo Debuggable: $(getprop ro.debuggable | sed 's/0/No/;s/1/Yes/')
+EOF
+}
+
+output="$(adb shell "$(cmd)")"
+
+if "${short}"; then
+  echo "${output}" | grep -E "^(Model|Android|API|RAM|Storage|Resolution):"
+else
+  echo "${output}"
+fi
 
 exit 0
