@@ -32,7 +32,7 @@ RASI="$(dirname "$0")/list.rasi"
 # declare -A scripts
 declare -a scripts
 
-scriptPaths=$(fd . -t f -t l -t x --full-path "${SCRIPTS_DIR}" | awk -F '/' '{print $NF}')
+scriptPaths=$(fd.sh . -t f -t l -t x --full-path "${SCRIPTS_DIR}" | awk -F '/' '{print $NF}')
 
 IFS=$'\n'
 

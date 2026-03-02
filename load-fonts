@@ -40,16 +40,16 @@ otfDir="/usr/local/share/fonts/OTF"
 sudo mv -i ./*.ttf "${ttfDir}" &>/dev/null || true
 sudo mv -i ./*.otf "${otfDir}" &>/dev/null || true
 
-mapfile -t dirs < <(fd . -t d -d 1)
+mapfile -t dirs < <(fd.sh . -t d -d 1)
 
 for dir in "${dirs[@]}"; do
-  mapfile -t ttfDirs < <(fd . -e ttf "${dir}" -x dirname {} | no-dups -a)
+  mapfile -t ttfDirs < <(fd.sh . -e ttf "${dir}" -x dirname {} | no-dups -a)
   if ((${#ttfDirs} > 0)); then
     sudo mv "${ttfDirs[@]}" -t "${ttfDir}" && log-info "Moved ${ttfDirs[*]}"
     continue # to avoid searching again
   fi
 
-  mapfile -t otfDirs < <(fd . -e otf "${dir}" -x dirname {} | no-dups -a)
+  mapfile -t otfDirs < <(fd.sh . -e otf "${dir}" -x dirname {} | no-dups -a)
   if ((${#otfDirs} > 0)); then
     sudo mv "${otfDirs[@]}" -t "${otfDir}" && log-info "Moved ${otfDirs[*]}"
   fi
