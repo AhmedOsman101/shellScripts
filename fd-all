@@ -19,4 +19,4 @@ set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
-/usr/bin/fd-find --no-ignore --hidden --no-require-git "$@"
+fd --no-ignore --hidden --no-require-git "$@"
