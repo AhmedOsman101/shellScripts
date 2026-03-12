@@ -40,10 +40,10 @@ else
 fi
 
 # ---- Timeshift ---- #
-SUDO_ASKPASS="${SCRIPTS_DIR}/echopass" sudo -A timeshift --create --comments "Daily backup $(now)"
+# SUDO_ASKPASS="${SCRIPTS_DIR}/echopass" sudo -A timeshift --create --comments "Daily backup $(now)"
 
 # --- Installed packages --- #
-paru -Qqe >"${DOTFILES}/${device}_packages.txt"
+pacman -Qqe >"${DOTFILES}/${device}_packages.txt"
 
 # --- VS Code Extenstions--- #
 get-ext --overwrite "${DOTFILES}/${device}_extensions.json"
