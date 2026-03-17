@@ -308,6 +308,27 @@ randRange() {
   printf '%d\n' $((min + r % range))
 }
 
+randWords() {
+  local count="$1"
+  local dict="/usr/share/dict/words"
+  isPositiveInt "${count}" || log-error "Number of words must be a positive integer"
+
+  # Generate n words and join them with spaces
+  if [[ -f "${dict}" ]]; then
+    # Use the system dictionary if available
+    shuf -n "${count}" "${dict}" | tr '\n' ' '
+  else
+    # Fallback: Efficient gibberish generation
+    # 1. Read random bytes from urandom
+    # 2. Filter to keep only lowercase letters
+    # 3. Fold into lines of 6 characters (simulating word length)
+    # 4. Take the requested number of 'words'
+    # 5. Join them with spaces
+    head -c $((count * 50)) /dev/urandom | tr -dc '[:lower:]' | fold -w 6 | head -n "${count}" | tr '\n' ' '
+  fi
+  printf '\n'
+}
+
 # Returns 0 if colors should be enabled, 1 otherwise
 supportsColor() {
   # Explicit opt-out (standard)
