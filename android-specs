@@ -99,7 +99,7 @@ echo Debuggable: $(getprop ro.debuggable | sed 's/0/No/;s/1/Yes/')
 EOF
 }
 
-output="$(adb shell "$(cmd)")"
+output="$(adb "${argv[@]}" shell "${cmd}")"
 
 if "${short}"; then
   echo "${output}" | grep -E "^(Model|Android|API|RAM|Storage|Resolution):"
