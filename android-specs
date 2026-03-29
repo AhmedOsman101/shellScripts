@@ -15,7 +15,7 @@
 # Prints out the specs of the connected android device using adb.
 # --- DEPENDENCIES --- #
 # - adb (android-tools)
-# - grep
+# - rg (ripgrep)
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -102,7 +102,7 @@ EOF
 output="$(adb "${argv[@]}" shell "${cmd}")"
 
 if "${short}"; then
-  echo "${output}" | grep -E "^(Model|Android|API|RAM|Storage|Resolution):"
+  echo "${output}" | rg "^(Model|Android|API|RAM|Storage|Resolution):"
 else
   echo "${output}"
 fi
