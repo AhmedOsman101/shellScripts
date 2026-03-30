@@ -1,0 +1,9 @@
+[project]
+name = "yt-music-playlist"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.14"
+dependencies = [
+    "rich>=14.3.3",
+    "ytmusicapi>=1.11.5",
+]
