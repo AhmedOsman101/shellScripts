@@ -36,6 +36,215 @@ short="${cmdarg_cfg['short']}"
 
 cmd() {
   cat <<'EOF'
+trim() {
+  printf '%s' "$*" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
+firstProp() {
+  local prop value
+  for prop in "$@"; do
+    value="$(getprop "$prop" 2>/dev/null)"
+    value="$(trim "$value")"
+
+    case "$value" in
+      '' | unknown | null)
+        continue
+        ;;
+      *)
+        printf '%s\n' "$value"
+        return 0
+        ;;
+    esac
+  done
+
+  return 1
+}
+
+cpuPartName() {
+  case "${1#0x}" in
+    d03) printf '%s\n' 'Cortex-A53' ;;
+    d04) printf '%s\n' 'Cortex-A35' ;;
+    d05) printf '%s\n' 'Cortex-A55' ;;
+    d06) printf '%s\n' 'Cortex-A65' ;;
+    d07) printf '%s\n' 'Cortex-A57' ;;
+    d08) printf '%s\n' 'Cortex-A72' ;;
+    d09) printf '%s\n' 'Cortex-A73' ;;
+    d0a) printf '%s\n' 'Cortex-A75' ;;
+    d0b) printf '%s\n' 'Cortex-A76' ;;
+    d0c) printf '%s\n' 'Neoverse-N1' ;;
+    d0d) printf '%s\n' 'Cortex-A77' ;;
+    d0e) printf '%s\n' 'Cortex-A76AE' ;;
+    d13) printf '%s\n' 'Cortex-R52' ;;
+    d14) printf '%s\n' 'Cortex-A77AE' ;;
+    d15) printf '%s\n' 'Cortex-A55AE' ;;
+    d16) printf '%s\n' 'Cortex-A510' ;;
+    d40) printf '%s\n' 'Neoverse-V1' ;;
+    d41) printf '%s\n' 'Cortex-A78' ;;
+    d44) printf '%s\n' 'Cortex-X1' ;;
+    d46) printf '%s\n' 'Cortex-A510AE' ;;
+    d47) printf '%s\n' 'Cortex-A710' ;;
+    d48) printf '%s\n' 'Cortex-X2' ;;
+    d49) printf '%s\n' 'Neoverse-N2' ;;
+    *) return 1 ;;
+  esac
+}
+
+cpuImplementerName() {
+  case "${1#0x}" in
+    41) printf '%s\n' 'ARM' ;;
+    51) printf '%s\n' 'Qualcomm' ;;
+    53) printf '%s\n' 'Samsung' ;;
+    61) printf '%s\n' 'Apple' ;;
+    *) return 1 ;;
+  esac
+}
+
+getProcessor() {
+  local processor implementerCode implementerName partCodes partCode partName partNames oldIFS
+
+  processor="$(grep -m1 '^Hardware' /proc/cpuinfo | cut -d: -f2-)"
+  processor="$(trim "$processor")"
+  if [ -n "$processor" ]; then
+    printf '%s\n' "$processor"
+    return 0
+  fi
+
+  processor="$(firstProp ro.soc.model ro.vendor.qti.soc_model ro.board.platform ro.mediatek.platform ro.hardware.chipname ro.hardware ro.product.board)"
+  processor="$(trim "$processor")"
+  if [ -n "$processor" ]; then
+    printf '%s\n' "$processor"
+    return 0
+  fi
+
+  implementerCode="$(grep -m1 '^CPU implementer' /proc/cpuinfo | cut -d: -f2-)"
+  implementerCode="$(trim "$implementerCode")"
+  implementerName="$(cpuImplementerName "$implementerCode" 2>/dev/null || true)"
+
+  partCodes="$(awk -F': *' '/^CPU part/ {print $2}' /proc/cpuinfo | awk '!seen[$0]++')"
+  partNames=''
+  oldIFS="$IFS"
+  IFS='
+'
+  for partCode in $partCodes; do
+    partCode="$(trim "$partCode")"
+    [ -z "$partCode" ] && continue
+
+    partName="$(cpuPartName "$partCode" 2>/dev/null || printf '%s' "$partCode")"
+    case ",$partNames," in
+      *,"$partName",*) ;;
+      *)
+        if [ -n "$partNames" ]; then
+          partNames="$partNames, $partName"
+        else
+          partNames="$partName"
+        fi
+        ;;
+    esac
+  done
+  IFS="$oldIFS"
+
+  if [ -n "$partNames" ]; then
+    if [ -n "$implementerName" ]; then
+      printf '%s %s\n' "$implementerName" "$partNames"
+    else
+      printf '%s\n' "$partNames"
+    fi
+    return 0
+  fi
+
+  printf '%s\n' 'Unknown'
+}
+
+getRefreshRate() {
+  local refreshRate
+
+  refreshRate="$(settings get system peak_refresh_rate 2>/dev/null | tr -d '\r')"
+  case "$refreshRate" in
+    '' | 0 | null | NaN | Infinity)
+      refreshRate=''
+      ;;
+  esac
+
+  if [ -n "$refreshRate" ]; then
+    printf '%s Hz\n' "$refreshRate"
+    return 0
+  fi
+
+  refreshRate="$(
+    dumpsys display 2>/dev/null | awk '
+      {
+        line = $0
+        while (match(line, /fps=[0-9]+(\.[0-9]+)?/)) {
+          value = substr(line, RSTART + 4, RLENGTH - 4) + 0
+          if (value > max) {
+            max = value
+          }
+          line = substr(line, RSTART + RLENGTH)
+        }
+      }
+      END {
+        if (max > 0) {
+          if (max == int(max)) {
+            printf "%d", max
+          } else {
+            printf "%s", max
+          }
+        }
+      }
+    '
+  )"
+  if [ -n "$refreshRate" ]; then
+    printf '%s Hz\n' "$refreshRate"
+    return 0
+  fi
+
+  refreshRate="$(dumpsys display 2>/dev/null | awk '/mDefaultPeakRefreshRate/ {print $2; exit}')"
+  refreshRate="$(trim "$refreshRate")"
+  if [ -n "$refreshRate" ]; then
+    printf '%s Hz\n' "$refreshRate"
+    return 0
+  fi
+
+  printf '%s\n' 'Unknown'
+}
+
+getBatteryValue() {
+  dumpsys battery 2>/dev/null | awk -F': *' -v key="$1" '$1 ~ "^[[:space:]]*" key "$" {print $2; exit}'
+}
+
+getBatteryStatus() {
+  local statusCode pluggedCode statusText powerSource
+
+  statusCode="$(trim "$(getBatteryValue status)")"
+  pluggedCode="$(trim "$(getBatteryValue plugged)")"
+
+  case "$statusCode" in
+    2) statusText='Charging' ;;
+    3) statusText='Discharging' ;;
+    4) statusText='Not charging' ;;
+    5) statusText='Full' ;;
+    *) statusText='Unknown' ;;
+  esac
+
+  case "$pluggedCode" in
+    1) powerSource='AC' ;;
+    2) powerSource='USB' ;;
+    4) powerSource='Wireless' ;;
+    8) powerSource='Dock' ;;
+    *) powerSource='' ;;
+  esac
+
+  if [ -n "$powerSource" ] && [ "$statusText" != 'Full' ]; then
+    statusText='Charging'
+  fi
+
+  if [ -n "$powerSource" ] && [ "$statusText" != 'Discharging' ]; then
+    printf '%s (%s)\n' "$statusText" "$powerSource"
+  else
+    printf '%s\n' "$statusText"
+  fi
+}
+
 echo "========== DEVICE =========="
 echo Model: $(getprop ro.product.model)
 echo Device: $(getprop ro.product.device)
@@ -57,7 +266,7 @@ echo ""
 echo "========== CPU =========="
 echo ABI: $(getprop ro.product.cpu.abi)
 echo ABI List: $(getprop ro.product.cpu.abilist)
-echo Processor: $(cat /proc/cpuinfo | grep -m1 "Hardware" | cut -d: -f2 | tr -d ' ')
+echo Processor: $(getProcessor)
 echo Processor Cores: $(grep -c ^processor /proc/cpuinfo)
 echo Max Frequency: $(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq | awk '{print $1/1000000" GHz"}')
 echo Min Frequency: $(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq | awk '{print $1/1000000" GHz"}')
@@ -76,11 +285,11 @@ echo ""
 echo "========== DISPLAY =========="
 echo Resolution: $(wm size | cut -d: -f2 | tr -d ' ')
 echo Density: $(wm density 2>/dev/null | grep "Physical density" | awk '{print $3}')
-echo Refresh Rate: $(dumpsys display 2>/dev/null | grep "mDefaultPeakRefreshRate" | head -1 | awk '{print $2}' | tr -d ' ')
+echo Refresh Rate: $(getRefreshRate)
 
 echo ""
 echo "========== BATTERY =========="
-echo Status: $(dumpsys battery | grep -m1 "status:" | cut -d: -f2 | sed 's/ 2/Discharging/;s/ 3/Not charging/;s/ 4/Unknown/;s/ 5/Full/' | tr -d ' ')
+echo Status: $(getBatteryStatus)
 echo Level: $(dumpsys battery | grep -m1 "level:" | cut -d: -f2)%$(dumpsys battery | grep -m1 "scale:" | cut -d: -f2 | awk '{print " / "$1}')
 echo Health: $(dumpsys battery | grep -m1 "health:" | cut -d: -f2 | sed 's/ 1/Unknown/;s/ 2/Good/;s/ 3/Overheat/;s/ 4/Dead/;s/ 5/Over voltage/;s/ 6/Unspecified failure/;s/ 7/Cold/' | tr -d ' ')
 echo Temperature: $(dumpsys battery | grep -m1 "temperature:" | cut -d: -f2 | awk '{print $1/10"°C"}')
