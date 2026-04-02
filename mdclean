@@ -66,8 +66,8 @@ main() {
       -e "s|[‘’]|'|g" \
       -e 's|[“”]|"|g' \
       -e 's|كلية تكنولوجيا الصناعة والطاقة||g' \
-      -e ':a; /---[[:space:]]*$/ { N; /\n[[:space:]]*$/ ba; s/---\n([[:space:]]*\n)*##[[:space:]]/\n## /; P; D }' \
       "${file}"
+    # -e ':a; /---[[:space:]]*$/ { N; /\n[[:space:]]*$/ ba; s/---\n([[:space:]]*\n)*##[[:space:]]/\n## /; P; D }' \
 
     "${isQuiet}" || log-success "file '${file}' was cleaned successfully"
   done
