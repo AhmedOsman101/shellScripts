@@ -96,10 +96,11 @@ echo ""
 echo "========== SYSTEM =========="
 echo SELinux: $(getenforce 2>/dev/null || echo "N/A")
 echo Debuggable: $(getprop ro.debuggable | sed 's/0/No/;s/1/Yes/')
+exit 0
 EOF
 }
 
-output="$(adb "${argv[@]}" shell "${cmd}")"
+output="$(adb "${argv[@]}" shell "$(cmd)")"
 
 if "${short}"; then
   echo "${output}" | rg "^(Model|Android|API|RAM|Storage|Resolution):"
