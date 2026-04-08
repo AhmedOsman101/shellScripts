@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#            ▄▄                               ██                  ██
+#            ██                               ▀▀       ██         ▀▀
+#  ████▄██▄  ██ ▄██▀              ▄███▄██   ████     ███████    ████      ▄███▄██  ██▄████▄   ▄████▄    ██▄████   ▄████▄
+#  ██ ██ ██  ██▄██               ██▀  ▀██     ██       ██         ██     ██▀  ▀██  ██▀   ██  ██▀  ▀██   ██▀      ██▄▄▄▄██
+#  ██ ██ ██  ██▀██▄     █████    ██    ██     ██       ██         ██     ██    ██  ██    ██  ██    ██   ██       ██▀▀▀▀▀▀
+#  ██ ██ ██  ██  ▀█▄             ▀██▄▄███  ▄▄▄██▄▄▄    ██▄▄▄   ▄▄▄██▄▄▄  ▀██▄▄███  ██    ██  ▀██▄▄██▀   ██       ▀██▄▄▄▄█
+#  ▀▀ ▀▀ ▀▀  ▀▀   ▀▀▀             ▄▀▀▀ ██  ▀▀▀▀▀▀▀▀     ▀▀▀▀   ▀▀▀▀▀▀▀▀   ▄▀▀▀ ██  ▀▀    ▀▀    ▀▀▀▀     ▀▀         ▀▀▀▀▀
+#                                 ▀████▀▀                                 ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# Generates a .gitignore file for the current project using various templates.
+# Powered by https://www.gitignore.io
+# --- DEPENDENCIES --- #
+# - curl
+# - fzf
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+selected=("${argv[@]}")
+FZF_CMD=('fzf' '--highlight-line' '--cycle' '--exit-0')
+
+if ((${#selected[@]} == 0)); then
+  spinner.sh "Fetching available templates..." &
+  SPINNER_PID=$!
+
+  templates="$(curl -fsL "https://www.gitignore.io/api/list")"
+
+  killwait "${SPINNER_PID}"
+
+  mapfile -t selected < <(echo "${templates}" | tr ',' '\n' | "${FZF_CMD[@]}" --multi)
+fi
+
+if [[ -s .gitignore ]]; then
+  action="$(printf '%s\n' append overwrite abort | "${FZF_CMD[@]}" --multi=1)"
+  case "${action}" in
+  append) printf '\n' >>.gitignore ;;
+  overwrite) printf '' >.gitignore ;;
+  ?) terminate "Didn't find a valid choice" ;;
+  abort | *) terminate ;;
+  esac
+fi
+
+for item in "${selected[@]}"; do
+  spinner.sh "Adding ${item} preset..." &
+  SPINNER_PID=$!
+
+  curl -fsL "https://www.gitignore.io/api/${item}" >>.gitignore
+
+  killwait "${SPINNER_PID}"
+done
