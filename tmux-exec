@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Inspired by https://github.com/nickjj/dotfiles/blob/master/.local/bin/tmux-shell-cmd
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#    ██
+#  ███████   ████▄██▄  ██    ██  ▀██  ██▀             ▄████▄   ▀██  ██▀   ▄████▄    ▄█████▄
+#    ██      ██ ██ ██  ██    ██    ████              ██▄▄▄▄██    ████    ██▄▄▄▄██  ██▀    ▀
+#    ██      ██ ██ ██  ██    ██    ▄██▄     █████    ██▀▀▀▀▀▀    ▄██▄    ██▀▀▀▀▀▀  ██
+#    ██▄▄▄   ██ ██ ██  ██▄▄▄███   ▄█▀▀█▄             ▀██▄▄▄▄█   ▄█▀▀█▄   ▀██▄▄▄▄█  ▀██▄▄▄▄█
+#     ▀▀▀▀   ▀▀ ▀▀ ▀▀   ▀▀▀▀ ▀▀  ▀▀▀  ▀▀▀              ▀▀▀▀▀   ▀▀▀  ▀▀▀    ▀▀▀▀▀     ▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Run a shell command in all open tmux sessions, windows and panes.
+# --- DEPENDENCIES --- #
+# - tmux
+# - pgrep
+# --- END SIGNATURE --- #
+
+set -o pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+
+cmdarg "k" "kill" "Kills all processes with confirmation"
+cmdarg "f" "force" "Force kill all process without confirmation (works with --kill|-k)"
+
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+isForce="${cmdarg_cfg['force']}"
+isKill="${cmdarg_cfg['kill']}"
+
+cmd="${argv[*]}"
+
+if [[ -z "${cmd}" ]]; then
+  cat <<EOF
+Usage: ${BASH_SOURCE[0]##*/} <command>
+       ${BASH_SOURCE[0]##*/} whoami
+EOF
+  exit 1
+fi
+
+if "${isKill}" && ! "${isForce}"; then
+  log-info -n "All processes running in any tmux shell session (nvim, etc.) will be killed, save you work! Are you sure? (y/n) "
+
+  if yesNo; then
+    terminate "\nAborting, your command was not run within any shell session."
+  fi
+fi
+
+tmux list-panes -a -F "#{session_name}:#{window_index}.#{pane_index} #{pane_pid}" | while read -r pane pid; do
+  # The running process will always be your shell (zsh, bash, etc.)
+  # in this case if we have something like nvim or htop running
+  # there will be a child process of that pid.
+  child_pid="$(pgrep -P "${pid}")"
+  was_killed=false
+
+  if "${isKill}" && [[ -n "${child_pid}" ]]; then
+    # We're using pkill and kill so child processes get killed for processes
+    # that spawn a parent which cannot be killed with a normal kill.
+    # pkill is useful for processes like docker compose up.
+    kill "${child_pid}"
+    pkill -P "${child_pid}"
+    was_killed=true
+  fi
+
+  if [[ -z "${child_pid}" ]] || "${was_killed}"; then
+    # NOTE: C-m is the Enter key
+    tmux send-keys -t "${pane}" "${cmd}" "C-m"
+  fi
+done
