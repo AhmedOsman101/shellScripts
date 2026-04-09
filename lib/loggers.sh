@@ -294,11 +294,21 @@ printHex() {
 
 # colorOnlyPrefix "<COLOR_FUNC>" "<LEVEL>" "<MESSAGE>" [FD]
 colorOnlyPrefix() {
-  local colorFunc level message fd
+  local colorFunc level message fd isNewLine=true
+
+  if [[ "$1" =~ ^-n$ ]]; then
+    isNewLine=false
+    shift || true
+  fi
+
   colorFunc="$1"
   level="$2"
   message="$3"
   fd="${4:-1}"
 
-  printf '%b %s\n' "$(${colorFunc} -n "[${level}]")" "$(sanitizedPrint "${message}")" >&"${fd}"
+  if "${isNewLine}"; then
+    printf '%b %s\n' "$(${colorFunc} -n "[${level}]")" "$(sanitizedPrint "${message}")" >&"${fd}"
+  else
+    printf '%b %s' "$(${colorFunc} -n "[${level}]")" "$(sanitizedPrint "${message}")" >&"${fd}"
+  fi
 }

@@ -25,4 +25,9 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 # ---  Main script logic --- #
-log.sh "WARNING" "$(input "$@")"
+if [[ "$1" =~ ^-n$ ]]; then
+  shift || true
+  log.sh "WARNING" -n "$(input "$@")"
+else
+  log.sh "WARNING" "$(input "$@")"
+fi

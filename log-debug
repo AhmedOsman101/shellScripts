@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Prints debug messages in magenta with a '[DEBUG] ' prefix; reads from stdin or arguments
 # --- DEPENDENCIES --- #
-# - tput
+#
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -25,4 +25,9 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 # ---  Main script logic --- #
-log.sh "DEBUG" "$(input "$@")"
+if [[ "$1" =~ ^-n$ ]]; then
+  shift || true
+  log.sh "DEBUG" -n "$(input "$@")"
+else
+  log.sh "DEBUG" "$(input "$@")"
+fi
