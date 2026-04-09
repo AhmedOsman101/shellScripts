@@ -398,3 +398,11 @@ has-bash-version() {
     log-error "This script requires Bash v$1.$2 or later, you have Bash v${BASH_VERSION}"
   fi
 }
+
+yesNo() {
+  local answer prompt="$1"
+  printf '%b' "${prompt} [Y/n] "
+  read -r answer </dev/tty
+
+  [[ ! "${answer}" =~ ^[nN]$ ]]
+}
