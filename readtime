@@ -15,7 +15,7 @@
 # Accepts file(s) or raw text and outputs how long it takes to read in minutes.
 # --- DEPENDENCIES --- #
 # - pandoc
-# - pdftotext
+# - pdftotext (poppler)
 # - wc
 # --- END SIGNATURE --- #
 
@@ -30,7 +30,7 @@ checkDeps "$0"
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg 'q' 'quiet' "Quiet output, prints only minutes to read"
-cmdarg 'w?' 'wpm' "Words per minute" '200'
+cmdarg 'w?' 'wpm' "Words per minute" '150'
 cmdarg 's' 'sort' "Sort the output (ascending)"
 cmdarg 'r' 'reverse' "Sort the output (descending)"
 cmdarg_parse "$@"
@@ -41,8 +41,8 @@ TOTAL=0
 PROCESSED=0
 sortMode='none'
 
-[[ "${cmdarg_cfg[sort]}" == "true" ]] && sortMode='asc'
-[[ "${cmdarg_cfg[reverse]}" == "true" ]] && sortMode='desc'
+"${cmdarg_cfg[sort]}" && sortMode='asc'
+"${cmdarg_cfg[reverse]}" && sortMode='desc'
 
 hasStdinRedirected() {
   local stdin_source
@@ -56,7 +56,7 @@ countWordsFromStdin() {
 
 countWordsFromFile() {
   local temp
-  if [[ $(file --mime-type --brief "${file}") == "application/pdf" ]]; then
+  if [[ "$(file --mime-type --brief "${file}")" == "application/pdf" ]]; then
     temp="$(mktemp)"
     pdftotext -enc UTF-8 -eol unix -q "${file}" "${temp}"
     mdclean -q "${temp}"
