@@ -46,7 +46,6 @@ AUTH_HEADER="Authorization: Bearer $(pass show vercel/token)"
 response=$(
   gum spin \
     --title "Fetching..." \
-    --title.foreground="${U_GREEN}" \
     -- curl -sH "${AUTH_HEADER}" "https://api.vercel.com/v6/deployments?limit=${limit}"
 )
 now=$(date +"%s")
@@ -63,18 +62,10 @@ parseJson() {
 
   status=$(echo "${record}" | jq -r '.state' | trim)
   case "${status}" in
-  'READY')
-    status="${READY}"
-    ;;
-  'BUILDING')
-    status="${BUILDING}"
-    ;;
-  'ERROR')
-    status="${ERROR}"
-    ;;
-  *)
-    log-error "Invalid status: '${status}'"
-    ;;
+  'READY') status="${READY}" ;;
+  'BUILDING') status="${BUILDING}" ;;
+  'ERROR') status="${ERROR}" ;;
+  *) log-error "Invalid status: '${status}'" ;;
   esac
 
   echo '{}' | jq -c \
