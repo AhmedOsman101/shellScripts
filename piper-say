@@ -63,9 +63,23 @@ cleanup_old_cache() {
 }
 
 list_voices() {
-  fd '\.onnx$' ~/.local/share/piper |
+  fd '\.onnx$' "${PIPER_VOICES_DIR}" |
     sed "s|${PIPER_VOICES_DIR}/||" |
     sed 's|\.onnx$||'
+}
+
+requireInteractive() {
+  local action="$1"
+  isInteractiveShell && return 0
+  log-error "${action} requires interactive terminal. Pass flags/args to avoid prompt."
+}
+
+confirmAction() {
+  local prompt="$1"
+  "${acceptAll}" && return 0
+
+  requireInteractive "Confirmation"
+  gum confirm "${prompt}"
 }
 
 select_player() {
@@ -141,7 +155,7 @@ generateAudio() {
   local output_path="$1"
 
   # --- Prepare Piper command --- #
-  piper_cmd=(piper-tts --model "${model}")
+  piper_cmd=(piper-tts --data-dir "${PIPER_VOICES_DIR}" --model "${model}")
 
   if [[ -n "${output_path}" ]]; then
     piper_cmd+=(--output_file "${output_path}")
@@ -158,6 +172,7 @@ if "${list}"; then
 fi
 
 if [[ -z "${voice}" ]]; then
+  requireInteractive "Voice selection"
   mapfile -t voices < <(list_voices)
   voice="$(gum choose --limit=1 --select-if-one "${voices[@]}")"
 fi
@@ -178,6 +193,7 @@ cleanup_old_cache
 if ((argc)); then
   text="$(prepare-tts-text "${argv[@]}")"
 else
+  requireInteractive "Text input"
   text="$(gum write --placeholder='Enter some text...' | prepare-tts-text)"
 fi
 
@@ -186,12 +202,10 @@ fi
 hashedText="$(printf '%s:%s' "${model}" "${text}" | b2sum)"
 hashedText="${hashedText%% *}"
 
-checkCache || generateCache
+checkCache
 
 if [[ -f "${out_file}" ]]; then
-  "${acceptAll}" || {
-    gum confirm "[WARNING] File '${out_file}' exists, do you want to overwrite?" || terminate
-  }
+  confirmAction "[WARNING] File '${out_file}' exists, do you want to overwrite?" || terminate
 fi
 
 spinner.sh "Generating..." &
@@ -201,21 +215,19 @@ trap 'killwait $SPINNER_PID' EXIT
 if [[ -n "${out_file}" ]]; then
   generateAudio "${out_file}"
   killwait "${SPINNER_PID}"
+  generateCache
 
   log-success "Audio generated successfully at ${out_file}"
-  [[ "${acceptAll}" == "true" ]] || {
-    gum confirm "Do you want to play output?" && "${playerCmd[@]}" "${out_file}"
-  }
+  confirmAction "Do you want to play output?" && "${playerCmd[@]}" "${out_file}"
 else
   out_file="${PIPER_SAY_CACHE_DIR}/output.wav"
 
   generateAudio "${out_file}"
   killwait "${SPINNER_PID}"
+  generateCache
 
   log-success "Audio generated successfully!"
   "${playerCmd[@]}" "${out_file}"
 fi
-
-generateCache
 
 exit 0
