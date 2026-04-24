@@ -131,13 +131,13 @@ generateAudio() {
   local output_path="$1"
 
   # --- Prepare Piper command --- #
-  piper_cmd=(piper-tts --quiet --model "${model}")
+  piper_cmd=(piper-tts --model "${model}")
 
   if [[ -n "${output_path}" ]]; then
     piper_cmd+=(--output_file "${output_path}")
   fi
 
-  "${piper_cmd[@]}" <<<"${text}" >/dev/null
+  "${piper_cmd[@]}" <<<"${text}" &>/dev/null
 }
 
 "${list}" && {
