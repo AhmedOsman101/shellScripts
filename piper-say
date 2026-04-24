@@ -16,7 +16,7 @@
 # Supports Pandoc input, Markdown, Word, PDF, HTML, URLs, and raw text
 # Can pipe audio live or save to WAV
 # --- DEPENDENCIES --- #
-# - piper-tts | piper-tts (piper-tts-git)
+# - piper-tts (piper-tts-git) | piper-tts
 # - mpv | aplay
 # --- END SIGNATURE --- #
 
@@ -35,6 +35,7 @@ cmdarg "v?" "voice" "The voice to use" ""
 cmdarg "o?" "output" "Optional output WAV file path" ""
 cmdarg "y" "yes" "Answer all questions with yes"
 cmdarg_parse "$@"
+
 # ---  Main script logic --- #
 list="${cmdarg_cfg['list']}"
 voice="${cmdarg_cfg['voice']}"
