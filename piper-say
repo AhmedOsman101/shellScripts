@@ -17,7 +17,7 @@
 # Can pipe audio live or save to WAV
 # --- DEPENDENCIES --- #
 # - piper-tts (piper-tts-git) | piper-tts
-# - mpv | aplay
+# - aplay | mpv
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -34,17 +34,27 @@ cmdarg "l" "list" "Lists available voices"
 cmdarg "v?" "voice" "The voice to use" ""
 cmdarg "o?" "output" "Optional output WAV file path" ""
 cmdarg "y" "yes" "Answer all questions with yes"
+cmdarg "c" "clear" "Clears the cache directory"
 cmdarg_parse "$@"
 
 # ---  Main script logic --- #
 list="${cmdarg_cfg['list']}"
 voice="${cmdarg_cfg['voice']}"
 acceptAll="${cmdarg_cfg['yes']}"
+clear="${cmdarg_cfg['clear']}"
 out_file="${cmdarg_cfg['output']}"
 
 PIPER_VOICES_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/piper"
 PIPER_SAY_CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/piper-say"
 cacheFile="${PIPER_SAY_CACHE_DIR}/state.txt"
+
+clearCache() {
+  if [[ -d "${PIPER_SAY_CACHE_DIR}" ]]; then
+    if rm -f "${PIPER_SAY_CACHE_DIR}/"* 2>/dev/null; then
+      log-info "Cache was cleared"
+    fi
+  fi
+}
 
 cleanup_old_cache() {
   if [[ -d "${PIPER_SAY_CACHE_DIR}" ]]; then
@@ -140,10 +150,12 @@ generateAudio() {
   "${piper_cmd[@]}" <<<"${text}" &>/dev/null
 }
 
-"${list}" && {
+"${clear}" && clearCache
+
+if "${list}"; then
   list_voices
   exit 0
-}
+fi
 
 if [[ -z "${voice}" ]]; then
   mapfile -t voices < <(list_voices)
@@ -174,12 +186,10 @@ fi
 hashedText="$(printf '%s:%s' "${model}" "${text}" | b2sum)"
 hashedText="${hashedText%% *}"
 
-if ! checkCache; then
-  generateCache
-fi
+checkCache || generateCache
 
 if [[ -f "${out_file}" ]]; then
-  [[ "${acceptAll}" == "true" ]] || {
+  "${acceptAll}" || {
     gum confirm "[WARNING] File '${out_file}' exists, do you want to overwrite?" || terminate
   }
 fi
