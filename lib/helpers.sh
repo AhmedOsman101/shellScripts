@@ -406,3 +406,13 @@ yesNo() {
 
   [[ ! "${answer}" =~ ^[nN]$ ]]
 }
+
+expandTilde() {
+  # shellcheck disable=2001
+  sed "s|^~|${HOME}|" < <(input "$@")
+}
+
+collapseTilde() {
+  # shellcheck disable=2001
+  sed "s|^${HOME}|~|" < <(input "$@")
+}
