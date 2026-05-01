@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno run -A
 import type { MessageBus } from "dbus-next";
-import { sessionBus, Variant, Message, MessageType } from "dbus-next";
+import { Message, MessageType, sessionBus, type Variant } from "dbus-next";
 
 const MAX_TRACK_LENGTH = 35;
 const DEBUG = Deno.env.get("DEBUG") === "1";
@@ -80,7 +80,11 @@ function formatTrackInfo(metadata: Metadata): string {
   return `${track.substring(0, MAX_TRACK_LENGTH - 3)}...`;
 }
 
-function sendPolybarMessage(module: string, hook: number, content?: string): void {
+function sendPolybarMessage(
+  module: string,
+  hook: number,
+  content?: string
+): void {
   if (DEBUG) {
     console.log(
       `[DEBUG] Sending polybar message: #${module}.${hook}${content ? ` "${content}"` : ""}`
@@ -162,9 +166,7 @@ async function handlePlayerAdded(
   }
 
   try {
-    let proxy:
-      | Awaited<ReturnType<MessageBus["getProxyObject"]>>
-      | undefined;
+    let proxy: Awaited<ReturnType<MessageBus["getProxyObject"]>> | undefined;
 
     try {
       proxy = await bus.getProxyObject(busName, "/org/mpris/MediaPlayer2");
@@ -178,24 +180,35 @@ async function handlePlayerAdded(
 
     let propertiesInterface: unknown;
 
-    if (proxy && Object.keys(proxy.interfaces).includes("org.freedesktop.DBus.Properties")) {
-      propertiesInterface = proxy.getInterface("org.freedesktop.DBus.Properties");
+    if (
+      proxy &&
+      Object.keys(proxy.interfaces).includes("org.freedesktop.DBus.Properties")
+    ) {
+      propertiesInterface = proxy.getInterface(
+        "org.freedesktop.DBus.Properties"
+      );
     }
 
     let metadata: Metadata;
     let playbackStatus: string;
 
     if (propertiesInterface) {
-      // @ts-ignore - dbus-next types are incomplete
-      metadata = (await propertiesInterface.Get(
-        "org.mpris.MediaPlayer2.Player",
-        "Metadata"
-      )).value as Metadata;
-      // @ts-ignore - dbus-next types are incomplete
-      playbackStatus = (await propertiesInterface.Get(
-        "org.mpris.MediaPlayer2.Player",
-        "PlaybackStatus"
-      )).value as string;
+      metadata =
+        (
+        // @ts-expect-error - dbus-next types are incomplete
+          await propertiesInterface.Get(
+            "org.mpris.MediaPlayer2.Player",
+            "Metadata"
+          )
+        ).value as Metadata;
+      playbackStatus =
+        (
+        // @ts-expect-error - dbus-next types are incomplete
+          await propertiesInterface.Get(
+            "org.mpris.MediaPlayer2.Player",
+            "PlaybackStatus"
+          )
+        ).value as string;
     } else {
       const metadataMsg = await callDbusMethod(
         bus,
@@ -305,7 +318,9 @@ function main(): void {
           interface: "org.freedesktop.DBus",
           member: "AddMatch",
           signature: "s",
-          body: ["type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='/org/mpris/MediaPlayer2'"],
+          body: [
+            "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='/org/mpris/MediaPlayer2'",
+          ],
         })
       );
       await bus.call(
@@ -316,7 +331,9 @@ function main(): void {
           interface: "org.freedesktop.DBus",
           member: "AddMatch",
           signature: "s",
-          body: ["type='signal',interface='org.freedesktop.DBus',member='NameOwnerChanged'"],
+          body: [
+            "type='signal',interface='org.freedesktop.DBus',member='NameOwnerChanged'",
+          ],
         })
       );
       if (DEBUG) {
@@ -365,20 +382,32 @@ function main(): void {
     }
 
     // Try to handle PropertiesChanged signals even if iface/member are undefined
-    if (msg.type === MessageType.SIGNAL && msg.path === "/org/mpris/MediaPlayer2") {
+    if (
+      msg.type === MessageType.SIGNAL &&
+      msg.path === "/org/mpris/MediaPlayer2"
+    ) {
       if (DEBUG) {
         console.log(`[DEBUG] Signal from ${msg.sender} with body:`, msg.body);
       }
 
       // Try to parse as PropertiesChanged
       if (msg.body && Array.isArray(msg.body) && msg.body.length >= 2) {
-        const [iface, changed] = msg.body as [string, Record<string, Variant<unknown>>];
+        const [iface, changed] = msg.body as [
+          string,
+          Record<string, Variant<unknown>>,
+        ];
 
         if (DEBUG) {
-          console.log(`[DEBUG] Parsed signal: iface=${iface}, changes=${Object.keys(changed).length}`);
+          console.log(
+            `[DEBUG] Parsed signal: iface=${iface}, changes=${Object.keys(changed).length}`
+          );
         }
 
-        if (iface === "org.mpris.MediaPlayer2.Player" && msg.sender && players.has(msg.sender)) {
+        if (
+          iface === "org.mpris.MediaPlayer2.Player" &&
+          msg.sender &&
+          players.has(msg.sender)
+        ) {
           const state = players.get(msg.sender);
           if (!state) return;
 
@@ -392,10 +421,15 @@ function main(): void {
             }
           }
           if (changed.PlaybackStatus) {
-            state.playbackStatus = changed.PlaybackStatus.value as "Playing" | "Paused" | "Stopped";
+            state.playbackStatus = changed.PlaybackStatus.value as
+              | "Playing"
+              | "Paused"
+              | "Stopped";
             hasChanges = true;
             if (DEBUG) {
-              console.log(`[DEBUG] ${msg.sender}: PlaybackStatus -> ${state.playbackStatus} via signal`);
+              console.log(
+                `[DEBUG] ${msg.sender}: PlaybackStatus -> ${state.playbackStatus} via signal`
+              );
             }
           }
 
@@ -415,17 +449,25 @@ function main(): void {
       const [iface, changed, _invalidated] = msg.body as [
         string,
         Record<string, Variant<unknown>>,
-        string[]
+        string[],
       ];
 
       if (DEBUG) {
-        console.log(`[DEBUG] PropertiesChanged from ${msg.sender}: ${iface} with ${Object.keys(changed).length} changes`);
+        console.log(
+          `[DEBUG] PropertiesChanged from ${msg.sender}: ${iface} with ${Object.keys(changed).length} changes`
+        );
         for (const [key, variant] of Object.entries(changed)) {
-          console.log(`[DEBUG]   ${key}: ${JSON.stringify((variant as Variant<unknown>).value)}`);
+          console.log(
+            `[DEBUG]   ${key}: ${JSON.stringify((variant as Variant<unknown>).value)}`
+          );
         }
       }
 
-      if (msg.sender && players.has(msg.sender) && iface === "org.mpris.MediaPlayer2.Player") {
+      if (
+        msg.sender &&
+        players.has(msg.sender) &&
+        iface === "org.mpris.MediaPlayer2.Player"
+      ) {
         const state = players.get(msg.sender);
         if (!state) return;
 
@@ -436,9 +478,14 @@ function main(): void {
           }
         }
         if (changed.PlaybackStatus) {
-          state.playbackStatus = changed.PlaybackStatus.value as "Playing" | "Paused" | "Stopped";
+          state.playbackStatus = changed.PlaybackStatus.value as
+            | "Playing"
+            | "Paused"
+            | "Stopped";
           if (DEBUG) {
-            console.log(`[DEBUG] ${msg.sender}: PlaybackStatus -> ${state.playbackStatus}`);
+            console.log(
+              `[DEBUG] ${msg.sender}: PlaybackStatus -> ${state.playbackStatus}`
+            );
           }
         }
 
@@ -474,8 +521,13 @@ async function pollPlayerState(bus: MessageBus): Promise<void> {
 
   for (const [busName, state] of players) {
     try {
-      const proxy = await bus.getProxyObject(busName, "/org/mpris/MediaPlayer2");
-      const propertiesInterface = proxy.getInterface("org.freedesktop.DBus.Properties");
+      const proxy = await bus.getProxyObject(
+        busName,
+        "/org/mpris/MediaPlayer2"
+      );
+      const propertiesInterface = proxy.getInterface(
+        "org.freedesktop.DBus.Properties"
+      );
 
       const newMetadata = (await propertiesInterface.Get(
         "org.mpris.MediaPlayer2.Player",
@@ -488,14 +540,23 @@ async function pollPlayerState(bus: MessageBus): Promise<void> {
 
       let changed = false;
 
-      const metadataChanged = JSON.stringify(newMetadata.value) !== JSON.stringify(state.metadata);
+      const metadataChanged =
+        JSON.stringify(newMetadata.value) !== JSON.stringify(state.metadata);
       const statusChanged = newPlaybackStatus.value !== state.playbackStatus;
 
       if (DEBUG) {
-        console.log(`[DEBUG] Poll: ${busName} - status=${newPlaybackStatus.value}, metadata_changed=${metadataChanged}, status_changed=${statusChanged}`);
-        console.log(`[DEBUG] Poll: ${busName} - current status=${state.playbackStatus}`);
-        console.log(`[DEBUG] Poll: ${busName} - current metadata keys=${Object.keys(state.metadata).join(',')}`);
-        console.log(`[DEBUG] Poll: ${busName} - new metadata keys=${Object.keys(newMetadata.value).join(',')}`);
+        console.log(
+          `[DEBUG] Poll: ${busName} - status=${newPlaybackStatus.value}, metadata_changed=${metadataChanged}, status_changed=${statusChanged}`
+        );
+        console.log(
+          `[DEBUG] Poll: ${busName} - current status=${state.playbackStatus}`
+        );
+        console.log(
+          `[DEBUG] Poll: ${busName} - current metadata keys=${Object.keys(state.metadata).join(",")}`
+        );
+        console.log(
+          `[DEBUG] Poll: ${busName} - new metadata keys=${Object.keys(newMetadata.value).join(",")}`
+        );
       }
 
       if (metadataChanged) {
@@ -507,10 +568,15 @@ async function pollPlayerState(bus: MessageBus): Promise<void> {
       }
 
       if (statusChanged) {
-        state.playbackStatus = newPlaybackStatus.value as "Playing" | "Paused" | "Stopped";
+        state.playbackStatus = newPlaybackStatus.value as
+          | "Playing"
+          | "Paused"
+          | "Stopped";
         changed = true;
         if (DEBUG) {
-          console.log(`[DEBUG] Poll: ${busName} status -> ${state.playbackStatus}`);
+          console.log(
+            `[DEBUG] Poll: ${busName} status -> ${state.playbackStatus}`
+          );
         }
       }
 

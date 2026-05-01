@@ -1,6 +1,7 @@
 {
   "tasks": {
     "dev": "deno run -A --watch mediactl.ts",
+    "compile": "deno compile -o mediactl.out --allow-all mediactl.ts",
     "debug-dev": "DEBUG=1 deno run -A --watch mediactl.ts",
     "start": "deno run -A mediactl.ts",
     "debug": "DEBUG=1 deno run -A mediactl.ts"
