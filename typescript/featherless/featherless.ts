@@ -1,5 +1,17 @@
 #!/usr/bin/env -S deno run --allow-env --allow-net
 
+// featherless - CLI tool to query the Featherless AI API
+//
+// Usage:
+//   featherless <prompt>              # Use default model
+//   featherless "your question" -m Qwen/Qwen3.5-397B-A17B
+//   featherless "explain OOP" --model openai/gpt-oss-120b -q
+//
+// Options:
+//   -m, --model <name>  Model to use (interactive selection if omitted)
+//   -q, --quiet         Hide reasoning and section headers
+//
+
 import process from "node:process";
 import { createInterface } from "node:readline";
 
@@ -14,32 +26,10 @@ interface RequestMessage {
   content: string;
 }
 
-interface ResponseMessage {
-  role: "assistant";
-  reasoning?: string;
-  content: string;
-}
-
-interface Choice {
-  index: number;
-  message: ResponseMessage;
-  finish_reason: FinishReason;
-}
-
 interface Usage {
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
-}
-
-interface ChatCompletionResponse {
-  id: string;
-  object: "chat.completion";
-  created: number;
-  model: string;
-  choices: Choice[];
-  system_fingerprint?: string;
-  usage: Usage;
 }
 
 interface StreamDelta {
@@ -73,32 +63,19 @@ interface ApiError {
   };
 }
 
-export type Model =
-  | "openai/gpt-oss-120b"
-  | "Qwen/Qwen3-Coder-480B-A35B-Instruct"
-  | "deepseek-ai/DeepSeek-V4-Pro"
-  | "zai-org/GLM-5.1"
-  | "moonshotai/Kimi-K2.6"
-  | "Qwen/Qwen3-Coder-Next"
-  | "deepseek-ai/DeepSeek-V3.2"
-  | "deepseek-ai/DeepSeek-V3-0324"
-  | "Qwen/Qwen3.5-397B-A17B"
-  | "moonshotai/Kimi-Dev-72B"
-  | "Qwen/Qwen3-Coder-30B-A3B-Instruct"
-  | "meta-llama/Llama-3.3-70B-Instruct"
-  | "mistralai/Magistral-Small-2507"
-  | "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
-  | "mistralai/Devstral-Small-2507"
-  | "google/gemma-3-27b-it"
-  | "unsloth/gemma-3-27b-it"
-  | "meta-llama/Llama-3.1-70B-Instruct"
-  | "RedHatAI/Llama-3.3-70B-Instruct"
-  | "Qwen/Qwen3-8B"
-  | "microsoft/Phi-4-mini-instruct"
-  | "mistralai/Mistral-Nemo-Base-2407"
-  | "google/gemma-3-12b-pt"
-  // deno-lint-ignore ban-types
-  | (string & {});
+const MODEL_LIST = [
+  "openai/gpt-oss-120b",
+  "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+  "deepseek-ai/DeepSeek-V4-Pro",
+  "zai-org/GLM-5.1",
+  "moonshotai/Kimi-K2.6",
+  "Qwen/Qwen3-Coder-Next",
+  "deepseek-ai/DeepSeek-V3.2",
+  "Qwen/Qwen3.5-397B-A17B"
+] as const;
+
+// deno-lint-ignore ban-types
+type Model = (typeof MODEL_LIST)[keyof typeof MODEL_LIST] | (string & {});
 
 interface RequestOptions {
   model: Model;
@@ -110,6 +87,46 @@ interface RequestOptions {
 }
 
 // --- Helpers ---
+
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+interface CliFlags {
+  model?: string;
+  quiet: boolean;
+  prompt?: string;
+}
+
+function parseArgs(args: string[]): CliFlags {
+  const flags: CliFlags = { quiet: false };
+  let i = 0;
+  while (i < args.length) {
+    if (args[i] === "--model" || args[i] === "-m") {
+      flags.model = args[++i];
+    } else if (args[i] === "--quiet" || args[i] === "-q") {
+      flags.quiet = true;
+    } else if (!flags.prompt) {
+      flags.prompt = args[i];
+    }
+    i++;
+  }
+  return flags;
+}
+
+async function selectModel(): Promise<Model> {
+  console.log("Select a model:\n");
+  for (let i = 0; i < MODEL_LIST.length; i++) {
+    console.log(`  ${String(i + 1).padStart(2)}) ${MODEL_LIST[i]}`);
+  }
+  console.log("");
+
+  const answer = await readInput("Enter number or custom model name: ");
+  const num = Number.parseInt(answer, 10);
+  if (num >= 1 && num <= MODEL_LIST.length) {
+    return MODEL_LIST[num - 1];
+  }
+  return answer.trim() || MODEL_LIST[0];
+}
 
 async function readInput(prompt: string): Promise<string> {
   const rl = createInterface({
@@ -147,17 +164,19 @@ function buildBody(options: RequestOptions): string {
   });
 }
 
-async function streamResponse(response: Response): Promise<void> {
+async function streamResponse(
+  response: Response,
+  quiet: boolean
+): Promise<void> {
   const reader = response.body?.getReader();
   if (!reader) {
     logError("Response body is not readable as stream");
   }
 
-  const decoder = new TextDecoder();
-  const encoder = new TextEncoder();
   let buffer = "";
   let outBuffer = "";
   let inReasoning = false;
+  const skipReasoning = quiet;
 
   const flushTimer = setInterval(() => {
     if (outBuffer.length > 0) {
@@ -188,6 +207,7 @@ async function streamResponse(response: Response): Promise<void> {
           const delta = chunk.choices[0]?.delta;
 
           if (delta?.reasoning) {
+            if (skipReasoning) continue;
             if (!inReasoning) {
               outBuffer += "\n--- Reasoning ---\n";
               inReasoning = true;
@@ -268,8 +288,8 @@ Tone:
 - No emojis, no casual tone.`;
 
 async function main() {
-  const userPrompt =
-    Deno.args.at(0) || (await readInput("Enter your prompt: "));
+  const flags = parseArgs(Deno.args);
+  const userPrompt = flags.prompt || (await readInput("Enter your prompt: "));
 
   if (!userPrompt.trim()) {
     logError("Error: No prompt provided. Usage: featherless <prompt>");
@@ -280,8 +300,13 @@ async function main() {
     logError("Missing FEATHERLESS_API_KEY environment variable");
   }
 
+  let selectedModel: Model = flags.model ?? "";
+  if (!selectedModel) {
+    selectedModel = await selectModel();
+  }
+
   const requestOptions: RequestOptions = {
-    model: "openai/gpt-oss-120b",
+    model: selectedModel,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: userPrompt },
@@ -310,8 +335,8 @@ async function main() {
     logError(`API error (${response.status}): ${errorMessage}`);
   }
 
-  await streamResponse(response);
-  Deno.stdout.writeSync(new TextEncoder().encode("\n"));
+  await streamResponse(response, flags.quiet);
+  Deno.stdout.writeSync(encoder.encode("\n"));
 }
 
 if (import.meta.main) main();
