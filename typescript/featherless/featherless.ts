@@ -74,9 +74,15 @@ interface ApiError {
 }
 
 export type Model =
-  | "Qwen/Qwen3-Coder-480B-A35B-Instruct"
-  | "Qwen/Qwen3.5-397B-A17B"
   | "openai/gpt-oss-120b"
+  | "Qwen/Qwen3-Coder-480B-A35B-Instruct"
+  | "deepseek-ai/DeepSeek-V4-Pro"
+  | "zai-org/GLM-5.1"
+  | "moonshotai/Kimi-K2.6"
+  | "Qwen/Qwen3-Coder-Next"
+  | "deepseek-ai/DeepSeek-V3.2"
+  | "deepseek-ai/DeepSeek-V3-0324"
+  | "Qwen/Qwen3.5-397B-A17B"
   | "moonshotai/Kimi-Dev-72B"
   | "Qwen/Qwen3-Coder-30B-A3B-Instruct"
   | "meta-llama/Llama-3.3-70B-Instruct"
