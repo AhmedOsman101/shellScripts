@@ -3,31 +3,212 @@
 import process from "node:process";
 import { createInterface } from "node:readline";
 
-async function input(prompt: string): Promise<string> {
-  // Create readline interface
+// --- Types ---
+
+type Role = "system" | "user" | "assistant" | "tool";
+
+type FinishReason = "stop" | "length" | "content_filter" | "tool_calls";
+
+interface RequestMessage {
+  role: Role;
+  content: string;
+}
+
+interface ResponseMessage {
+  role: "assistant";
+  reasoning?: string;
+  content: string;
+}
+
+interface Choice {
+  index: number;
+  message: ResponseMessage;
+  finish_reason: FinishReason;
+}
+
+interface Usage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+interface ChatCompletionResponse {
+  id: string;
+  object: "chat.completion";
+  created: number;
+  model: string;
+  choices: Choice[];
+  system_fingerprint?: string;
+  usage: Usage;
+}
+
+interface StreamDelta {
+  role?: "assistant";
+  reasoning?: string;
+  content?: string;
+}
+
+interface StreamChoice {
+  index: number;
+  delta: StreamDelta;
+  finish_reason: FinishReason | null;
+}
+
+interface StreamChunk {
+  id: string;
+  object: "chat.completion.chunk";
+  created: number;
+  model: string;
+  choices: StreamChoice[];
+  system_fingerprint?: string;
+  usage?: Usage;
+}
+
+interface ApiError {
+  error: {
+    message: string;
+    type: string;
+    param: string | null;
+    code: string | null;
+  };
+}
+
+export type Model =
+  | "Qwen/Qwen3-Coder-480B-A35B-Instruct"
+  | "Qwen/Qwen3.5-397B-A17B"
+  | "openai/gpt-oss-120b"
+  | "moonshotai/Kimi-Dev-72B"
+  | "Qwen/Qwen3-Coder-30B-A3B-Instruct"
+  | "meta-llama/Llama-3.3-70B-Instruct"
+  | "mistralai/Magistral-Small-2507"
+  | "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+  | "mistralai/Devstral-Small-2507"
+  | "google/gemma-3-27b-it"
+  | "unsloth/gemma-3-27b-it"
+  | "meta-llama/Llama-3.1-70B-Instruct"
+  | "RedHatAI/Llama-3.3-70B-Instruct"
+  | "Qwen/Qwen3-8B"
+  | "microsoft/Phi-4-mini-instruct"
+  | "mistralai/Mistral-Nemo-Base-2407"
+  | "google/gemma-3-12b-pt"
+  // deno-lint-ignore ban-types
+  | (string & {});
+
+interface RequestOptions {
+  model: Model;
+  messages: RequestMessage[];
+  temperature?: number;
+  top_p?: number;
+  max_tokens?: number;
+  stream?: boolean;
+}
+
+// --- Helpers ---
+
+async function readInput(prompt: string): Promise<string> {
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
-  // Get user input using a promise
-  const plaintext = await new Promise<string>(resolve => {
-    rl.question(prompt, answer => {
-      resolve(answer);
-    });
+  const answer = await new Promise<string>(resolve => {
+    rl.question(prompt, resolve);
   });
 
-  // Close the readline interface
   rl.close();
-
-  return plaintext;
+  return answer;
 }
 
-// Function to print to stderr in red
 function logError(message: string): never {
   console.error(`\x1b[31m${message}\x1b[0m`);
   Deno.exit(1);
 }
+
+function buildHeaders(apiKey: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    "HTTP-Referer": "http://localhost",
+    "X-Title": `Chat with featherless ${Date.now()}`,
+  };
+}
+
+function buildBody(options: RequestOptions): string {
+  return JSON.stringify({
+    ...options,
+    temperature: options.temperature ?? 0.7,
+    stream: options.stream ?? false,
+  });
+}
+
+async function streamResponse(response: Response): Promise<void> {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    logError("Response body is not readable as stream");
+  }
+
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  let buffer = "";
+  let outBuffer = "";
+  let inReasoning = false;
+
+  const flushTimer = setInterval(() => {
+    if (outBuffer.length > 0) {
+      Deno.stdout.writeSync(encoder.encode(outBuffer));
+      outBuffer = "";
+    }
+  }, 32);
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith("data: ")) continue;
+
+        const data = trimmed.slice(6);
+        if (data === "[DONE]") break;
+
+        try {
+          const chunk: StreamChunk = JSON.parse(data);
+          const delta = chunk.choices[0]?.delta;
+
+          if (delta?.reasoning) {
+            if (!inReasoning) {
+              outBuffer += "\n--- Reasoning ---\n";
+              inReasoning = true;
+            }
+            outBuffer += delta.reasoning;
+          }
+          if (delta?.content) {
+            if (inReasoning) {
+              outBuffer += "\n\n--- Response ---\n\n";
+              inReasoning = false;
+            }
+            outBuffer += delta.content;
+          }
+        } catch {
+          // Skip malformed chunks
+        }
+      }
+    }
+  } finally {
+    clearInterval(flushTimer);
+    if (outBuffer.length > 0) {
+      Deno.stdout.writeSync(encoder.encode(outBuffer));
+    }
+  }
+}
+
+// --- Main ---
 
 const SYSTEM_PROMPT = `You are an expert-level software engineer and technical assistant.
 
@@ -69,7 +250,7 @@ Debugging & problem solving:
 Advanced guidance:
 - Suggest better architectural approaches when appropriate.
 - Call out design flaws or scalability concerns.
-- Provide alternatives if the user’s approach is suboptimal.
+- Provide alternatives if the user's approach is suboptimal.
 
 Constraints:
 - Do not hallucinate APIs or behavior.
@@ -81,60 +262,50 @@ Tone:
 - No emojis, no casual tone.`;
 
 async function main() {
-  // Get command-line arguments
-  const prompt = Deno.args.at(0) || (await input("Enter your prompt: "));
+  const userPrompt =
+    Deno.args.at(0) || (await readInput("Enter your prompt: "));
 
-  if (!prompt.trim())
+  if (!userPrompt.trim()) {
     logError("Error: No prompt provided. Usage: featherless <prompt>");
+  }
 
-  // Read API key from environment
   const apiKey = Deno.env.get("FEATHERLESS_API_KEY");
   if (!apiKey) {
     logError("Missing FEATHERLESS_API_KEY environment variable");
   }
 
-  const headers = {
-    Authorization: `Bearer ${apiKey}`,
-    "Content-Type": "application/json",
-    "HTTP-Referer": "http://localhost",
-    "X-Title": `Chat with featherless ${Date.now()}`,
-  };
-
-  const body = {
-    // model: "openai/gpt-oss-120b",
-    model: "Qwen/Qwen3.5-397B-A17B",
+  const requestOptions: RequestOptions = {
+    model: "openai/gpt-oss-120b",
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: prompt,
-      },
+      { role: "user", content: userPrompt },
     ],
-    temperature: 0.7,
-    // top_p: 0.9,
-    // max_tokens: 300,
+    stream: true,
   };
 
   const response = await fetch(
     "https://api.featherless.ai/v1/chat/completions",
     {
       method: "POST",
-      headers,
-      body: JSON.stringify(body),
+      headers: buildHeaders(apiKey),
+      body: buildBody(requestOptions),
     }
   );
 
   if (!response.ok) {
     const errorText = await response.text();
-    logError(
-      `API error (${response.status}) ${response.statusText}: ${errorText}`
-    );
+    let errorMessage = errorText;
+    try {
+      const errorJson: ApiError = JSON.parse(errorText);
+      errorMessage = errorJson.error.message;
+    } catch {
+      // Use raw error text if not JSON
+    }
+    logError(`API error (${response.status}): ${errorMessage}`);
   }
 
-  const data = await response.json();
-  console.dir(data, { depth: Number.POSITIVE_INFINITY });
-  // console.log(data.choices[0].message.content);
-  // console.log(data.usage);
+  await streamResponse(response);
+  Deno.stdout.writeSync(new TextEncoder().encode("\n"));
 }
 
 if (import.meta.main) main();
