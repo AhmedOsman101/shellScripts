@@ -64,14 +64,17 @@ interface ApiError {
 }
 
 const MODEL_LIST = [
-  "openai/gpt-oss-120b",
   "Qwen/Qwen3-Coder-480B-A35B-Instruct",
   "deepseek-ai/DeepSeek-V4-Pro",
+  "openai/gpt-oss-120b",
+  "Qwen/Qwen3.5-397B-A17B",
+  "Qwen/Qwen3-Coder-Next",
+  "Qwen/Qwen3-Coder-30B-A3B-Instruct",
   "zai-org/GLM-5.1",
   "moonshotai/Kimi-K2.6",
-  "Qwen/Qwen3-Coder-Next",
+  "moonshotai/Kimi-K2-Thinking",
   "deepseek-ai/DeepSeek-V3.2",
-  "Qwen/Qwen3.5-397B-A17B"
+  "microsoft/Phi-4-mini-instruct",
 ] as const;
 
 // deno-lint-ignore ban-types
