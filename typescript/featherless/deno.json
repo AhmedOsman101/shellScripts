@@ -1,0 +1,6 @@
+{
+  "tasks": {
+    "dev": "deno run --watch --allow-env featherless.ts",
+    "compile": "deno compile -o featherless.out --allow-env featherless.ts"
+  }
+}
