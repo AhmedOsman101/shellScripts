@@ -202,21 +202,17 @@ main() {
   local processed=0
   local failed=0
 
-  if ((argc == 0)); then
-    if ! [[ -t 0 ]]; then
-      processStdin
+  if ((argc > 0)); then
+    if ((argc == 1)); then
+      processFile "${argv[0]}"
     else
-      terminate "No files provided and stdin is not available"
+      processMultipleInputs
     fi
   else
     if ! [[ -t 0 ]]; then
       processStdin
     else
-      if ((argc == 1)); then
-        processFile "${argv[0]}"
-      else
-        processMultipleInputs
-      fi
+      terminate "No files provided and stdin is not available"
     fi
   fi
 
