@@ -15,10 +15,11 @@
 # Starter kit for typescript projects with formatter, editorconfig, and pre-commit hooks.
 # Bootstrap typescript projects quickly, installs biome, husky, and editorconfig
 # --- DEPENDENCIES --- #
-# - npm | pnpm | bun | deno | yarn
+# - pnpm | bun | npm | deno | yarn
 # - gum
 # - wget | curl
 # - jq
+# - sponge (moreutils)
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -31,11 +32,10 @@ eval "$(include "check-deps")"
 
 checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
-cmdarg "b?" "biome-version" "Biome version to install (default: 2.3.0)" "2.3.0"
+cmdarg "b?" "biome-version" "Biome version to install" "${BIOME_VERSION:-2.3.0}"
 cmdarg_parse "$@"
 
 biomeVersion="${cmdarg_cfg['biome-version']}"
-
 # ---  Main script logic --- #
 
 fetch() {
@@ -98,12 +98,12 @@ safeFetchGist() {
 # --- Command handlers --- #
 addScripts() {
   jq '.scripts += {
-  "lint": "biome lint .",
-  "format": "biome check --fix .",
-  "format:unsafe": "biome check --fix --unsafe .",
+  "lint": "unset BIOME_CONFIG_PATH; biome lint .",
+  "format": "unset BIOME_CONFIG_PATH; biome check --fix .",
+  "format:unsafe": "unset BIOME_CONFIG_PATH; biome check --fix --unsafe .",
   "typecheck": "tsc --noUnusedLocals false --noUnusedParameters false --noEmit",
   "prepare": "husky"
-}' package.json >tmp.json && mv tmp.json package.json
+}' package.json | sponge package.json
 }
 
 addTasks() {
@@ -113,7 +113,7 @@ addTasks() {
   "format": "deno run -A npm:@biomejs/biome check --fix .",
   "format:unsafe": "deno run -A npm:@biomejs/biome check --fix --unsafe .",
   "prepare": "husky || true"
-}' "${file}" >tmp.json && mv tmp.json "${file}"
+}' "${file}" | sponge "${file}"
 }
 
 # --- Package manager handlers --- #
@@ -134,7 +134,7 @@ handlePnpm() {
 
   pnpm add -D -E "@biomejs/biome@${biomeVersion}"
   addScripts
-  pnpm approve-builds
+  log-info "It's recommended to run \`pnpm approve-builds\` after the script finishes"
 }
 
 handleYarn() {
@@ -163,11 +163,11 @@ handleDeno() {
   if is-git-repo --safe >/dev/null 2>&1; then
     deno add --dev npm:husky || true
     if [[ ! -f "package.json" ]]; then
-      pnpm init
-      pnpm dlx husky init || true
+      npm init -y
+      npx husky init || true
       rm "package.json"
     else
-      pnpm dlx husky init || true
+      npx husky init || true
     fi
     rm '.husky/pre-commit' &>/dev/null || true
   fi
@@ -183,21 +183,20 @@ handleDeno() {
 }
 
 if [[ -n $1 ]]; then
-  cmd="$1"
+  cmd="${argv[*]}"
 else
-  cmd=$(gum input --placeholder="Enter your starter command...")
-  cmd=$(eval echo "${cmd}")
+  cmd="$(gum input --placeholder="Enter your starter command...")"
 fi
 
 [[ -z ${cmd} ]] && log-error "Empty commands aren't allowed"
 
-pkgMgr=$(echo "${cmd}" | awk '{print $1}')
+pkgMgr="$(echo "${cmd}" | awk '{print $1}')"
 
 if ! command -v "${pkgMgr}" >/dev/null 2>&1; then
   log-error "The package manager '${pkgMgr}' is not installed"
 fi
 
-eval "${cmd}" || terminate
+bash -c "${cmd}" || log-error "Bootstrap command failed: ${cmd}"
 
 case "${pkgMgr}" in
 npm) handleNpm ;;
@@ -205,7 +204,7 @@ pnpm) handlePnpm ;;
 yarn) handleYarn ;;
 bun) handleBun ;;
 deno) handleDeno ;;
-*) log-warning "Unknown package manager: ${pkgMgr}" && return 1 ;;
+*) log-warning "Unknown package manager: ${pkgMgr}" && exit 1 ;;
 esac
 
 if is-git-repo --safe >/dev/null 2>&1; then
