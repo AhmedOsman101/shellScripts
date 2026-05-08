@@ -1,29 +1,75 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2046,SC2148
+
+{
+  deno audit &&
+    deno audit --socket &&
+    deno install &
+  git add deno.lock &
+} &>/dev/null
+
+yesNo() {
+  local answer prompt="$1"
+  printf '%b' "${prompt} [Y/n] "
+  read -r answer </dev/tty
+
+  [[ ! "${answer}" =~ ^[nN]$ ]]
+}
+
+abort() {
+  printf "\e[31mAborting commit.\e[0m\n"
+  exit 1
+}
 
 gitRoot="$(git rev-parse --show-toplevel)"
 
 cd "${gitRoot}" || exit 1
 
-declare -a files
 mapfile -t files < <(git diff --cached --name-only --diff-filter=ACMR)
 
+((${#files[@]})) || exit 0
+
+tmpDir="$(mktemp -d)"
+trap 'rm -rf "$tmpDir"' EXIT
+
+for file in "${files[@]}"; do
+  if [[ -f "${file}" ]]; then
+    git diff -- "${file}" >"${tmpDir}/${file//\//_}.diff"
+  fi
+done
+
 if command -v dx >/dev/null 2>&1; then
-  biome_cmd="dx npm:@biomejs/biome"
+  biomeCmd=(dx npm:@biomejs/biome)
 else
-  biome_cmd="deno run -A npm:@biomejs/biome"
+  biomeCmd=(deno run -A npm:@biomejs/biome)
 fi
 
 # --- Formats only the staged files --- #
-unset BIOME_BINARY &>/dev/null || true
-unset BIOME_CONFIG_PATH &>/dev/null || true
-${biome_cmd} check --fix --no-errors-on-unmatched "${files[@]}" || true
+unset BIOME_BINARY &>/dev/null
+unset BIOME_CONFIG_PATH &>/dev/null
+"${biomeCmd[@]}" check --fix --no-errors-on-unmatched --staged --reporter=summary "${gitRoot}"
 
-# --- Adds staged files again (to include the new formatter changes) --- #
-git add "${files[@]}"
+formatted_files=()
+for file in "${files[@]}"; do
+  diffFile="${tmpDir}/${file//\//_}.diff"
+  if [[ -f "${diffFile}" ]]; then
+    git diff -- "${file}" >"${diffFile}.new"
+    if ! diff "${diffFile}" "${diffFile}.new" &>/dev/null; then
+      formatted_files+=("${file}")
+    fi
+  fi
+done
+
+if ((${#formatted_files[@]} != 0)); then
+  printf "\e[33m%d file(s) were formatted:\e[0m\n" ${#formatted_files[@]}
+  for f in "${formatted_files[@]}"; do
+    printf "  - %s\n" "${f}"
+  done
+
+  yesNo "\nDo you want to proceed with the commit?" || abort
+fi
 
 # --- Do type checking before any commit --- #
 printf "\e[34mDoing type checks...\e[0m\n"
-deno check || exit 1
-
-exit 0
+if ! deno check; then
+  yesNo "Typechecking failed.\nDo you want to proceed with the commit?" || abort
+fi
