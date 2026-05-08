@@ -43,7 +43,7 @@ fetch() {
   log-info "Fetching ${dest}..."
 
   if command -v wget >/dev/null 2>&1; then
-    if ! wget -q -O "${dest}" "${url}" 2>/dev/null; then
+    if ! wget -T 30 -t 5 -q -O "${dest}" "${url}" 2>/dev/null; then # 5 retries, timeout of 30s
       log-error "Failed to download ${url}"
     fi
   elif command -v curl >/dev/null 2>&1; then

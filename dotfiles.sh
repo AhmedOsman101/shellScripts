@@ -32,7 +32,7 @@ cmdarg_parse "$@"
 # ---  Main script logic --- #
 cancelled=false
 
-cd "${TUCKR_HOME}" || terminate
+cd "${TUCKR_HOME}/dotfiles" || terminate
 fzfPreview="$(
   cat <<'EOF'
 item="$(echo {} | cut -d " " -f 2-)"
