@@ -31,12 +31,27 @@ checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
+start="${argv[0]}"
+isPositive "${start}" || log-error "Start must be a positive number"
 if ((argc == 2)); then
+  filename="${argv[1]}"
+
+  lines="$(wc -l <"${filename}")"
+  ((start <= lines)) || log-error "File: ${filename} has only ${lines} lines!"
+
   # Single line mode: NR is the current line number
-  awk "NR == $1 {print; exit}" "$2"
+  awk "NR == ${start} {print; exit}" "${filename}"
 elif ((argc == 3)); then
+  end="${argv[1]}"
+  filename="${argv[2]}"
+  lines="$(wc -l <"${filename}")"
+
+  isPositive "${end}" || log-error "End must be a positive number"
+  ((start <= end)) || log-error "Start must be less than or equal to End"
+  ((start >= lines || end >= lines)) && log-error "File: ${filename} has only ${lines} lines!"
+
   # Range mode: Prints between start and end, then exits
-  awk "NR >= $1 && NR <= $2; NR == $2 {exit}" "$3"
+  awk "NR >= ${start} && NR <= ${end}; NR == ${end} {exit}" "${filename}"
 else
   log-error "Usage: viewlines [start] [optional_end] filename"
 fi
