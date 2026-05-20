@@ -16,7 +16,7 @@
 # - git
 # - rg (ripgrep)
 # - gum
-# - mdcat
+# - mdcat | lowdown
 # - commit-sage
 # --- END SIGNATURE --- #
 
@@ -157,7 +157,11 @@ if "${edit}"; then
   fi
 else
 
-  echo -e "${summary}\n\n${details}\n\n" | mdcat
+  if command -v mdcat &>/dev/null; then
+    printf "%s\n\n%s\n\n" "${summary}" "${details}" | mdcat
+  elif command -v lowdown &>/dev/null; then
+    printf " %s\n\n%s\n\n" "${summary}" "${details}" | lowdown -t term
+  fi
 
   if ! "${noConfirm}"; then
     gum confirm "Commit changes?" || terminate
