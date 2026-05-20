@@ -87,8 +87,8 @@ getPackageManager() {
   local installCmd pkgManager
 
   # Parse /etc/os-release to determine the distribution
-  if [[ -f /etc/os-release ]]; then
-    source /etc/os-release
+  if [[ -f '/etc/os-release' ]]; then
+    source '/etc/os-release'
   else
     logError "/etc/os-release not found."
   fi
@@ -99,16 +99,16 @@ getPackageManager() {
     # For Debian/Ubuntu-based distros, check for nala helpers
     if command -v nala &>/dev/null; then
       pkgManager="nala"
-      installCmd="sudo -A nala install"
+      installCmd="sudo nala install"
     else
       pkgManager="apt"
-      installCmd="sudo -A apt install"
+      installCmd="sudo apt install"
     fi
     ;;
   fedora | rhel | almalinux | rocky | ol)
     # Fedora/RHEL-based distros (modern)
     pkgManager="dnf"
-    installCmd="sudo -A dnf install"
+    installCmd="sudo dnf install"
     ;;
   centos)
     # CentOS (check for legacy versions)
@@ -123,7 +123,7 @@ getPackageManager() {
   opensuse* | sled | sles)
     # openSUSE/SUSE-based distros
     pkgManager="zypper"
-    installCmd="sudo -A zypper install"
+    installCmd="sudo zypper install"
     ;;
   arch | manjaro | endeavouros | archcraft)
     # For Arch-based distros, check for AUR helpers
@@ -135,18 +135,18 @@ getPackageManager() {
       installCmd="yay -S --noconfirm"
     else
       pkgManager="pacman"
-      installCmd="sudo -A pacman -S --noconfirm"
+      installCmd="sudo pacman -S --noconfirm"
     fi
     ;;
   void)
     # Void Linux
     pkgManager="xbps"
-    installCmd="sudo -A xbps-install -S"
+    installCmd="sudo xbps-install -S"
     ;;
   alpine)
     # Alpine Linux
     pkgManager="apk"
-    installCmd="sudo -A apk add"
+    installCmd="sudo apk add"
     ;;
   amzn)
     # Amazon Linux
@@ -161,44 +161,44 @@ getPackageManager() {
   gentoo)
     # Gentoo Linux (source-based)
     pkgManager="emerge"
-    installCmd="sudo -A emerge"
+    installCmd="sudo emerge"
     ;;
   *)
     # Fallback to ID_LIKE for derivatives
     case "${ID_LIKE}" in
-    *debian* | *ubuntu*)
+    *debian* | *ubuntu* | *mint*)
       # For Debian/Ubuntu-based distros, check for nala helpers
       if command -v nala &>/dev/null; then
         pkgManager="nala"
-        installCmd="sudo -A nala install"
+        installCmd="sudo nala install"
       else
         pkgManager="apt"
-        installCmd="sudo -A apt install"
+        installCmd="sudo apt install"
       fi
       ;;
     *fedora* | *rhel*)
       pkgManager="dnf"
-      installCmd="sudo -A dnf install"
+      installCmd="sudo dnf install"
       ;;
     *suse*)
       pkgManager="zypper"
-      installCmd="sudo -A zypper install"
+      installCmd="sudo zypper install"
       ;;
-    *arch*)
+    *arch* | *cachy*)
       # For Arch-based distros, check for AUR helpers
       if command -v paru &>/dev/null; then
         pkgManager="paru"
-        installCmd="sudo -A paru -S --noconfirm"
+        installCmd="paru -S --noconfirm"
       elif command -v yay &>/dev/null; then
         pkgManager="yay"
-        installCmd="sudo -A yay -S --noconfirm"
+        installCmd="yay -S --noconfirm"
       else
         pkgManager="pacman"
-        installCmd="sudo -A pacman -S --noconfirm"
+        installCmd="sudo pacman -S --noconfirm"
       fi
       ;;
     *)
-      logError "Unsupported distribution: ${PRETTY_NAME:-${NAME:-Unknown}}" >&2
+      logError "Unsupported distribution: ${PRETTY_NAME}" >&2
       ;;
     esac
     ;;
@@ -406,4 +406,3 @@ yesNo() {
 
   [[ ! "${answer}" =~ ^[nN]$ ]]
 }
-
