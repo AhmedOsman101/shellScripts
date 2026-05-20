@@ -25,13 +25,13 @@ trap 'exit 1' SIGUSR1
 SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
 DOTFILES="${HOME}/dotfiles"
 
-export PATH="${PATH}:${SCRIPTS_DIR}:${HOME}/.local/share/pnpm"
-export TERM=xterm
+export PATH="${PATH}:${SCRIPTS_DIR}:${HOME}/.local/share/pnpm/bin"
+export TERM='xterm'
 
 eval "$(include "check-deps")"
 checkDeps "$0"
 
-chassis=$(hostnamectl chassis)
+chassis="$(hostnamectl chassis)"
 
 if [[ "${chassis}" == "laptop" ]]; then
   device="laptop"
