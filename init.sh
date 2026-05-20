@@ -22,14 +22,18 @@ set -uo pipefail
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
-export PATH="${PATH}:$(dirname "$0")"
+if [[ -z "${SCRIPTS_DIR}" ]]; then
+  SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
+fi
 
-file="$(dirname "$0")/check-deps"
+export PATH="${PATH}:${SCRIPTS_DIR}"
+
+file="${SCRIPTS_DIR}/check-deps"
 declare -a scripts
 
 if [[ -f "${file}" ]]; then
   source "${file}"
-  checkDeps "$0"
+  checkDeps "${BASH_SOURCE[0]}"
 else
   echo "Dependency check script not found at ${file}" 1>&2
   exit 1
@@ -75,8 +79,9 @@ fi
 # Remove existing symlinks
 fd . -t l -t x "${DESTINATION_DIR}" -x sudo rm 2>/dev/null || true
 
-if ! echo "${PATH}" | grep "${DESTINATION_DIR}" -q; then
-  echo "Add this to your .$(basename "${SHELL}")rc file to make scripts globally available:"
+# Check if PATH doesn't contain DESTINATION_DIR
+if grep "${DESTINATION_DIR}" -vq < <(echo "${PATH}"); then
+  logWarning "Add this to your .$(basename "${SHELL}")rc file to make scripts globally available:"
 
   # shellcheck disable=2016 # literally print it don't expand
   printf 'export PATH="$PATH:$HOME/.local/bin/scripts"\n\n'

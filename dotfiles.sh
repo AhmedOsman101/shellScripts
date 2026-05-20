@@ -55,6 +55,7 @@ EOF
 )"
 if ((argc < 1)) || [[ -z "${argv[0]}" ]]; then
   app=$(
+    cd "Configs"
     eza \
       --only-dirs \
       --icons=always \
