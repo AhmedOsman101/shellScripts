@@ -25,7 +25,7 @@ trap 'exit 1' SIGUSR1
 SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
 DOTFILES="${HOME}/dotfiles"
 
-export PATH="${PATH}:${SCRIPTS_DIR}:${HOME}/.local/share/pnpm/bin"
+export PATH="${PATH}:${SCRIPTS_DIR}:${HOME}/.local/share/pnpm/bin:${HOME}/.local/share/bun/bin"
 export TERM='xterm'
 
 eval "$(include "check-deps")"

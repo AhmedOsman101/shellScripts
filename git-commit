@@ -104,7 +104,7 @@ if "${useAi}"; then
   logFile="$(mktemp -t commit-sage-XXXXX.log)"
 
   # Another implementation
-  spinner.sh &
+  spinner.sh 1>&2 &
   # Capture the PID immediately after launching
   SPINNER_PID=$!
   if ! commit-sage >"${logFile}" 2>&1; then
