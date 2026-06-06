@@ -15,6 +15,7 @@ Usage:
 """
 
 import sys
+import re
 import shutil
 import subprocess
 import tempfile
@@ -67,12 +68,15 @@ def extract_outline(fitz_doc: fitz.Document) -> list[dict]:
 def extract_links(fitz_doc: fitz.Document) -> dict[int, list[str]]:
   result: dict[int, list[str]] = {}
   for page in fitz_doc:
-    uris = [
-        link["uri"] for link in page.get_links()
-        if link.get("kind") == fitz.LINK_URI and link.get("uri")
-    ]
+    seen: set[str] = set()
+    uris: list[str] = []
+    for link in page.get_links():
+      if link.get("kind") == fitz.LINK_URI and link.get("uri"):
+        uri: str = link["uri"]
+        if uri not in seen:
+          seen.add(uri)
+          uris.append(uri)
     if uris:
-      # result[page.number + 1] = uris
       num = page.number
       if isinstance(num, int):
         result[num + 1] = uris
@@ -88,11 +92,17 @@ def extract_tables(plumber_pdf: pdfplumber.PDF) -> dict[int, list[list]]:
   return result
 
 
+def normalize_text(text: str) -> str:
+  text = re.sub(r" {2,}", " ", text)
+  text = re.sub(r"\n{3,}", "\n\n", text)
+  return text.strip()
+
+
 def extract_text_by_page(plumber_pdf: pdfplumber.PDF) -> dict[int, str]:
   result: dict[int, str] = {}
   for page in plumber_pdf.pages:
     text = page.extract_text(layout=True) or ""
-    result[page.page_number] = text.strip()
+    result[page.page_number] = normalize_text(text)
   return result
 
 
@@ -152,10 +162,11 @@ def is_heading(line: str) -> bool:
   if not stripped or len(stripped) > 120:
     return False
 
-  # avoid common code / protocol lines
-  if "/" in stripped or stripped.startswith(
-      ("GET ", "POST ", "PUT ", "DELETE ", "HTTP")
-  ):
+  # Avoid code / protocol / url lines
+  if stripped.startswith(("GET ", "POST ", "PUT ", "DELETE ", "HTTP", "http")):
+    return False
+
+  if "/" in stripped and "/" in stripped[:5]:
     return False
 
   if stripped.isupper() and len(stripped) > 3:
@@ -163,6 +174,33 @@ def is_heading(line: str) -> bool:
 
   if stripped.endswith(":") and " " not in stripped.rstrip(":"):
     return True
+
+  # Avoid sentence endings, bullets, emails
+  if stripped[-1] in ".!?;":
+    return False
+
+  if stripped.startswith(("•", "-", "*", "http", "www.")) or "@" in stripped:
+    return False
+
+  words = stripped.split()
+  if not words:
+    return False
+
+  # Single word: short, starts with uppercase
+  if len(words) == 1:
+    return 1 < len(stripped) <= 45 and stripped[0].isupper()
+
+  # Multi-word (2-4): all words capitalized, short, no structural markers
+  if len(words) <= 4 and len(stripped) <= 50:
+    if "|" in stripped or "(" in stripped or ")" in stripped:
+      return False
+    if any(c.isdigit() for c in stripped):
+      return False
+    # Avoid label-value pairs like "Address: Cairo, Egypt"
+    if ":" in stripped and not stripped.endswith(":"):
+      return False
+    if all(w[0].isupper() for w in words if w):
+      return True
 
   return False
 
