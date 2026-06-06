@@ -11,6 +11,7 @@ Usage:
   uv run pdfx.py file.pdf > context.txt
   uv run pdfx.py file.pdf --ocr-output ./ocr.pdf
   uv run pdfx.py file.pdf --chunk 12000
+  uv run pdfx.py file.pdf --markdown
 """
 
 import sys
@@ -71,7 +72,10 @@ def extract_links(fitz_doc: fitz.Document) -> dict[int, list[str]]:
         if link.get("kind") == fitz.LINK_URI and link.get("uri")
     ]
     if uris:
-      result[page.number + 1] = uris
+      # result[page.number + 1] = uris
+      num = page.number
+      if isinstance(num, int):
+        result[num + 1] = uris
   return result
 
 
@@ -144,13 +148,22 @@ def format_table(table: list[list]) -> str:
 
 def is_heading(line: str) -> bool:
   stripped = line.strip()
+
   if not stripped or len(stripped) > 120:
     return False
+
+  # avoid common code / protocol lines
+  if "/" in stripped or stripped.startswith(
+      ("GET ", "POST ", "PUT ", "DELETE ", "HTTP")
+  ):
+    return False
+
   if stripped.isupper() and len(stripped) > 3:
     return True
+
   if stripped.endswith(":") and " " not in stripped.rstrip(":"):
-    # single-word labels like "Note:" or "Usage:"
     return True
+
   return False
 
 
@@ -169,10 +182,11 @@ def format_page_text(text: str) -> str:
 
 
 def print_pages(
-    text_by_page: dict[int, str],
-    tables: dict[int, list[list]],
-    links: dict[int, list[str]],
-    chunk_size: int | None,
+    text_by_page,
+    tables,
+    links,
+    chunk_size,
+    markdown: bool,
 ) -> None:
   buffer_len = 0
   chunk_index = 1
@@ -183,15 +197,16 @@ def print_pages(
     page_tables = tables.get(page_num, [])
     page_links = links.get(page_num, [])
 
-    lines: list[str] = [f"\n--- Page {page_num} ---", text]
+    header = f"\n## Page {page_num}" if markdown else f"\n--- Page {page_num} ---"
+    lines: list[str] = [header, text]
 
     if page_links:
-      lines.append("\n[Links]")
+      lines.append("\n### Links" if markdown else "\n[Links]")
       for uri in page_links:
         lines.append(f"  {uri}")
 
     if page_tables:
-      lines.append("\n[Tables]")
+      lines.append("\n### Tables" if markdown else "\n[Tables]")
       for i, table in enumerate(page_tables, 1):
         if len(page_tables) > 1:
           lines.append(f"  (table {i})")
@@ -201,7 +216,10 @@ def print_pages(
 
     if chunk_size:
       if buffer_len > 0 and buffer_len + len(block) > chunk_size:
-        print(f"\n=== CHUNK BREAK ({chunk_index}) ===")
+        print(
+            f"\n\n--- CHUNK BREAK ({chunk_index}) ---\n"
+            if markdown else f"\n=== CHUNK BREAK ({chunk_index}) ==="
+        )
         chunk_index += 1
         buffer_len = 0
       buffer_len += len(block)
@@ -216,6 +234,7 @@ def process(
     pdf_path: Path,
     ocr_output: Path | None = None,
     chunk_size: int | None = None,
+    markdown: bool = False,
 ) -> None:
   fitz_doc = fitz.open(pdf_path)
   page_count = fitz_doc.page_count
@@ -276,7 +295,7 @@ def process(
   print(f"{'=' * 60}")
   print()
 
-  print("=== METADATA ===")
+  print("# Metadata" if markdown else "=== METADATA ===")
   print(format_metadata(metadata, page_count))
   print()
 
@@ -290,7 +309,7 @@ def process(
   elif not text_by_page:
     print("  (no text extracted)")
   else:
-    print_pages(text_by_page, tables, links, chunk_size)
+    print_pages(text_by_page, tables, links, chunk_size, markdown)
 
 
 def main() -> None:
@@ -320,12 +339,18 @@ def main() -> None:
       help="Insert chunk break markers every N characters",
   )
 
+  parser.add_argument(
+      "--markdown",
+      action="store_true",
+      help="Output in markdown format",
+  )
+
   args = parser.parse_args()
 
   if not args.file.exists():
     parser.error(f"file not found: {args.file}")
 
-  process(args.file, args.ocr_output, args.chunk)
+  process(args.file, args.ocr_output, args.chunk, args.markdown)
 
 
 if __name__ == "__main__":
