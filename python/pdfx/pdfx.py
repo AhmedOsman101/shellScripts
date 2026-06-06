@@ -2,8 +2,9 @@
 """
 pdfx - Extract full context from a PDF for coding agents.
 
-Outputs: metadata, outline, hyperlinks, tables (inline per page),
-and text per page with lightweight heading detection.
+Outputs: metadata, outline, hyperlinks, and text per page
+with lightweight heading detection.
+Tables are opt-in (--tables) and filtered to avoid duplicate content.
 Falls back to OCR via ocrmypdf when no text layer is detected.
 
 Usage:
@@ -12,6 +13,7 @@ Usage:
   uv run pdfx.py file.pdf --ocr-output ./ocr.pdf
   uv run pdfx.py file.pdf --chunk 12000
   uv run pdfx.py file.pdf --markdown
+  uv run pdfx.py file.pdf --tables
 """
 
 import sys
@@ -92,6 +94,32 @@ def extract_tables(plumber_pdf: pdfplumber.PDF) -> dict[int, list[list]]:
   return result
 
 
+def is_valid_table(table: list[list[str]]) -> bool:
+  if not table or not table[0]:
+    return False
+  if len(table[0]) < 2:
+    return False
+  cells = [cell for row in table for cell in row]
+  filled = sum(1 for c in cells if c and c.strip())
+  if filled / max(len(cells), 1) < 0.5:
+    return False
+  joined = " ".join(cells)
+  if "----" in joined or "---" in joined:
+    return False
+  return True
+
+
+def table_overlaps_text(table, text: str) -> bool:
+  flat = " ".join(cell.strip() for row in table for cell in row if cell)
+  table_flat = re.sub(r"\s+", " ", flat)
+  text_flat = re.sub(r"\s+", " ", text)
+  return table_flat[:200] in text_flat
+
+
+def table_hash(table):
+  return tuple(tuple(cell or "" for cell in row) for row in table)
+
+
 def normalize_text(text: str) -> str:
   text = re.sub(r" {2,}", " ", text)
   text = re.sub(r"\n{3,}", "\n\n", text)
@@ -169,6 +197,10 @@ def is_heading(line: str) -> bool:
   if "/" in stripped and "/" in stripped[:5]:
     return False
 
+  # Numbered heading like "1.7 A Simple Java Program"
+  if re.match(r"^\d+\.\d+\s+[A-Z]", stripped) and len(stripped) <= 80:
+    return True
+
   if stripped.isupper() and len(stripped) > 3:
     return True
 
@@ -225,6 +257,7 @@ def print_pages(
     links,
     chunk_size,
     markdown: bool,
+    show_tables: bool = False,
 ) -> None:
   buffer_len = 0
   chunk_index = 1
@@ -232,7 +265,6 @@ def print_pages(
   for page_num in sorted(text_by_page):
     text = format_page_text(text_by_page[page_num]
                             ) if text_by_page[page_num] else "  (empty)"
-    page_tables = tables.get(page_num, [])
     page_links = links.get(page_num, [])
 
     header = f"\n## Page {page_num}" if markdown else f"\n--- Page {page_num} ---"
@@ -243,12 +275,26 @@ def print_pages(
       for uri in page_links:
         lines.append(f"  {uri}")
 
-    if page_tables:
-      lines.append("\n### Tables" if markdown else "\n[Tables]")
-      for i, table in enumerate(page_tables, 1):
-        if len(page_tables) > 1:
-          lines.append(f"  (table {i})")
-        lines.append(format_table(table))
+    if show_tables:
+      page_tables = tables.get(page_num, [])
+      seen: set = set()
+      valid_tables: list = []
+      for table in page_tables:
+        h = table_hash(table)
+        if h in seen:
+          continue
+        seen.add(h)
+        if not is_valid_table(table):
+          continue
+        if len(table) <= 2 and table_overlaps_text(table, text_by_page[page_num]):
+          continue
+        valid_tables.append(table)
+      if valid_tables:
+        lines.append("\n### Tables" if markdown else "\n[Tables]")
+        for i, table in enumerate(valid_tables, 1):
+          if len(valid_tables) > 1:
+            lines.append(f"  (table {i})")
+          lines.append(format_table(table))
 
     block = "\n".join(lines)
 
@@ -273,6 +319,7 @@ def process(
     ocr_output: Path | None = None,
     chunk_size: int | None = None,
     markdown: bool = False,
+    show_tables: bool = False,
 ) -> None:
   fitz_doc = fitz.open(pdf_path)
   page_count = fitz_doc.page_count
@@ -347,7 +394,7 @@ def process(
   elif not text_by_page:
     print("  (no text extracted)")
   else:
-    print_pages(text_by_page, tables, links, chunk_size, markdown)
+    print_pages(text_by_page, tables, links, chunk_size, markdown, show_tables)
 
 
 def main() -> None:
@@ -383,12 +430,18 @@ def main() -> None:
       help="Output in markdown format",
   )
 
+  parser.add_argument(
+      "--tables",
+      action="store_true",
+      help="Include table extraction (off by default; tables may be noisy)",
+  )
+
   args = parser.parse_args()
 
   if not args.file.exists():
     parser.error(f"file not found: {args.file}")
 
-  process(args.file, args.ocr_output, args.chunk, args.markdown)
+  process(args.file, args.ocr_output, args.chunk, args.markdown, args.tables)
 
 
 if __name__ == "__main__":
