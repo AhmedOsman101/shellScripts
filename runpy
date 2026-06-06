@@ -21,12 +21,8 @@
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/cmdarg.sh")"
 eval "$(include "check-deps")"
-
 checkDeps "$0"
-cmdarg_info "header" "$(get-desc "$0")"
-cmdarg_parse "$@"
 # ---  Main script logic --- #
 dir="${SCRIPTS_DIR}/python"
 
