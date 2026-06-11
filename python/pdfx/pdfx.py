@@ -2,14 +2,16 @@
 """
 pdfx - Extract full context from a PDF for coding agents.
 
-Primary: LlamaParse cloud API (markdown extraction, tables included).
-Fallback: Local OCR via rapidocr/tesseract when API key missing or API fails.
+Default: local extraction (pdfplumber + rapidocr for scanned PDFs).
+Optionally use LlamaParse cloud API for richer markdown extraction.
 
 Usage:
   uv run pdfx.py file.pdf
   uv run pdfx.py file.pdf > context.txt
   uv run pdfx.py file.pdf --chunk 12000
-  uv run pdfx.py file.pdf --local
+  uv run pdfx.py file.pdf --llamaparse
+  uv run pdfx.py file.pdf --llamaparse fast
+  uv run pdfx.py file.pdf --llamaparse agentic
 """
 
 import os
@@ -34,8 +36,14 @@ def load_api_key() -> str | None:
   return os.environ.get("LLAMA_PARSE_API_KEY")
 
 
-def parse_with_llamaparse(pdf_path: Path) -> str | None:
-  """Upload PDF to LlamaParse and return markdown_full content."""
+def parse_with_llamaparse(pdf_path: Path, tier: str = "cost_effective") -> str | None:
+  """Upload PDF to LlamaParse and return markdown_full content.
+
+  `tier` maps user-facing names to API tier strings:
+    - "agentic"       → API "agentic" + cost optimizer ON
+    - "agentic-full"  → API "agentic" + cost optimizer OFF
+    - everything else → passed as-is to the API.
+  """
   try:
     from llama_cloud import LlamaCloud
     import llama_cloud
@@ -46,26 +54,48 @@ def parse_with_llamaparse(pdf_path: Path) -> str | None:
   if not api_key:
     return None
 
-  try:
-    client = LlamaCloud()
+  client = LlamaCloud(api_key=api_key)
 
+  # Map user-facing names to API parameters
+  if tier == "agentic-full":
+    api_tier = "agentic"
+    processing_opts: dict | None = None
+  elif tier == "agentic":
+    api_tier = "agentic"
+    processing_opts = {"cost_optimizer": {"enable": True}}
+  else:
+    api_tier = tier
+    processing_opts = None
+
+  try:
     file_obj = client.files.create(file=pdf_path, purpose="parse")
 
-    result = client.parsing.parse(
+    kwargs: dict = dict(
         file_id=file_obj.id,
-        tier="cost_effective",
+        tier=api_tier,
         version="latest",
         expand=["markdown_full"],
     )
 
-    if result.job.status == "COMPLETED":
-      return result.markdown_full
-    else:
-      print(
-          f"WARNING: LlamaParse failed with status: {result.job.status}",
-          file=sys.stderr,
-      )
-      return None
+    if tier == "agentic" or tier == "agentic-full":
+      kwargs["output_options"] = {
+          "markdown": {
+              "annotate_links": True,
+              "tables": {
+                  "output_tables_as_markdown": True,
+                  "merge_continued_tables": True,
+              },
+              "inline_images": True,
+          },
+          "tables_as_spreadsheet": {"guess_sheet_name": True},
+          "images_to_save": ["embedded"],
+      }
+
+    if processing_opts:
+      kwargs["processing_options"] = processing_opts
+
+    result = client.parsing.parse(**kwargs)
+    return result.markdown_full
 
   except llama_cloud.BadRequestError as e:
     print(f"WARNING: LlamaParse bad request: {e}", file=sys.stderr)
@@ -94,8 +124,8 @@ def has_text_layer(fitz_doc: fitz.Document) -> bool:
   return False
 
 
-def ocr_with_tesseract(pdf_path: Path, output_path: Path) -> bool:
-  """OCR a scanned PDF using rapidocr for text detection and tesseract for rendering."""
+def ocr_with_rapidocr(pdf_path: Path, output_path: Path) -> bool:
+  """OCR a scanned PDF using rapidocr-onnxruntime and write text positions into a new PDF."""
   try:
     sys.path.append("/usr/lib/python3.14/site-packages")
     from rapidocr_onnxruntime import RapidOCR
@@ -122,6 +152,8 @@ def ocr_with_tesseract(pdf_path: Path, output_path: Path) -> bool:
 
     blocks = []
     for bbox, text, conf in result:
+      if not text or not text.strip() or conf <= 0.3:
+        continue
       x0, y0, x1, y1 = bbox[0][0], bbox[0][1], bbox[2][0], bbox[2][1]
       blocks.append((y0, x0, x1, y1, text))
 
@@ -130,7 +162,9 @@ def ocr_with_tesseract(pdf_path: Path, output_path: Path) -> bool:
     out_page = out_doc.new_page(width=page.rect.width, height=page.rect.height)
     for y0, x0, x1, y1, text in blocks:
       rect = fitz.Rect(x0, y0, x1, y1)
-      out_page.insert_textbox(rect, text, fontsize=10)
+      overflow = out_page.insert_textbox(rect, text, fontsize=10)
+      if overflow > 0:
+        out_page.insert_textbox(rect, text, fontsize=8)
 
   out_doc.save(str(output_path))
   out_doc.close()
@@ -207,6 +241,8 @@ def table_hash(table):
 def normalize_text(text: str) -> str:
   text = re.sub(r" {2,}", " ", text)
   text = re.sub(r"\n{3,}", "\n\n", text)
+  # Replace Private Use Area characters (common in PDF custom font encodings)
+  text = re.sub(r"[\uE000-\uF8FF]", "", text)
   return text.strip()
 
 
@@ -395,24 +431,23 @@ def print_pages(
 def process(
     pdf_path: Path,
     chunk_size: int | None = None,
-    local_only: bool = False,
+    llamaparse_tier: str | None = None,
 ) -> None:
-  # --- Try LlamaParse first ---
-  if not local_only:
-    print("Attempting LlamaParse...", file=sys.stderr)
-    llama_md = parse_with_llamaparse(pdf_path)
-    if llama_md is not None:
+  # --- Try LlamaParse if tier specified ---
+  if llamaparse_tier:
+    print(f"LlamaParse ({llamaparse_tier})...", file=sys.stderr)
+    result = parse_with_llamaparse(pdf_path, tier=llamaparse_tier)
+    if result is not None:
       print("LlamaParse succeeded.", file=sys.stderr)
       print(f"\n{'=' * 60}")
       print(f"PDF CONTEXT: {pdf_path}")
-      print(f"(parsed via LlamaParse)")
+      print(f"(parsed via LlamaParse — {llamaparse_tier})")
       print(f"{'=' * 60}\n")
-      print(llama_md)
+      print(result)
       return
-    else:
-      print("LlamaParse unavailable or failed. Falling back to local OCR.", file=sys.stderr)
+    print("LlamaParse failed. Falling back to local.", file=sys.stderr)
 
-  # --- Local fallback ---
+  # --- Local extraction ---
   fitz_doc = fitz.open(pdf_path)
   page_count = fitz_doc.page_count
   scanned = not has_text_layer(fitz_doc)
@@ -425,13 +460,13 @@ def process(
     tmp.close()
     target = Path(tmp.name)
 
-    if ocr_with_tesseract(pdf_path, target):
+    if ocr_with_rapidocr(pdf_path, target):
       fitz_doc.close()
       fitz_doc = fitz.open(target)
       page_count = fitz_doc.page_count
       scanned = False
       ocr_used = True
-      print(f"OCR complete. Using: {target}", file=sys.stderr)
+      target.unlink()
     else:
       print("OCR failed. Text and table extraction will be empty.", file=sys.stderr)
       target.unlink(missing_ok=True)
@@ -481,7 +516,8 @@ def main() -> None:
           "  uv run pdfx.py file.pdf\n"
           "  uv run pdfx.py file.pdf > context.txt\n"
           "  uv run pdfx.py file.pdf --chunk 12000\n"
-          "  uv run pdfx.py file.pdf --local\n"
+          "  uv run pdfx.py file.pdf --llamaparse\n"
+          "  uv run pdfx.py file.pdf --llamaparse agentic\n"
       ),
   )
   parser.add_argument("file", type=Path, help="Path to the PDF file")
@@ -492,9 +528,13 @@ def main() -> None:
       help="Insert chunk break markers every N characters",
   )
   parser.add_argument(
-      "--local",
-      action="store_true",
-      help="Skip LlamaParse, use local OCR only",
+      "--llamaparse",
+      nargs="?",
+      const="cost_effective",
+      default=None,
+      metavar="TIER",
+      choices=["fast", "cost_effective", "agentic", "agentic-full", "agentic_plus"],
+      help="Use LlamaParse cloud API (tier: fast, cost_effective, agentic, agentic-full, agentic_plus; default: cost_effective)",
   )
 
   args = parser.parse_args()
@@ -502,7 +542,7 @@ def main() -> None:
   if not args.file.exists():
     parser.error(f"file not found: {args.file}")
 
-  process(args.file, args.chunk, args.local)
+  process(args.file, args.chunk, args.llamaparse)
 
 
 if __name__ == "__main__":
