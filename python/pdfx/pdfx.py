@@ -63,7 +63,7 @@ def extract_outline(fitz_doc: fitz.Document) -> list[dict]:
   return [{"level": lvl, "title": title, "page": page} for lvl, title, page in toc]
 
 
-def get_table_headers_fitz(table_objs: dict[int, list]) -> dict[int, set[str]]:
+def get_table_headers(table_objs: dict[int, list]) -> dict[int, set[str]]:
   """Extract table header text lines from pdfplumber table data (list[list[str]])."""
   result: dict[int, set[str]] = {}
   for page_num, tables in table_objs.items():
@@ -256,12 +256,6 @@ def extract_text_by_page_plumber(plumber_doc, table_objs: dict[int, list] | None
   return result
 
 
-def _format_fitz_table(t) -> str:
-  """Render a fitz Table as clean markdown, stripping PDF line-wrapping artifacts."""
-  md = t.to_markdown()
-  return md.replace("<br>", " ")
-
-
 # --- Formatting ---
 
 
@@ -401,9 +395,6 @@ def print_pages(
           # pdfplumber tables are list[list[str]], format as markdown
           if isinstance(t_data, list) and t_data and isinstance(t_data[0], list):
             lines.append(_format_plumber_table(t_data))
-          else:
-            # fitz Table object fallback
-            lines.append(_format_fitz_table(t_data))
 
     block = "\n".join(lines)
 
@@ -488,7 +479,7 @@ def process(
 
       if not scanned:
         tables = extract_tables_plumber(plumber_doc)
-        table_headers = get_table_headers_fitz(tables) if show_tables else {}
+        table_headers = get_table_headers(tables) if show_tables else {}
         text_by_page = extract_text_by_page_plumber(plumber_doc, tables if show_tables else None)
       else:
         tables = {}
