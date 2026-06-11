@@ -27,6 +27,7 @@ import contextlib
 from pathlib import Path
 
 import fitz
+import pdfplumber
 
 # --- OCR ---
 
@@ -230,6 +231,245 @@ def extract_text_by_page(fitz_doc: fitz.Document,
   return result
 
 
+# --- pdfplumber Extraction ---
+
+
+def extract_metadata_plumber(plumber_doc) -> dict:
+  meta = plumber_doc.metadata or {}
+  result = {}
+  for k, v in meta.items():
+    if v and k != "producer":
+      result[k] = v
+  return result
+
+
+def extract_links_plumber(plumber_doc) -> dict[int, list[str]]:
+  result: dict[int, list[str]] = {}
+  for i, page in enumerate(plumber_doc.pages):
+    seen: set[str] = set()
+    uris: list[str] = []
+    for link in page.hyperlinks or []:
+      uri = link.get("uri", "")
+      if uri and uri not in seen:
+        seen.add(uri)
+        uris.append(uri)
+    if uris:
+      result[i + 1] = uris
+  return result
+
+
+def _is_valid_table_plumber(table_data: list[list[str]]) -> bool:
+  if not table_data or not table_data[0]:
+    return False
+  if len(table_data[0]) < 2:
+    return False
+  cells = [cell for row in table_data for cell in row if cell]
+  filled = sum(1 for c in cells if c.strip())
+  if filled / max(len(cells), 1) < 0.5:
+    return False
+  joined = " ".join(cells)
+  if "----" in joined or "---" in joined:
+    return False
+  # Detect code blocks masquerading as tables
+  code_indicators = ["enable", "configure terminal", "interface ", "ip address",
+                     "no shutdown", "exit", "router ", "switch "]
+  lower_joined = joined.lower()
+  code_score = sum(1 for ind in code_indicators if ind in lower_joined)
+  if code_score >= 2:
+    return False
+  return True
+
+
+def extract_tables_plumber(plumber_doc) -> dict[int, list]:
+  result: dict[int, list] = {}
+  for i, page in enumerate(plumber_doc.pages):
+    tables = page.find_tables()
+    if not tables:
+      continue
+    page_tables: list = []
+    for t in tables:
+      data = t.extract()
+      if data:
+        processed = [[str(cell or "").strip() for cell in row] for row in data]
+        if _is_valid_table_plumber(processed):
+          page_tables.append(processed)
+    if page_tables:
+      result[i + 1] = page_tables
+  return result
+
+
+def _format_plumber_table(table_data: list[list[str]]) -> str:
+  """Render pdfplumber table data as markdown."""
+  if not table_data:
+    return ""
+  # Build markdown table
+  header = table_data[0]
+  lines = []
+  lines.append("| " + " | ".join(str(c or "") for c in header) + " |")
+  lines.append("| " + " | ".join("---" for _ in header) + " |")
+  for row in table_data[1:]:
+    lines.append("| " + " | ".join(str(c or "") for c in row) + " |")
+  return "\n".join(lines)
+
+
+def _plumber_has_text_layer(plumber_doc) -> bool:
+  """Check if any page has extractable text."""
+  for page in plumber_doc.pages:
+    text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
+    if text.strip():
+      return True
+  return False
+
+
+def extract_text_by_page_plumber(plumber_doc, table_objs: dict[int, list] | None = None) -> dict[int, str]:
+  result: dict[int, str] = {}
+  for i, page in enumerate(plumber_doc.pages):
+    page_num = i + 1
+    if table_objs and page_num in table_objs:
+      # Get table bounding boxes to exclude from text
+      table_bboxes = []
+      for t_data in table_objs[page_num]:
+        tables = page.find_tables()
+        for t in tables:
+          data = t.extract()
+          if data:
+            processed = [[str(cell or "").strip() for cell in row] for row in data]
+            if processed == t_data or (processed and t_data and processed[0] == t_data[0]):
+              table_bboxes.append(t.bbox)
+              break
+
+      if table_bboxes:
+        # Extract words and filter out those inside table regions
+        lines_by_y: dict[float, list[str]] = {}
+        for word in page.extract_words(x_tolerance=3, y_tolerance=3):
+          word_in_table = False
+          for bbox in table_bboxes:
+            x0, top, x1, bottom = bbox
+            if (word["x0"] >= x0 - 2 and word["x1"] <= x1 + 2 and
+                word["top"] >= top - 2 and word["bottom"] <= bottom + 2):
+              word_in_table = True
+              break
+          if not word_in_table:
+            y_key = round(word["top"], 1)
+            lines_by_y.setdefault(y_key, []).append(word["text"])
+        # Sort by y position and join words in each line
+        sorted_lines = [" ".join(words) for _, words in sorted(lines_by_y.items())]
+        text = "\n".join(sorted_lines)
+      else:
+        text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
+    else:
+      # Use extract_text_lines for proper line breaks
+      text_lines = page.extract_text_lines(
+          layout=False, x_tolerance=3, y_tolerance=3, strip=True
+      )
+      if text_lines:
+        text = "\n".join(line["text"] for line in text_lines)
+      else:
+        text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
+    result[page_num] = normalize_text(text)
+  return result
+
+
+def process_plumber(
+    pdf_path: Path,
+    ocr_output: Path | None = None,
+    chunk_size: int | None = None,
+    markdown: bool = False,
+    show_tables: bool = False,
+) -> None:
+  import warnings
+  import logging
+  warnings.filterwarnings("ignore", message=".*FontBBox.*")
+  logging.getLogger("pdfminer").setLevel(logging.CRITICAL)
+  logging.getLogger("pdfplumber").setLevel(logging.CRITICAL)
+
+  old_stderr = sys.stderr
+  sys.stderr = open(os.devnull, "w", encoding="utf-8")
+  try:
+    _process_plumber_inner(pdf_path, ocr_output, chunk_size, markdown, show_tables)
+  finally:
+    sys.stderr.close()
+    sys.stderr = old_stderr
+
+
+def _process_plumber_inner(
+    pdf_path: Path,
+    ocr_output: Path | None = None,
+    chunk_size: int | None = None,
+    markdown: bool = False,
+    show_tables: bool = False,
+) -> None:
+  with pdfplumber.open(pdf_path) as plumber_doc:
+    page_count = len(plumber_doc.pages)
+    scanned = not _plumber_has_text_layer(plumber_doc)
+
+    metadata = extract_metadata_plumber(plumber_doc)
+    links = extract_links_plumber(plumber_doc)
+
+    if not scanned:
+      tables = extract_tables_plumber(plumber_doc)
+      text_by_page = extract_text_by_page_plumber(plumber_doc, tables if show_tables else None)
+    else:
+      tables = {}
+      text_by_page = {}
+
+  print(f"{'=' * 60}")
+  print(f"PDF CONTEXT: {pdf_path}")
+  print(f"{'=' * 60}")
+  print()
+
+  print("# Metadata" if markdown else "=== METADATA ===")
+  print(format_metadata(metadata, page_count))
+  print()
+
+  print("=== OUTLINE / BOOKMARKS ===")
+  print("  (pdfplumber does not extract PDF outlines)")
+  print()
+
+  print("=== TEXT BY PAGE ===")
+  if scanned:
+    print("  (skipped - no text layer detected)")
+  elif not text_by_page:
+    print("  (no text extracted)")
+  else:
+    buffer_len = 0
+    chunk_index = 1
+    for page_num in sorted(text_by_page):
+      text = format_page_text(text_by_page[page_num]) if text_by_page[page_num] else "  (empty)"
+      page_links = links.get(page_num, [])
+
+      header = f"\n## Page {page_num}" if markdown else f"\n--- Page {page_num} ---"
+      lines_out: list[str] = [header, text]
+
+      if page_links:
+        lines_out.append("\n### Links" if markdown else "\n[Links]")
+        for uri in page_links:
+          lines_out.append(f"  {uri}")
+
+      if show_tables:
+        page_tables = tables.get(page_num, [])
+        if page_tables:
+          lines_out.append("\n### Tables" if markdown else "\n[Tables]")
+          for idx, t_data in enumerate(page_tables, 1):
+            if len(page_tables) > 1:
+              lines_out.append(f"  (table {idx})")
+            lines_out.append(_format_plumber_table(t_data))
+
+      block = "\n".join(lines_out)
+
+      if chunk_size:
+        if buffer_len > 0 and buffer_len + len(block) > chunk_size:
+          print(
+              f"\n\n--- CHUNK BREAK ({chunk_index}) ---\n"
+              if markdown else f"\n=== CHUNK BREAK ({chunk_index}) ==="
+          )
+          chunk_index += 1
+          buffer_len = 0
+        buffer_len += len(block)
+
+      print(block)
+
+
 # --- Formatting ---
 
 
@@ -399,7 +639,12 @@ def process(
     chunk_size: int | None = None,
     markdown: bool = False,
     show_tables: bool = False,
+    engine: str = "pymupdf",
 ) -> None:
+  if engine == "pdfplumber":
+    process_plumber(pdf_path, ocr_output, chunk_size, markdown, show_tables)
+    return
+
   fitz_doc = fitz.open(pdf_path)
   page_count = fitz_doc.page_count
   scanned = not has_text_layer(fitz_doc)
@@ -519,6 +764,13 @@ def main() -> None:
       help="Disable table extraction (tables are included by default)",
   )
 
+  parser.add_argument(
+      "--engine",
+      choices=["pymupdf", "pdfplumber"],
+      default="pymupdf",
+      help="Extraction engine to use (default: pymupdf)",
+  )
+
   args = parser.parse_args()
 
   if not args.file.exists():
@@ -528,7 +780,7 @@ def main() -> None:
   markdown = not args.text
   show_tables = not args.no_tables
 
-  process(args.file, args.ocr_output, args.chunk, markdown, show_tables)
+  process(args.file, args.ocr_output, args.chunk, markdown, show_tables, args.engine)
 
 
 if __name__ == "__main__":
