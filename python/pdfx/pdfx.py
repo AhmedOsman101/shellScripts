@@ -270,20 +270,36 @@ def _is_valid_table_plumber(table_data: list[list[str]]) -> bool:
   joined = " ".join(cells)
   if "----" in joined or "---" in joined:
     return False
-  # Detect code blocks masquerading as tables
-  code_indicators = ["enable", "configure terminal", "interface ", "ip address",
-                     "no shutdown", "exit", "router ", "switch "]
-  lower_joined = joined.lower()
-  code_score = sum(1 for ind in code_indicators if ind in lower_joined)
-  if code_score >= 2:
-    return False
+  # Reject single-column-heavy tables that are likely code blocks or form fields
+  col_counts = [len(row) for row in table_data]
+  if len(set(col_counts)) == 1 and col_counts[0] == 2:
+    # 2-column table with many empty cells in second column = likely code block
+    second_col_empty = sum(1 for row in table_data if not row[1].strip())
+    if second_col_empty / max(len(table_data), 1) > 0.5:
+      return False
   return True
+
+
+def _find_tables_with_fallback(page) -> list:
+  """Try default line-based detection, then fall back to text-based strategy."""
+  tables = page.find_tables()
+  if tables:
+    return list(tables)
+  # Fallback: text-based strategy for tables without drawn borders
+  table_settings = {
+      "vertical_strategy": "text",
+      "horizontal_strategy": "text",
+      "min_words_vertical": 3,
+      "min_words_horizontal": 1,
+  }
+  tables = page.find_tables(table_settings)
+  return list(tables) if tables else []
 
 
 def extract_tables_plumber(plumber_doc) -> dict[int, list]:
   result: dict[int, list] = {}
   for i, page in enumerate(plumber_doc.pages):
-    tables = page.find_tables()
+    tables = _find_tables_with_fallback(page)
     if not tables:
       continue
     page_tables: list = []
@@ -326,17 +342,9 @@ def extract_text_by_page_plumber(plumber_doc, table_objs: dict[int, list] | None
   for i, page in enumerate(plumber_doc.pages):
     page_num = i + 1
     if table_objs and page_num in table_objs:
-      # Get table bounding boxes to exclude from text
-      table_bboxes = []
-      for t_data in table_objs[page_num]:
-        tables = page.find_tables()
-        for t in tables:
-          data = t.extract()
-          if data:
-            processed = [[str(cell or "").strip() for cell in row] for row in data]
-            if processed == t_data or (processed and t_data and processed[0] == t_data[0]):
-              table_bboxes.append(t.bbox)
-              break
+      # Get ALL table bounding boxes on this page to exclude from text
+      all_tables = _find_tables_with_fallback(page)
+      table_bboxes = [t.bbox for t in all_tables]
 
       if table_bboxes:
         # Extract words and filter out those inside table regions
