@@ -56,7 +56,7 @@ def run_ocr(input_path: Path, output_path: Path) -> bool:
     return False
 
 
-def ocr_with_rapidocr(fitz_doc: fitz.Document, dpi: int = 300) -> dict[int, str]:
+def ocr_with_rapidocr(fitz_doc: fitz.Document, dpi: int = 400) -> dict[int, str]:
   """OCR each page of a fitz doc using system-installed rapidocr-onnxruntime."""
   import sys as _sys
   _sys.path.append("/usr/lib/python3.14/site-packages")
@@ -259,47 +259,84 @@ def _plumber_has_text_layer(plumber_doc) -> bool:
   return False
 
 
+def _extract_page_text_plumber(page, table_objs: dict[int, list] | None, page_num: int) -> str:
+  """Extract text from a single pdfplumber page, optionally excluding table regions."""
+  if table_objs and page_num in table_objs:
+    all_tables = _find_tables_with_fallback(page)
+    table_bboxes = [t.bbox for t in all_tables]
+
+    if table_bboxes:
+      table_placeholders: dict[float, str] = {}
+      for t_idx, bbox in enumerate(table_bboxes, 1):
+        y_pos = round(bbox[1], 1)
+        table_placeholders[y_pos] = f"(table {t_idx})"
+
+      lines_by_y: dict[float, list[str]] = {}
+      for word in page.extract_words(x_tolerance=3, y_tolerance=3):
+        word_in_table = False
+        for bbox in table_bboxes:
+          x0, top, x1, bottom = bbox
+          if (word["x0"] >= x0 - 2 and word["x1"] <= x1 + 2 and
+              word["top"] >= top - 2 and word["bottom"] <= bottom + 2):
+            word_in_table = True
+            break
+        if not word_in_table:
+          y_key = round(word["top"], 1)
+          lines_by_y.setdefault(y_key, []).append(word["text"])
+      for y_pos, placeholder in table_placeholders.items():
+        lines_by_y.setdefault(y_pos, []).insert(0, placeholder)
+      sorted_lines = [" ".join(words) for _, words in sorted(lines_by_y.items())]
+      return "\n".join(sorted_lines)
+    return page.extract_text(x_tolerance=3, y_tolerance=3) or ""
+  return page.extract_text(x_tolerance=3, y_tolerance=3) or ""
+
+
 def extract_text_by_page_plumber(plumber_doc, table_objs: dict[int, list] | None = None) -> dict[int, str]:
   result: dict[int, str] = {}
   for i, page in enumerate(plumber_doc.pages):
     page_num = i + 1
-    if table_objs and page_num in table_objs:
-      # Get ALL table bounding boxes on this page to exclude from text
-      all_tables = _find_tables_with_fallback(page)
-      table_bboxes = [t.bbox for t in all_tables]
-
-      if table_bboxes:
-        # Build y-position -> placeholder mapping (table top y -> placeholder text)
-        table_placeholders: dict[float, str] = {}
-        for t_idx, bbox in enumerate(table_bboxes, 1):
-          y_pos = round(bbox[1], 1)  # top of table
-          table_placeholders[y_pos] = f"(table {t_idx})"
-
-        # Extract words and filter out those inside table regions
-        lines_by_y: dict[float, list[str]] = {}
-        for word in page.extract_words(x_tolerance=3, y_tolerance=3):
-          word_in_table = False
-          for bbox in table_bboxes:
-            x0, top, x1, bottom = bbox
-            if (word["x0"] >= x0 - 2 and word["x1"] <= x1 + 2 and
-                word["top"] >= top - 2 and word["bottom"] <= bottom + 2):
-              word_in_table = True
-              break
-          if not word_in_table:
-            y_key = round(word["top"], 1)
-            lines_by_y.setdefault(y_key, []).append(word["text"])
-        # Insert table placeholders at their y-positions
-        for y_pos, placeholder in table_placeholders.items():
-          # Find the closest y-position to insert the placeholder
-          lines_by_y.setdefault(y_pos, []).insert(0, placeholder)
-        # Sort by y position and join words in each line
-        sorted_lines = [" ".join(words) for _, words in sorted(lines_by_y.items())]
-        text = "\n".join(sorted_lines)
-      else:
-        text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
-    else:
-      text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
+    text = _extract_page_text_plumber(page, table_objs, page_num)
     result[page_num] = normalize_text(_normalize_pua(text))
+  return result
+
+
+def extract_text_hybrid(
+    plumber_doc,
+    fitz_doc: fitz.Document,
+    table_objs: dict[int, list] | None = None,
+) -> dict[int, str]:
+  """Extract text per page via pdfplumber, falling back to rapidocr for image-only pages.
+
+  Handles hybrid PDFs where some pages have a text layer and others are scanned images.
+  """
+  import sys as _sys
+  _sys.path.append("/usr/lib/python3.14/site-packages")
+  from rapidocr_onnxruntime import RapidOCR
+
+  engine = RapidOCR()
+  result: dict[int, str] = {}
+
+  for i, page in enumerate(plumber_doc.pages):
+    page_num = i + 1
+    text = _extract_page_text_plumber(page, table_objs, page_num)
+    text = normalize_text(_normalize_pua(text))
+
+    if not text.strip():
+      fitz_page = fitz_doc[i]
+      pix = fitz_page.get_pixmap(dpi=400)
+      img_bytes = pix.tobytes("png")
+      blocks, _ = engine(img_bytes)
+      if blocks:
+        blocks.sort(key=lambda b: b[0][1])
+        lines = []
+        for _, t, conf in blocks:
+          t = t.strip()
+          if t and conf > 0.3:
+            lines.append(t)
+        text = normalize_text("\n".join(lines)) if lines else ""
+
+    result[page_num] = text
+
   return result
 
 
@@ -467,7 +504,7 @@ def process(
     chunk_size: int | None = None,
     markdown: bool = False,
     show_tables: bool = False,
-    ocr_engine: str = "rapidocr",
+    ocr_engine: str = "tesseract",
 ) -> None:
   import warnings
   import logging
@@ -480,6 +517,7 @@ def process(
   ocr_used = False
   ocr_tmp: Path | None = None
 
+  # --- Handle scanned PDFs ---
   if scanned:
     if ocr_engine == "rapidocr":
       print("No text layer detected. Using rapidocr...", file=sys.stderr)
@@ -488,10 +526,11 @@ def process(
       metadata = extract_metadata_fitz(fitz_doc)
       page_count = len(fitz_doc)
       fitz_doc.close()
-      ocr_used = True
-    elif shutil.which("ocrmypdf"):
+      _print_output(pdf_path, True, markdown, metadata, page_count, outline,
+                    text_by_page, {}, {}, chunk_size, show_tables, {})
+      return
+    if shutil.which("ocrmypdf"):
       print("No text layer detected. Running OCR...", file=sys.stderr)
-
       if ocr_output:
         target = ocr_output
         cleanup = False
@@ -500,7 +539,6 @@ def process(
         tmp.close()
         target = Path(tmp.name)
         cleanup = True
-
       if run_ocr(pdf_path, target):
         fitz_doc.close()
         fitz_doc = fitz.open(target)
@@ -519,17 +557,10 @@ def process(
           file=sys.stderr,
       )
 
-  # --- RapidOCR short-circuit (handles output inline) ---
-  if ocr_engine == "rapidocr" and ocr_used:
-    _print_output(pdf_path, ocr_used, markdown, metadata, page_count, outline,
-                  text_by_page, {}, {}, chunk_size, show_tables, {})
-    return
-
-  # --- Outline from fitz (pdfplumber has no outline support) ---
+  # --- Outline from fitz ---
   outline = extract_outline(fitz_doc)
-  fitz_doc.close()
 
-  # --- Text, tables, links, metadata via pdfplumber ---
+  # --- Text, tables, links, metadata ---
   old_stderr = sys.stderr
   sys.stderr = open(os.devnull, "w", encoding="utf-8")
   try:
@@ -538,7 +569,13 @@ def process(
       metadata = extract_metadata_plumber(plumber_doc)
       links = extract_links_plumber(plumber_doc)
 
-      if not scanned:
+      if ocr_engine == "rapidocr" and not scanned:
+        # Hybrid PDF: per-page fallback to rapidocr for image-only pages
+        tables = extract_tables_plumber(plumber_doc) if show_tables else {}
+        table_headers = get_table_headers(tables) if show_tables else {}
+        text_by_page = extract_text_hybrid(plumber_doc, fitz_doc, tables if show_tables else None)
+        ocr_used = True
+      elif not scanned:
         tables = extract_tables_plumber(plumber_doc)
         table_headers = get_table_headers(tables) if show_tables else {}
         text_by_page = extract_text_by_page_plumber(plumber_doc, tables if show_tables else None)
@@ -550,6 +587,7 @@ def process(
     sys.stderr.close()
     sys.stderr = old_stderr
 
+  fitz_doc.close()
   if ocr_tmp:
     ocr_tmp.unlink(missing_ok=True)
 
