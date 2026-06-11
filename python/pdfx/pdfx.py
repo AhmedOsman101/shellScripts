@@ -158,6 +158,26 @@ def is_valid_table(table_data: list[list[str]]) -> bool:
   return True
 
 
+def _normalize_pua(text: str) -> str:
+  """Replace Private Use Area characters with their ASCII equivalents.
+
+  Some PDF fonts encode common glyphs (parens, math, list markers) as PUA
+  codepoints. pdfplumber extracts them verbatim, producing garbled output.
+  """
+  _PUA_MAP = {
+      "\ue072": "1", "\ue073": "2", "\ue074": "3",
+      "\ue075": "4", "\ue076": "5",
+      "\ue081": "(", "\ue082": ")",
+      "\ue088": "-", "\ue089": "-",
+      "\ue092": ":", "\ue094": " ",
+      "\ue09d": "+", "\ue09f": "x",
+      "\ue0a3": "~", "\ue1d7": "->",
+  }
+  for ch, repl in _PUA_MAP.items():
+    text = text.replace(ch, repl)
+  return text
+
+
 def normalize_text(text: str) -> str:
   text = re.sub(r"\n{3,}", "\n\n", text)
   lines = text.splitlines()
@@ -250,9 +270,13 @@ def extract_links_plumber(plumber_doc) -> dict[int, list[str]]:
     uris: list[str] = []
     for link in page.hyperlinks or []:
       uri = link.get("uri", "")
-      if uri and uri not in seen:
-        seen.add(uri)
-        uris.append(uri)
+      if not uri or uri in seen:
+        continue
+      # Skip internal PDF anchors – not useful for coding agents
+      if uri.startswith("af://") or uri.startswith("#"):
+        continue
+      seen.add(uri)
+      uris.append(uri)
     if uris:
       result[i + 1] = uris
   return result
@@ -306,7 +330,7 @@ def extract_tables_plumber(plumber_doc) -> dict[int, list]:
     for t in tables:
       data = t.extract()
       if data:
-        processed = [[str(cell or "").strip() for cell in row] for row in data]
+        processed = [[_normalize_pua(str(cell or "")).strip() for cell in row] for row in data]
         if _is_valid_table_plumber(processed):
           page_tables.append(processed)
     if page_tables:
@@ -366,15 +390,8 @@ def extract_text_by_page_plumber(plumber_doc, table_objs: dict[int, list] | None
       else:
         text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
     else:
-      # Use extract_text_lines for proper line breaks
-      text_lines = page.extract_text_lines(
-          layout=False, x_tolerance=3, y_tolerance=3, strip=True
-      )
-      if text_lines:
-        text = "\n".join(line["text"] for line in text_lines)
-      else:
-        text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
-    result[page_num] = normalize_text(text)
+      text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
+    result[page_num] = normalize_text(_normalize_pua(text))
   return result
 
 
