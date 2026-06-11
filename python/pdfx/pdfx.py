@@ -4,7 +4,7 @@ pdfx - Extract full context from a PDF for coding agents.
 
 Outputs: metadata, outline, hyperlinks, and text per page
 with lightweight heading detection.
-Tables are opt-in (--tables) and filtered to avoid duplicate content.
+Tables are included by default (use --no-tables to disable).
 Falls back to OCR via ocrmypdf when no text layer is detected.
 
 Usage:
@@ -12,8 +12,8 @@ Usage:
   uv run pdfx.py file.pdf > context.txt
   uv run pdfx.py file.pdf --ocr-output ./ocr.pdf
   uv run pdfx.py file.pdf --chunk 12000
-  uv run pdfx.py file.pdf --markdown
-  uv run pdfx.py file.pdf --tables
+  uv run pdfx.py file.pdf --text
+  uv run pdfx.py file.pdf --no-tables
 """
 
 import sys
@@ -22,10 +22,26 @@ import shutil
 import subprocess
 import tempfile
 import argparse
+import io
 from pathlib import Path
 
+# Suppress noisy fitz/font warnings before importing
+_stderr = sys.stderr
+sys.stderr = io.StringIO()
 import fitz
+sys.stderr = _stderr
+
 import pdfplumber
+
+
+def _suppress_fitz_warnings(func, *args, **kwargs):
+  """Run fitz operations while suppressing noisy FontBBox warnings."""
+  old_stderr = sys.stderr
+  sys.stderr = io.StringIO()
+  try:
+    return func(*args, **kwargs)
+  finally:
+    sys.stderr = old_stderr
 
 # --- OCR ---
 
@@ -85,12 +101,42 @@ def extract_links(fitz_doc: fitz.Document) -> dict[int, list[str]]:
   return result
 
 
-def extract_tables(plumber_pdf: pdfplumber.PDF) -> dict[int, list[list]]:
+def extract_tables_fitz(fitz_doc: fitz.Document) -> dict[int, list[list]]:
+  """Extract tables using fitz's find_tables() — finds visual tables that pdfplumber misses."""
   result: dict[int, list[list]] = {}
-  for page in plumber_pdf.pages:
-    tables = page.extract_tables()
-    if tables:
-      result[page.page_number] = tables
+  for page_num in range(fitz_doc.page_count):
+    page = fitz_doc[page_num]
+    tables = page.find_tables()
+    if tables.tables:
+      page_tables: list[list] = []
+      for t in tables.tables:
+        data = t.extract()
+        if data:
+          page_tables.append([[str(cell or "").strip() for cell in row] for row in data])
+      if page_tables:
+        result[page_num + 1] = page_tables
+  return result
+
+
+def get_table_headers_per_page(fitz_tables: dict[int, list[list]]) -> dict[int, set[str]]:
+  """Extract table header text lines to skip during heading detection."""
+  result: dict[int, set[str]] = {}
+  for page_num, tables in fitz_tables.items():
+    headers: set[str] = set()
+    for table in tables:
+      if table and table[0]:
+        # Full header row as a line
+        header_line = " ".join(str(cell or "").strip() for cell in table[0])
+        header_normalized = re.sub(r"\s+", " ", header_line).lower()
+        if header_normalized:
+          headers.add(header_normalized)
+        # Individual header cells
+        for cell in table[0]:
+          cell_text = str(cell or "").strip().lower()
+          if cell_text and len(cell_text) <= 50:
+            headers.add(cell_text)
+    if headers:
+      result[page_num] = headers
   return result
 
 
@@ -121,9 +167,11 @@ def table_hash(table):
 
 
 def normalize_text(text: str) -> str:
-  text = re.sub(r" {2,}", " ", text)
   text = re.sub(r"\n{3,}", "\n\n", text)
-  return text.strip()
+  lines = text.splitlines()
+  lines = [re.sub(r" {2,}", " ", line).strip() for line in lines]
+  lines = [line for line in lines if line]
+  return "\n".join(lines)
 
 
 def extract_text_by_page(plumber_pdf: pdfplumber.PDF) -> dict[int, str]:
@@ -190,21 +238,26 @@ def is_heading(line: str) -> bool:
   if not stripped or len(stripped) > 120:
     return False
 
+  lower = stripped.lower()
+
   # Avoid code / protocol / url lines
-  if stripped.startswith(("GET ", "POST ", "PUT ", "DELETE ", "HTTP", "http")):
+  if lower.startswith(("get ", "post ", "put ", "delete ", "http")):
     return False
 
   if "/" in stripped and "/" in stripped[:5]:
     return False
 
-  # Numbered heading like "1.7 A Simple Java Program"
-  if re.match(r"^\d+\.\d+\s+[A-Z]", stripped) and len(stripped) <= 80:
+  # Numbered heading: "1. Title", "2.1 Subtitle", "3.2.1 Deep heading"
+  if (re.match(r"^\d+\.\s+[A-Za-z]", stripped) or
+      re.match(r"^\d+(\.\d+)+\s+[A-Za-z]", stripped)) and len(stripped) <= 80:
     return True
 
-  if stripped.isupper() and len(stripped) > 3:
+  # Step marker: "Step 1: Place Devices"
+  if re.match(r"^Step\s+\d+\s*:", stripped):
     return True
 
-  if stripped.endswith(":") and " " not in stripped.rstrip(":"):
+  # ALLCAPS words: "CCNA", "TCP", "OSPF" (letters only, min 4 chars)
+  if len(stripped) > 3 and stripped.isupper() and all(c.isalpha() or c.isspace() for c in stripped):
     return True
 
   # Avoid sentence endings, bullets, emails
@@ -218,30 +271,30 @@ def is_heading(line: str) -> bool:
   if not words:
     return False
 
-  # Single word: short, starts with uppercase
+  # Single word: PascalCase (min 5 chars)
   if len(words) == 1:
-    return 1 < len(stripped) <= 45 and stripped[0].isupper()
-
-  # Multi-word (2-4): all words capitalized, short, no structural markers
-  if len(words) <= 4 and len(stripped) <= 50:
-    if "|" in stripped or "(" in stripped or ")" in stripped:
+    if not (4 < len(stripped) <= 45):
       return False
-    if any(c.isdigit() for c in stripped):
+    if re.match(r"^\d+$", stripped):
       return False
-    # Avoid label-value pairs like "Address: Cairo, Egypt"
-    if ":" in stripped and not stripped.endswith(":"):
+    # Trailing colon = label, not heading ("Calculation:", "Note:")
+    if stripped.endswith(":"):
       return False
-    if all(w[0].isupper() for w in words if w):
+    if re.search(r"[A-Z][a-z]", stripped) and stripped[0].isupper():
       return True
+    return False
 
   return False
 
 
-def format_page_text(text: str) -> str:
+def format_page_text(text: str, skip_headings: set[str] | None = None) -> str:
   lines = text.splitlines()
   out = []
   for line in lines:
-    if is_heading(line):
+    stripped = line.strip().lower()
+    if skip_headings and stripped in skip_headings:
+      out.append(line.strip())
+    elif is_heading(line):
       out.append(f"\n## {line.strip()}\n")
     else:
       out.append(line)
@@ -258,12 +311,14 @@ def print_pages(
     chunk_size,
     markdown: bool,
     show_tables: bool = False,
+    skip_headings_by_page: dict[int, set[str]] | None = None,
 ) -> None:
   buffer_len = 0
   chunk_index = 1
 
   for page_num in sorted(text_by_page):
-    text = format_page_text(text_by_page[page_num]
+    skip = (skip_headings_by_page or {}).get(page_num)
+    text = format_page_text(text_by_page[page_num], skip
                             ) if text_by_page[page_num] else "  (empty)"
     page_links = links.get(page_num, [])
 
@@ -321,7 +376,7 @@ def process(
     markdown: bool = False,
     show_tables: bool = False,
 ) -> None:
-  fitz_doc = fitz.open(pdf_path)
+  fitz_doc = _suppress_fitz_warnings(fitz.open, pdf_path)
   page_count = fitz_doc.page_count
   scanned = not has_text_layer(fitz_doc)
   ocr_used = False
@@ -348,7 +403,7 @@ def process(
 
       if run_ocr(pdf_path, target):
         fitz_doc.close()
-        fitz_doc = fitz.open(target)
+        fitz_doc = _suppress_fitz_warnings(fitz.open, target)
         page_count = fitz_doc.page_count
         scanned = False
         ocr_used = True
@@ -359,15 +414,30 @@ def process(
         if cleanup:
           target.unlink(missing_ok=True)
 
-  plumber_pdf = pdfplumber.open(fitz_doc.name)
+  # Suppress all fitz/pdfplumber warnings during extraction
+  old_stderr = sys.stderr
+  sys.stderr = io.StringIO()
+  try:
+    metadata = extract_metadata(fitz_doc)
+    outline = extract_outline(fitz_doc)
+    links = extract_links(fitz_doc)
 
-  metadata = extract_metadata(fitz_doc)
-  outline = extract_outline(fitz_doc)
-  links = extract_links(fitz_doc)
-  tables = extract_tables(plumber_pdf) if not scanned else {}
-  text_by_page = extract_text_by_page(plumber_pdf) if not scanned else {}
+    if not scanned:
+      # Tables via fitz (better detection for visual tables)
+      tables = extract_tables_fitz(fitz_doc)
+      # Table headers to exclude from heading detection
+      table_headers = get_table_headers_per_page(tables)
+      # Text via pdfplumber (better layout preservation)
+      plumber_pdf = pdfplumber.open(fitz_doc.name)
+      text_by_page = extract_text_by_page(plumber_pdf)
+      plumber_pdf.close()
+    else:
+      tables = {}
+      table_headers = {}
+      text_by_page = {}
+  finally:
+    sys.stderr = old_stderr
 
-  plumber_pdf.close()
   fitz_doc.close()
 
   if ocr_tmp:
@@ -394,7 +464,7 @@ def process(
   elif not text_by_page:
     print("  (no text extracted)")
   else:
-    print_pages(text_by_page, tables, links, chunk_size, markdown, show_tables)
+    print_pages(text_by_page, tables, links, chunk_size, markdown, show_tables, table_headers)
 
 
 def main() -> None:
@@ -425,15 +495,15 @@ def main() -> None:
   )
 
   parser.add_argument(
-      "--markdown",
+      "--text",
       action="store_true",
-      help="Output in markdown format",
+      help="Output in plain text format (default is markdown)",
   )
 
   parser.add_argument(
-      "--tables",
+      "--no-tables",
       action="store_true",
-      help="Include table extraction (off by default; tables may be noisy)",
+      help="Disable table extraction (tables are included by default)",
   )
 
   args = parser.parse_args()
@@ -441,7 +511,11 @@ def main() -> None:
   if not args.file.exists():
     parser.error(f"file not found: {args.file}")
 
-  process(args.file, args.ocr_output, args.chunk, args.markdown, args.tables)
+  # Default: markdown=True, show_tables=True
+  markdown = not args.text
+  show_tables = not args.no_tables
+
+  process(args.file, args.ocr_output, args.chunk, markdown, show_tables)
 
 
 if __name__ == "__main__":
