@@ -5,12 +5,12 @@ pdfx - Extract full context from a PDF for coding agents.
 Outputs: metadata, outline, hyperlinks, and text per page
 with lightweight heading detection.
 Tables are included by default (use --no-tables to disable).
-Falls back to OCR (tesseract or rapidocr) when no text layer is detected.
+Uses OCR (rapidocr by default, or tesseract with --ocr-engine)
+for pages without extractable text.
 
 Usage:
   uv run pdfx.py file.pdf
   uv run pdfx.py file.pdf > context.txt
-  uv run pdfx.py file.pdf --ocr-output ./ocr.pdf
   uv run pdfx.py file.pdf --chunk 12000
   uv run pdfx.py file.pdf --text
   uv run pdfx.py file.pdf --no-tables
@@ -39,21 +39,33 @@ def has_text_layer(fitz_doc: fitz.Document) -> bool:
   return False
 
 
-def run_ocr(input_path: Path, output_path: Path) -> bool:
-  if not shutil.which("ocrmypdf"):
-    return False
+def _ocr_page_with_tesseract(page: fitz.Page, dpi: int = 400) -> str:
+  """OCR a single fitz page by rendering to image and running tesseract CLI."""
+  pix = page.get_pixmap(dpi=dpi)
+  img_bytes = pix.tobytes("png")
+  tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+  tmp.write(img_bytes)
+  tmp.close()
   try:
-    subprocess.run(
-        ["ocrmypdf", "--skip-text", "--quiet",
-         str(input_path),
-         str(output_path)],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+    output = subprocess.run(
+        ["tesseract", tmp.name, "stdout", "-l", "eng", "--psm", "6"],
+        capture_output=True, text=True, timeout=60,
     )
-    return True
-  except subprocess.CalledProcessError:
-    return False
+    return output.stdout.strip() if output.returncode == 0 else ""
+  except (FileNotFoundError, subprocess.TimeoutExpired):
+    return ""
+  finally:
+    os.unlink(tmp.name)
+
+
+def ocr_with_tesseract(fitz_doc: fitz.Document, dpi: int = 400) -> dict[int, str]:
+  """OCR all pages by rendering each with fitz and running tesseract CLI."""
+  result: dict[int, str] = {}
+  for i in range(len(fitz_doc)):
+    page_num = i + 1
+    text = _ocr_page_with_tesseract(fitz_doc[i], dpi)
+    result[page_num] = normalize_text(text) if text else ""
+  return result
 
 
 def ocr_with_rapidocr(fitz_doc: fitz.Document, dpi: int = 400) -> dict[int, str]:
@@ -304,40 +316,27 @@ def extract_text_hybrid(
     plumber_doc,
     fitz_doc: fitz.Document,
     table_objs: dict[int, list] | None = None,
-) -> dict[int, str]:
-  """Extract text per page via pdfplumber, falling back to rapidocr for image-only pages.
+    ocr_page_fn = None,
+) -> tuple[dict[int, str], bool]:
+  """Extract text per page via pdfplumber, falling back to `ocr_page_fn` for image-only pages.
 
-  Handles hybrid PDFs where some pages have a text layer and others are scanned images.
+  Returns (text_by_page, ocr_used) where ocr_used indicates if any page needed OCR.
   """
-  import sys as _sys
-  _sys.path.append("/usr/lib/python3.14/site-packages")
-  from rapidocr_onnxruntime import RapidOCR
-
-  engine = RapidOCR()
   result: dict[int, str] = {}
+  ocr_used = False
 
   for i, page in enumerate(plumber_doc.pages):
     page_num = i + 1
     text = _extract_page_text_plumber(page, table_objs, page_num)
     text = normalize_text(_normalize_pua(text))
 
-    if not text.strip():
-      fitz_page = fitz_doc[i]
-      pix = fitz_page.get_pixmap(dpi=400)
-      img_bytes = pix.tobytes("png")
-      blocks, _ = engine(img_bytes)
-      if blocks:
-        blocks.sort(key=lambda b: b[0][1])
-        lines = []
-        for _, t, conf in blocks:
-          t = t.strip()
-          if t and conf > 0.3:
-            lines.append(t)
-        text = normalize_text("\n".join(lines)) if lines else ""
+    if not text.strip() and ocr_page_fn:
+      text = ocr_page_fn(fitz_doc[i])
+      ocr_used = True
 
     result[page_num] = text
 
-  return result
+  return result, ocr_used
 
 
 # --- Formatting ---
@@ -498,13 +497,40 @@ def print_pages(
 # --- Main ---
 
 
+def _make_ocr_page_fn(ocr_engine: str):
+  """Return a callable `ocr_page_fn(fitz_page) -> str` for the given engine."""
+  if ocr_engine == "tesseract":
+    return _ocr_page_with_tesseract
+
+  import sys as _sys
+  _sys.path.append("/usr/lib/python3.14/site-packages")
+  from rapidocr_onnxruntime import RapidOCR
+
+  engine = RapidOCR()
+
+  def _ocr_page_with_rapidocr(page: fitz.Page, _engine=engine) -> str:
+    pix = page.get_pixmap(dpi=400)
+    img_bytes = pix.tobytes("png")
+    blocks, _ = _engine(img_bytes)
+    if not blocks:
+      return ""
+    blocks.sort(key=lambda b: b[0][1])
+    lines = []
+    for _, t, conf in blocks:
+      t = t.strip()
+      if t and conf > 0.3:
+        lines.append(t)
+    return normalize_text("\n".join(lines)) if lines else ""
+
+  return _ocr_page_with_rapidocr
+
+
 def process(
     pdf_path: Path,
-    ocr_output: Path | None = None,
     chunk_size: int | None = None,
     markdown: bool = False,
     show_tables: bool = False,
-    ocr_engine: str = "tesseract",
+    ocr_engine: str = "rapidocr",
 ) -> None:
   import warnings
   import logging
@@ -512,85 +538,50 @@ def process(
   logging.getLogger("pdfminer").setLevel(logging.CRITICAL)
   logging.getLogger("pdfplumber").setLevel(logging.CRITICAL)
 
+  if ocr_engine == "tesseract" and not shutil.which("tesseract"):
+    print("WARNING: tesseract not found. Install tesseract-ocr.", file=sys.stderr)
+
   fitz_doc = fitz.open(pdf_path)
-  scanned = not has_text_layer(fitz_doc)
-  ocr_used = False
-  ocr_tmp: Path | None = None
+  has_text = has_text_layer(fitz_doc)
 
-  # --- Handle scanned PDFs ---
-  if scanned:
+  if not has_text:
+    print("No text layer detected. Using OCR...", file=sys.stderr)
+    ocr_used = True
+    metadata = extract_metadata_fitz(fitz_doc)
+    outline = extract_outline(fitz_doc)
+    page_count = len(fitz_doc)
+
     if ocr_engine == "rapidocr":
-      print("No text layer detected. Using rapidocr...", file=sys.stderr)
-      outline = extract_outline(fitz_doc)
       text_by_page = ocr_with_rapidocr(fitz_doc)
-      metadata = extract_metadata_fitz(fitz_doc)
-      page_count = len(fitz_doc)
-      fitz_doc.close()
-      _print_output(pdf_path, True, markdown, metadata, page_count, outline,
-                    text_by_page, {}, {}, chunk_size, show_tables, {})
-      return
-    if shutil.which("ocrmypdf"):
-      print("No text layer detected. Running OCR...", file=sys.stderr)
-      if ocr_output:
-        target = ocr_output
-        cleanup = False
-      else:
-        tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
-        tmp.close()
-        target = Path(tmp.name)
-        cleanup = True
-      if run_ocr(pdf_path, target):
-        fitz_doc.close()
-        fitz_doc = fitz.open(target)
-        scanned = False
-        ocr_used = True
-        ocr_tmp = target if cleanup else None
-        print(f"OCR complete. Using: {target}", file=sys.stderr)
-      else:
-        print("OCR failed. Text and table extraction will be empty.", file=sys.stderr)
-        if cleanup:
-          target.unlink(missing_ok=True)
     else:
-      print(
-          "WARNING: No text layer detected and no OCR engine available.\n"
-          "         Install ocrmypdf or use --ocr-engine rapidocr.",
-          file=sys.stderr,
-      )
+      text_by_page = ocr_with_tesseract(fitz_doc)
 
-  # --- Outline from fitz ---
+    fitz_doc.close()
+    _print_output(pdf_path, ocr_used, markdown, metadata, page_count, outline,
+                  text_by_page, {}, {}, chunk_size, show_tables, {})
+    return
+
+  # --- Hybrid / text PDF ---
   outline = extract_outline(fitz_doc)
+  ocr_page_fn = _make_ocr_page_fn(ocr_engine)
 
-  # --- Text, tables, links, metadata ---
   old_stderr = sys.stderr
   sys.stderr = open(os.devnull, "w", encoding="utf-8")
   try:
-    with pdfplumber.open(pdf_path if not ocr_tmp else ocr_tmp) as plumber_doc:
+    with pdfplumber.open(pdf_path) as plumber_doc:
       page_count = len(plumber_doc.pages)
       metadata = extract_metadata_plumber(plumber_doc)
       links = extract_links_plumber(plumber_doc)
-
-      if ocr_engine == "rapidocr" and not scanned:
-        # Hybrid PDF: per-page fallback to rapidocr for image-only pages
-        tables = extract_tables_plumber(plumber_doc) if show_tables else {}
-        table_headers = get_table_headers(tables) if show_tables else {}
-        text_by_page = extract_text_hybrid(plumber_doc, fitz_doc, tables if show_tables else None)
-        ocr_used = True
-      elif not scanned:
-        tables = extract_tables_plumber(plumber_doc)
-        table_headers = get_table_headers(tables) if show_tables else {}
-        text_by_page = extract_text_by_page_plumber(plumber_doc, tables if show_tables else None)
-      else:
-        tables = {}
-        table_headers = {}
-        text_by_page = {}
+      tables = extract_tables_plumber(plumber_doc) if show_tables else {}
+      table_headers = get_table_headers(tables) if show_tables else {}
+      text_by_page, ocr_used = extract_text_hybrid(
+          plumber_doc, fitz_doc, tables if show_tables else None, ocr_page_fn,
+      )
   finally:
     sys.stderr.close()
     sys.stderr = old_stderr
 
   fitz_doc.close()
-  if ocr_tmp:
-    ocr_tmp.unlink(missing_ok=True)
-
   _print_output(pdf_path, ocr_used, markdown, metadata, page_count, outline,
                 text_by_page, tables, links, chunk_size, show_tables, table_headers)
 
@@ -640,17 +631,11 @@ def main() -> None:
           "Examples:\n"
           "  uv run pdfx.py file.pdf\n"
           "  uv run pdfx.py file.pdf > context.txt\n"
-          "  uv run pdfx.py file.pdf --ocr-output ./ocr.pdf\n"
           "  uv run pdfx.py file.pdf --chunk 12000\n"
+          "  uv run pdfx.py file.pdf --ocr-engine tesseract\n"
       ),
   )
   parser.add_argument("file", type=Path, help="Path to the PDF file")
-  parser.add_argument(
-      "--ocr-output",
-      type=Path,
-      metavar="PATH",
-      help="Save the OCR'd PDF to this path instead of a temp file",
-  )
   parser.add_argument(
       "--chunk",
       type=int,
@@ -686,7 +671,7 @@ def main() -> None:
   markdown = not args.text
   show_tables = not args.no_tables
 
-  process(args.file, args.ocr_output, args.chunk, markdown, show_tables, args.ocr_engine)
+  process(args.file, args.chunk, markdown, show_tables, args.ocr_engine)
 
 
 if __name__ == "__main__":
