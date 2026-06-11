@@ -23,7 +23,6 @@ import shutil
 import subprocess
 import tempfile
 import argparse
-import contextlib
 from pathlib import Path
 
 import fitz
@@ -59,103 +58,30 @@ def run_ocr(input_path: Path, output_path: Path) -> bool:
 # --- Extraction ---
 
 
-def _get_text_silent(page: fitz.Page) -> str:
-  """Extract text while suppressing fitz stdout noise (pymupdf_layout suggestion)."""
-  with contextlib.redirect_stdout(open(os.devnull, "w", encoding="utf-8")):
-    return page.get_text(sort=True) or ""
-
-
-def extract_metadata(fitz_doc: fitz.Document) -> dict:
-  meta = fitz_doc.metadata or {}
-  return {k: v for k, v in meta.items() if v}
-
-
 def extract_outline(fitz_doc: fitz.Document) -> list[dict]:
   toc = fitz_doc.get_toc(simple=True)
   return [{"level": lvl, "title": title, "page": page} for lvl, title, page in toc]
 
 
-def extract_links(fitz_doc: fitz.Document) -> dict[int, list[str]]:
-  result: dict[int, list[str]] = {}
-  for page in fitz_doc:
-    seen: set[str] = set()
-    uris: list[str] = []
-    for link in page.get_links():
-      if link.get("kind") == fitz.LINK_URI and link.get("uri"):
-        uri: str = link["uri"]
-        if uri not in seen:
-          seen.add(uri)
-          uris.append(uri)
-    if uris:
-      num = page.number
-      if isinstance(num, int):
-        result[num + 1] = uris
-  return result
-
-
-def extract_tables(fitz_doc: fitz.Document) -> dict[int, list]:
-  """Extract tables via find_tables(). Returns fitz Table objects per page."""
-  result: dict[int, list] = {}
-  for page_num in range(fitz_doc.page_count):
-    page = fitz_doc[page_num]
-    devnull = open(os.devnull, "w", encoding="utf-8")
-    with contextlib.redirect_stdout(devnull):
-      tables = page.find_tables()
-    devnull.close()
-    if tables.tables:
-      page_tables: list = []
-      for t in tables.tables:
-        data = t.extract()
-        if not data:
-          continue
-        processed = [[str(cell or "").strip() for cell in row] for row in data]
-        if is_valid_table(processed):
-          page_tables.append(t)
-      if page_tables:
-        result[page_num + 1] = page_tables
-  return result
-
-
-def get_table_headers_per_page(table_objs: dict[int, list]) -> dict[int, set[str]]:
-  """Extract table header text lines to skip during heading detection."""
+def get_table_headers_fitz(table_objs: dict[int, list]) -> dict[int, set[str]]:
+  """Extract table header text lines from pdfplumber table data (list[list[str]])."""
   result: dict[int, set[str]] = {}
   for page_num, tables in table_objs.items():
     headers: set[str] = set()
-    for t in tables:
-      data = t.extract()
-      if data and data[0]:
-        # Full header row as a line
-        header_line = " ".join(str(cell or "").strip() for cell in data[0])
-        header_normalized = re.sub(r"\s+", " ", header_line).lower()
-        if header_normalized:
-          headers.add(header_normalized)
-        # Individual header cells
-        for cell in data[0]:
-          cell_text = str(cell or "").strip().lower()
-          if cell_text and len(cell_text) <= 50:
-            headers.add(cell_text)
+    for t_data in tables:
+      if not t_data or not t_data[0]:
+        continue
+      header_line = " ".join(str(cell or "").strip() for cell in t_data[0])
+      header_normalized = re.sub(r"\s+", " ", header_line).lower()
+      if header_normalized:
+        headers.add(header_normalized)
+      for cell in t_data[0]:
+        cell_text = str(cell or "").strip().lower()
+        if cell_text and len(cell_text) <= 50:
+          headers.add(cell_text)
     if headers:
       result[page_num] = headers
   return result
-
-
-def is_valid_table(table_data: list[list[str]]) -> bool:
-  if not table_data or not table_data[0]:
-    return False
-  if len(table_data[0]) < 2:
-    return False
-  # Header with line breaks = code block artifact, not a real table
-  header_text = " ".join(str(c or "").strip() for c in table_data[0])
-  if "<br>" in header_text:
-    return False
-  cells = [cell for row in table_data for cell in row]
-  filled = sum(1 for c in cells if c and c.strip())
-  if filled / max(len(cells), 1) < 0.5:
-    return False
-  joined = " ".join(cells)
-  if "----" in joined or "---" in joined:
-    return False
-  return True
 
 
 def _normalize_pua(text: str) -> str:
@@ -184,71 +110,6 @@ def normalize_text(text: str) -> str:
   lines = [re.sub(r" {2,}", " ", line).strip() for line in lines]
   lines = [line for line in lines if line]
   return "\n".join(lines)
-
-
-def _get_text_excluding(page: fitz.Page, table_objs: list) -> str:
-  """Extract page text from regions NOT covered by tables, using bounding boxes."""
-  page_rect = page.rect
-  table_rects = [t.bbox for t in table_objs]
-
-  # Start with full page as one free region
-  free_rects = [fitz.Rect(0, 0, page_rect.width, page_rect.height)]
-
-  margin = 2  # safety margin to avoid boundary artifacts
-  for trect in table_rects:
-    # bbox is a tuple (x0, y0, x1, y1); convert to Rect for manipulation
-    trect = fitz.Rect(trect[0] - margin, trect[1] - margin,
-                      trect[2] + margin, trect[3] + margin).intersect(page_rect)
-
-    new_free = []
-    for free in free_rects:
-      if not free.intersects(trect):
-        new_free.append(free)
-      else:
-        # Above the table
-        if free.y0 < trect.y0:
-          new_free.append(fitz.Rect(free.x0, free.y0, free.x1, trect.y0))
-        # Below the table
-        if free.y1 > trect.y1:
-          new_free.append(fitz.Rect(free.x0, trect.y1, free.x1, free.y1))
-        # Left of the table (within the table's y-range)
-        if free.x0 < trect.x0:
-          y0 = max(free.y0, trect.y0)
-          y1 = min(free.y1, trect.y1)
-          if y0 < y1:
-            new_free.append(fitz.Rect(free.x0, y0, trect.x0, y1))
-        # Right of the table (within the table's y-range)
-        if free.x1 > trect.x1:
-          y0 = max(free.y0, trect.y0)
-          y1 = min(free.y1, trect.y1)
-          if y0 < y1:
-            new_free.append(fitz.Rect(trect.x1, y0, free.x1, y1))
-    free_rects = new_free
-
-  # Drop tiny leftover rects
-  free_rects = [r for r in free_rects if r.width > 5 and r.height > 5]
-
-  # Extract text from each free region, joined in reading order
-  texts = []
-  for rect in free_rects:
-    with contextlib.redirect_stdout(open(os.devnull, "w", encoding="utf-8")):
-      part = page.get_text(sort=True, clip=rect) or ""
-    if part.strip():
-      texts.append(part)
-  return "\n".join(texts)
-
-
-def extract_text_by_page(fitz_doc: fitz.Document,
-                         table_objs: dict[int, list] | None = None) -> dict[int, str]:
-  result: dict[int, str] = {}
-  for page_num in range(fitz_doc.page_count):
-    page = fitz_doc[page_num]
-    if table_objs and page_num + 1 in table_objs:
-      text = _get_text_excluding(page, table_objs[page_num + 1])
-    else:
-      text = _get_text_silent(page)
-    result[page_num + 1] = normalize_text(text)
-  return result
 
 
 # --- pdfplumber Extraction ---
@@ -395,104 +256,10 @@ def extract_text_by_page_plumber(plumber_doc, table_objs: dict[int, list] | None
   return result
 
 
-def process_plumber(
-    pdf_path: Path,
-    ocr_output: Path | None = None,
-    chunk_size: int | None = None,
-    markdown: bool = False,
-    show_tables: bool = False,
-) -> None:
-  import warnings
-  import logging
-  warnings.filterwarnings("ignore", message=".*FontBBox.*")
-  logging.getLogger("pdfminer").setLevel(logging.CRITICAL)
-  logging.getLogger("pdfplumber").setLevel(logging.CRITICAL)
-
-  old_stderr = sys.stderr
-  sys.stderr = open(os.devnull, "w", encoding="utf-8")
-  try:
-    _process_plumber_inner(pdf_path, ocr_output, chunk_size, markdown, show_tables)
-  finally:
-    sys.stderr.close()
-    sys.stderr = old_stderr
-
-
-def _process_plumber_inner(
-    pdf_path: Path,
-    ocr_output: Path | None = None,
-    chunk_size: int | None = None,
-    markdown: bool = False,
-    show_tables: bool = False,
-) -> None:
-  with pdfplumber.open(pdf_path) as plumber_doc:
-    page_count = len(plumber_doc.pages)
-    scanned = not _plumber_has_text_layer(plumber_doc)
-
-    metadata = extract_metadata_plumber(plumber_doc)
-    links = extract_links_plumber(plumber_doc)
-
-    if not scanned:
-      tables = extract_tables_plumber(plumber_doc)
-      text_by_page = extract_text_by_page_plumber(plumber_doc, tables if show_tables else None)
-    else:
-      tables = {}
-      text_by_page = {}
-
-  print(f"{'=' * 60}")
-  print(f"PDF CONTEXT: {pdf_path}")
-  print(f"{'=' * 60}")
-  print()
-
-  print("# Metadata" if markdown else "=== METADATA ===")
-  print(format_metadata(metadata, page_count))
-  print()
-
-  print("=== OUTLINE / BOOKMARKS ===")
-  print("  (pdfplumber does not extract PDF outlines)")
-  print()
-
-  print("=== TEXT BY PAGE ===")
-  if scanned:
-    print("  (skipped - no text layer detected)")
-  elif not text_by_page:
-    print("  (no text extracted)")
-  else:
-    buffer_len = 0
-    chunk_index = 1
-    for page_num in sorted(text_by_page):
-      text = format_page_text(text_by_page[page_num]) if text_by_page[page_num] else "  (empty)"
-      page_links = links.get(page_num, [])
-
-      header = f"\n## Page {page_num}" if markdown else f"\n--- Page {page_num} ---"
-      lines_out: list[str] = [header, text]
-
-      if page_links:
-        lines_out.append("\n### Links" if markdown else "\n[Links]")
-        for uri in page_links:
-          lines_out.append(f"  {uri}")
-
-      if show_tables:
-        page_tables = tables.get(page_num, [])
-        if page_tables:
-          lines_out.append("\n### Tables" if markdown else "\n[Tables]")
-          for idx, t_data in enumerate(page_tables, 1):
-            if len(page_tables) > 1:
-              lines_out.append(f"  (table {idx})")
-            lines_out.append(_format_plumber_table(t_data))
-
-      block = "\n".join(lines_out)
-
-      if chunk_size:
-        if buffer_len > 0 and buffer_len + len(block) > chunk_size:
-          print(
-              f"\n\n--- CHUNK BREAK ({chunk_index}) ---\n"
-              if markdown else f"\n=== CHUNK BREAK ({chunk_index}) ==="
-          )
-          chunk_index += 1
-          buffer_len = 0
-        buffer_len += len(block)
-
-      print(block)
+def _format_fitz_table(t) -> str:
+  """Render a fitz Table as clean markdown, stripping PDF line-wrapping artifacts."""
+  md = t.to_markdown()
+  return md.replace("<br>", " ")
 
 
 # --- Formatting ---
@@ -513,13 +280,6 @@ def format_outline(outline: list[dict]) -> str:
     indent = "  " * entry["level"]
     lines.append(f"{indent}[p{entry['page']}] {entry['title']}")
   return "\n".join(lines)
-
-
-def format_table(t) -> str:
-  """Render a fitz Table as clean markdown, stripping PDF line-wrapping artifacts."""
-  md = t.to_markdown()
-  # <br> tags are PDF line-wrapping artifacts, not meaningful breaks
-  return md.replace("<br>", " ")
 
 
 def is_heading(line: str) -> bool:
@@ -635,10 +395,15 @@ def print_pages(
       page_tables = tables.get(page_num, [])
       if page_tables:
         lines.append("\n### Tables" if markdown else "\n[Tables]")
-        for i, t in enumerate(page_tables, 1):
+        for i, t_data in enumerate(page_tables, 1):
           if len(page_tables) > 1:
             lines.append(f"  (table {i})")
-          lines.append(format_table(t))
+          # pdfplumber tables are list[list[str]], format as markdown
+          if isinstance(t_data, list) and t_data and isinstance(t_data[0], list):
+            lines.append(_format_plumber_table(t_data))
+          else:
+            # fitz Table object fallback
+            lines.append(_format_fitz_table(t_data))
 
     block = "\n".join(lines)
 
@@ -664,14 +429,15 @@ def process(
     chunk_size: int | None = None,
     markdown: bool = False,
     show_tables: bool = False,
-    engine: str = "pymupdf",
 ) -> None:
-  if engine == "pdfplumber":
-    process_plumber(pdf_path, ocr_output, chunk_size, markdown, show_tables)
-    return
+  import warnings
+  import logging
+  warnings.filterwarnings("ignore", message=".*FontBBox.*")
+  logging.getLogger("pdfminer").setLevel(logging.CRITICAL)
+  logging.getLogger("pdfplumber").setLevel(logging.CRITICAL)
 
+  # --- OCR via fitz (pdfplumber has no OCR) ---
   fitz_doc = fitz.open(pdf_path)
-  page_count = fitz_doc.page_count
   scanned = not has_text_layer(fitz_doc)
   ocr_used = False
   ocr_tmp: Path | None = None
@@ -698,7 +464,6 @@ def process(
       if run_ocr(pdf_path, target):
         fitz_doc.close()
         fitz_doc = fitz.open(target)
-        page_count = fitz_doc.page_count
         scanned = False
         ocr_used = True
         ocr_tmp = target if cleanup else None
@@ -708,20 +473,30 @@ def process(
         if cleanup:
           target.unlink(missing_ok=True)
 
-  metadata = extract_metadata(fitz_doc)
+  # --- Outline from fitz (pdfplumber has no outline support) ---
   outline = extract_outline(fitz_doc)
-  links = extract_links(fitz_doc)
-
-  if not scanned:
-    tables = extract_tables(fitz_doc)
-    table_headers = get_table_headers_per_page(tables)
-    text_by_page = extract_text_by_page(fitz_doc, tables if show_tables else None)
-  else:
-    tables = {}
-    table_headers = {}
-    text_by_page = {}
-
   fitz_doc.close()
+
+  # --- Text, tables, links, metadata via pdfplumber ---
+  old_stderr = sys.stderr
+  sys.stderr = open(os.devnull, "w", encoding="utf-8")
+  try:
+    with pdfplumber.open(pdf_path if not ocr_tmp else ocr_tmp) as plumber_doc:
+      page_count = len(plumber_doc.pages)
+      metadata = extract_metadata_plumber(plumber_doc)
+      links = extract_links_plumber(plumber_doc)
+
+      if not scanned:
+        tables = extract_tables_plumber(plumber_doc)
+        table_headers = get_table_headers_fitz(tables) if show_tables else {}
+        text_by_page = extract_text_by_page_plumber(plumber_doc, tables if show_tables else None)
+      else:
+        tables = {}
+        table_headers = {}
+        text_by_page = {}
+  finally:
+    sys.stderr.close()
+    sys.stderr = old_stderr
 
   if ocr_tmp:
     ocr_tmp.unlink(missing_ok=True)
@@ -789,13 +564,6 @@ def main() -> None:
       help="Disable table extraction (tables are included by default)",
   )
 
-  parser.add_argument(
-      "--engine",
-      choices=["pymupdf", "pdfplumber"],
-      default="pymupdf",
-      help="Extraction engine to use (default: pymupdf)",
-  )
-
   args = parser.parse_args()
 
   if not args.file.exists():
@@ -805,7 +573,7 @@ def main() -> None:
   markdown = not args.text
   show_tables = not args.no_tables
 
-  process(args.file, args.ocr_output, args.chunk, markdown, show_tables, args.engine)
+  process(args.file, args.ocr_output, args.chunk, markdown, show_tables)
 
 
 if __name__ == "__main__":
