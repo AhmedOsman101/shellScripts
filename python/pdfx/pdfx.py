@@ -5,7 +5,7 @@ pdfx - Extract full context from a PDF for coding agents.
 Outputs: metadata, outline, hyperlinks, and text per page
 with lightweight heading detection.
 Tables are included by default (use --no-tables to disable).
-Falls back to OCR via ocrmypdf when no text layer is detected.
+Falls back to OCR (tesseract or rapidocr) when no text layer is detected.
 
 Usage:
   uv run pdfx.py file.pdf
@@ -14,6 +14,7 @@ Usage:
   uv run pdfx.py file.pdf --chunk 12000
   uv run pdfx.py file.pdf --text
   uv run pdfx.py file.pdf --no-tables
+  uv run pdfx.py file.pdf --ocr-engine rapidocr
 """
 
 import sys
@@ -53,6 +54,42 @@ def run_ocr(input_path: Path, output_path: Path) -> bool:
     return True
   except subprocess.CalledProcessError:
     return False
+
+
+def ocr_with_rapidocr(fitz_doc: fitz.Document, dpi: int = 300) -> dict[int, str]:
+  """OCR each page of a fitz doc using system-installed rapidocr-onnxruntime."""
+  import sys as _sys
+  _sys.path.append("/usr/lib/python3.14/site-packages")
+  from rapidocr_onnxruntime import RapidOCR
+
+  engine = RapidOCR()
+  result: dict[int, str] = {}
+
+  for i in range(len(fitz_doc)):
+    page = fitz_doc[i]
+    page_num = i + 1
+
+    pix = page.get_pixmap(dpi=dpi)
+    img_bytes = pix.tobytes("png")
+
+    blocks, _ = engine(img_bytes)
+    if blocks:
+      blocks.sort(key=lambda b: b[0][1])
+      lines = []
+      for _, text, conf in blocks:
+        text = text.strip()
+        if text and conf > 0.3:
+          lines.append(text)
+      result[page_num] = normalize_text("\n".join(lines)) if lines else ""
+    else:
+      result[page_num] = ""
+
+  return result
+
+
+def extract_metadata_fitz(fitz_doc: fitz.Document) -> dict:
+  meta = fitz_doc.metadata or {}
+  return {k: v for k, v in meta.items() if v}
 
 
 # --- Extraction ---
@@ -430,6 +467,7 @@ def process(
     chunk_size: int | None = None,
     markdown: bool = False,
     show_tables: bool = False,
+    ocr_engine: str = "tesseract",
 ) -> None:
   import warnings
   import logging
@@ -437,20 +475,21 @@ def process(
   logging.getLogger("pdfminer").setLevel(logging.CRITICAL)
   logging.getLogger("pdfplumber").setLevel(logging.CRITICAL)
 
-  # --- OCR via fitz (pdfplumber has no OCR) ---
   fitz_doc = fitz.open(pdf_path)
   scanned = not has_text_layer(fitz_doc)
   ocr_used = False
   ocr_tmp: Path | None = None
 
   if scanned:
-    if not shutil.which("ocrmypdf"):
-      print(
-          "WARNING: No text layer detected and ocrmypdf is not installed.\n"
-          "         Install ocrmypdf: https://ocrmypdf.readthedocs.io",
-          file=sys.stderr,
-      )
-    else:
+    if ocr_engine == "rapidocr":
+      print("No text layer detected. Using rapidocr...", file=sys.stderr)
+      outline = extract_outline(fitz_doc)
+      text_by_page = ocr_with_rapidocr(fitz_doc)
+      metadata = extract_metadata_fitz(fitz_doc)
+      page_count = len(fitz_doc)
+      fitz_doc.close()
+      ocr_used = True
+    elif shutil.which("ocrmypdf"):
       print("No text layer detected. Running OCR...", file=sys.stderr)
 
       if ocr_output:
@@ -473,6 +512,18 @@ def process(
         print("OCR failed. Text and table extraction will be empty.", file=sys.stderr)
         if cleanup:
           target.unlink(missing_ok=True)
+    else:
+      print(
+          "WARNING: No text layer detected and no OCR engine available.\n"
+          "         Install ocrmypdf or use --ocr-engine rapidocr.",
+          file=sys.stderr,
+      )
+
+  # --- RapidOCR short-circuit (handles output inline) ---
+  if ocr_engine == "rapidocr" and ocr_used:
+    _print_output(pdf_path, ocr_used, markdown, metadata, page_count, outline,
+                  text_by_page, {}, {}, chunk_size, show_tables, {})
+    return
 
   # --- Outline from fitz (pdfplumber has no outline support) ---
   outline = extract_outline(fitz_doc)
@@ -502,6 +553,24 @@ def process(
   if ocr_tmp:
     ocr_tmp.unlink(missing_ok=True)
 
+  _print_output(pdf_path, ocr_used, markdown, metadata, page_count, outline,
+                text_by_page, tables, links, chunk_size, show_tables, table_headers)
+
+
+def _print_output(
+    pdf_path: Path,
+    ocr_used: bool,
+    markdown: bool,
+    metadata: dict,
+    page_count: int,
+    outline: list[dict],
+    text_by_page: dict[int, str],
+    tables: dict[int, list],
+    links: dict[int, list[str]],
+    chunk_size: int | None,
+    show_tables: bool,
+    table_headers: dict[int, set[str]],
+) -> None:
   print(f"{'=' * 60}")
   print(f"PDF CONTEXT: {pdf_path}")
   if ocr_used:
@@ -518,9 +587,7 @@ def process(
   print()
 
   print("=== TEXT BY PAGE ===")
-  if scanned:
-    print("  (skipped - no text layer and OCR unavailable)")
-  elif not text_by_page:
+  if not text_by_page:
     print("  (no text extracted)")
   else:
     print_pages(text_by_page, tables, links, chunk_size, markdown, show_tables, table_headers)
@@ -565,6 +632,13 @@ def main() -> None:
       help="Disable table extraction (tables are included by default)",
   )
 
+  parser.add_argument(
+      "--ocr-engine",
+      choices=["tesseract", "rapidocr"],
+      default="tesseract",
+      help="OCR engine for scanned PDFs (default: tesseract)",
+  )
+
   args = parser.parse_args()
 
   if not args.file.exists():
@@ -574,7 +648,7 @@ def main() -> None:
   markdown = not args.text
   show_tables = not args.no_tables
 
-  process(args.file, args.ocr_output, args.chunk, markdown, show_tables)
+  process(args.file, args.ocr_output, args.chunk, markdown, show_tables, args.ocr_engine)
 
 
 if __name__ == "__main__":
