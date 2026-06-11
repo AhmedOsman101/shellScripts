@@ -1,6 +1,6 @@
 {
   "active": true,
-  "iteration": 1,
+  "iteration": 2,
   "minIterations": 10,
   "maxIterations": 50,
   "completionPromise": "COMPLETE",
@@ -15,5 +15,5 @@
     "opencode:mimo-v2.5-free",
     "opencode:deepseek-v4-flash-free"
   ],
-  "rotationIndex": 0
+  "rotationIndex": 1
 }
