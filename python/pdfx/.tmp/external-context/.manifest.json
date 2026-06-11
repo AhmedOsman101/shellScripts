@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-06-12T00:00:00Z",
+  "libraries": {
+    "llama-cloud": {
+      "files": [
+        {
+          "filename": "python-sdk-methods.md",
+          "topic": "Python SDK method signatures and usage",
+          "tech_stack": "Python",
+          "fetched": "2026-06-12T00:00:00Z",
+          "source": "Official docs"
+        },
+        {
+          "filename": "expand-values-and-response-objects.md",
+          "topic": "expand values and response object structures",
+          "tech_stack": "Python",
+          "fetched": "2026-06-12T00:00:00Z",
+          "source": "Official docs"
+        },
+        {
+          "filename": "complete-examples.md",
+          "topic": "Complete working examples",
+          "tech_stack": "Python",
+          "fetched": "2026-06-12T00:00:00Z",
+          "source": "Official docs"
+        },
+        {
+          "filename": "v1-to-v2-migration.md",
+          "topic": "v1 to v2 migration guide",
+          "tech_stack": "Python",
+          "fetched": "2026-06-12T00:00:00Z",
+          "source": "Official docs"
+        }
+      ]
+    }
+  }
+}
