@@ -232,6 +232,12 @@ def extract_text_by_page_plumber(plumber_doc, table_objs: dict[int, list] | None
       table_bboxes = [t.bbox for t in all_tables]
 
       if table_bboxes:
+        # Build y-position -> placeholder mapping (table top y -> placeholder text)
+        table_placeholders: dict[float, str] = {}
+        for t_idx, bbox in enumerate(table_bboxes, 1):
+          y_pos = round(bbox[1], 1)  # top of table
+          table_placeholders[y_pos] = f"(table {t_idx})"
+
         # Extract words and filter out those inside table regions
         lines_by_y: dict[float, list[str]] = {}
         for word in page.extract_words(x_tolerance=3, y_tolerance=3):
@@ -245,6 +251,10 @@ def extract_text_by_page_plumber(plumber_doc, table_objs: dict[int, list] | None
           if not word_in_table:
             y_key = round(word["top"], 1)
             lines_by_y.setdefault(y_key, []).append(word["text"])
+        # Insert table placeholders at their y-positions
+        for y_pos, placeholder in table_placeholders.items():
+          # Find the closest y-position to insert the placeholder
+          lines_by_y.setdefault(y_pos, []).insert(0, placeholder)
         # Sort by y position and join words in each line
         sorted_lines = [" ".join(words) for _, words in sorted(lines_by_y.items())]
         text = "\n".join(sorted_lines)
