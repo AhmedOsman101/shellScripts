@@ -18,30 +18,15 @@ Usage:
 
 import sys
 import re
+import os
 import shutil
 import subprocess
 import tempfile
 import argparse
-import io
+import contextlib
 from pathlib import Path
 
-# Suppress noisy fitz/font warnings before importing
-_stderr = sys.stderr
-sys.stderr = io.StringIO()
 import fitz
-sys.stderr = _stderr
-
-import pdfplumber
-
-
-def _suppress_fitz_warnings(func, *args, **kwargs):
-  """Run fitz operations while suppressing noisy FontBBox warnings."""
-  old_stderr = sys.stderr
-  sys.stderr = io.StringIO()
-  try:
-    return func(*args, **kwargs)
-  finally:
-    sys.stderr = old_stderr
 
 # --- OCR ---
 
@@ -73,6 +58,12 @@ def run_ocr(input_path: Path, output_path: Path) -> bool:
 # --- Extraction ---
 
 
+def _get_text_silent(page: fitz.Page) -> str:
+  """Extract text while suppressing fitz stdout noise (pymupdf_layout suggestion)."""
+  with contextlib.redirect_stdout(open(os.devnull, "w", encoding="utf-8")):
+    return page.get_text(sort=True) or ""
+
+
 def extract_metadata(fitz_doc: fitz.Document) -> dict:
   meta = fitz_doc.metadata or {}
   return {k: v for k, v in meta.items() if v}
@@ -101,12 +92,13 @@ def extract_links(fitz_doc: fitz.Document) -> dict[int, list[str]]:
   return result
 
 
-def extract_tables_fitz(fitz_doc: fitz.Document) -> dict[int, list[list]]:
-  """Extract tables using fitz's find_tables() — finds visual tables that pdfplumber misses."""
+def extract_tables(fitz_doc: fitz.Document) -> dict[int, list[list]]:
+  """Extract tables using fitz's find_tables()."""
   result: dict[int, list[list]] = {}
   for page_num in range(fitz_doc.page_count):
     page = fitz_doc[page_num]
-    tables = page.find_tables()
+    with contextlib.redirect_stdout(open(os.devnull, "w", encoding="utf-8")):
+      tables = page.find_tables()
     if tables.tables:
       page_tables: list[list] = []
       for t in tables.tables:
@@ -174,11 +166,10 @@ def normalize_text(text: str) -> str:
   return "\n".join(lines)
 
 
-def extract_text_by_page(plumber_pdf: pdfplumber.PDF) -> dict[int, str]:
+def extract_text_by_page(fitz_doc: fitz.Document) -> dict[int, str]:
   result: dict[int, str] = {}
-  for page in plumber_pdf.pages:
-    text = page.extract_text(layout=True) or ""
-    result[page.page_number] = normalize_text(text)
+  for page_num in range(fitz_doc.page_count):
+    result[page_num + 1] = normalize_text(_get_text_silent(fitz_doc[page_num]))
   return result
 
 
@@ -249,7 +240,18 @@ def is_heading(line: str) -> bool:
 
   # Numbered heading: "1. Title", "2.1 Subtitle", "3.2.1 Deep heading"
   if (re.match(r"^\d+\.\s+[A-Za-z]", stripped) or
-      re.match(r"^\d+(\.\d+)+\s+[A-Za-z]", stripped)) and len(stripped) <= 80:
+      re.match(r"^\d+(\.\d+)+\s+[A-Za-z]", stripped)):
+    if len(stripped) >= 80:
+      return False
+    # Label pattern: "1. Router:" — headings don't end in colons
+    if stripped.endswith(":"):
+      return False
+    # Sentence-ending punctuation = list item, not heading ("1. Open a PC...")
+    if stripped.endswith((".", ";")) and not stripped.endswith("..."):
+      return False
+    # Wordy list item: more than 7 words is likely a procedure step
+    if len(stripped.split()) > 7:
+      return False
     return True
 
   # Step marker: "Step 1: Place Devices"
@@ -376,7 +378,7 @@ def process(
     markdown: bool = False,
     show_tables: bool = False,
 ) -> None:
-  fitz_doc = _suppress_fitz_warnings(fitz.open, pdf_path)
+  fitz_doc = fitz.open(pdf_path)
   page_count = fitz_doc.page_count
   scanned = not has_text_layer(fitz_doc)
   ocr_used = False
@@ -403,7 +405,7 @@ def process(
 
       if run_ocr(pdf_path, target):
         fitz_doc.close()
-        fitz_doc = _suppress_fitz_warnings(fitz.open, target)
+        fitz_doc = fitz.open(target)
         page_count = fitz_doc.page_count
         scanned = False
         ocr_used = True
@@ -414,29 +416,18 @@ def process(
         if cleanup:
           target.unlink(missing_ok=True)
 
-  # Suppress all fitz/pdfplumber warnings during extraction
-  old_stderr = sys.stderr
-  sys.stderr = io.StringIO()
-  try:
-    metadata = extract_metadata(fitz_doc)
-    outline = extract_outline(fitz_doc)
-    links = extract_links(fitz_doc)
+  metadata = extract_metadata(fitz_doc)
+  outline = extract_outline(fitz_doc)
+  links = extract_links(fitz_doc)
 
-    if not scanned:
-      # Tables via fitz (better detection for visual tables)
-      tables = extract_tables_fitz(fitz_doc)
-      # Table headers to exclude from heading detection
-      table_headers = get_table_headers_per_page(tables)
-      # Text via pdfplumber (better layout preservation)
-      plumber_pdf = pdfplumber.open(fitz_doc.name)
-      text_by_page = extract_text_by_page(plumber_pdf)
-      plumber_pdf.close()
-    else:
-      tables = {}
-      table_headers = {}
-      text_by_page = {}
-  finally:
-    sys.stderr = old_stderr
+  if not scanned:
+    tables = extract_tables(fitz_doc)
+    table_headers = get_table_headers_per_page(tables)
+    text_by_page = extract_text_by_page(fitz_doc)
+  else:
+    tables = {}
+    table_headers = {}
+    text_by_page = {}
 
   fitz_doc.close()
 
