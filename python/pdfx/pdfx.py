@@ -2,32 +2,87 @@
 """
 pdfx - Extract full context from a PDF for coding agents.
 
-Outputs: metadata, outline, hyperlinks, and text per page
-with lightweight heading detection.
-Tables are included by default (use --no-tables to disable).
-Uses OCR (rapidocr by default, or tesseract with --ocr-engine)
-for pages without extractable text.
+Primary: LlamaParse cloud API (markdown extraction, tables included).
+Fallback: Local OCR via rapidocr/tesseract when API key missing or API fails.
 
 Usage:
   uv run pdfx.py file.pdf
   uv run pdfx.py file.pdf > context.txt
   uv run pdfx.py file.pdf --chunk 12000
-  uv run pdfx.py file.pdf --text
-  uv run pdfx.py file.pdf --no-tables
-  uv run pdfx.py file.pdf --ocr-engine tesseract
+  uv run pdfx.py file.pdf --local
 """
 
+import os
 import sys
 import re
-import os
-import shutil
-import subprocess
 import tempfile
 import argparse
 from pathlib import Path
 
 import fitz
 import pdfplumber
+from dotenv import load_dotenv
+
+# --- LlamaParse ---
+
+
+def load_api_key() -> str | None:
+  """Load LLAMA_PARSE_API_KEY from .env file."""
+  env_path = Path(__file__).parent / ".env"
+  if env_path.exists():
+    load_dotenv(env_path)
+  return os.environ.get("LLAMA_PARSE_API_KEY")
+
+
+def parse_with_llamaparse(pdf_path: Path) -> str | None:
+  """Upload PDF to LlamaParse and return markdown_full content."""
+  try:
+    from llama_cloud import LlamaCloud
+    import llama_cloud
+  except ImportError:
+    return None
+
+  api_key = load_api_key()
+  if not api_key:
+    return None
+
+  try:
+    client = LlamaCloud()
+
+    file_obj = client.files.create(file=pdf_path, purpose="parse")
+
+    result = client.parsing.parse(
+        file_id=file_obj.id,
+        tier="cost_effective",
+        version="latest",
+        expand=["markdown_full"],
+    )
+
+    if result.job.status == "COMPLETED":
+      return result.markdown_full
+    else:
+      print(
+          f"WARNING: LlamaParse failed with status: {result.job.status}",
+          file=sys.stderr,
+      )
+      return None
+
+  except llama_cloud.BadRequestError as e:
+    print(f"WARNING: LlamaParse bad request: {e}", file=sys.stderr)
+    return None
+  except llama_cloud.AuthenticationError:
+    print("WARNING: LlamaParse auth failed — check LLAMA_PARSE_API_KEY", file=sys.stderr)
+    return None
+  except llama_cloud.RateLimitError:
+    print("WARNING: LlamaParse rate limited — try again later", file=sys.stderr)
+    return None
+  except llama_cloud.APIError as e:
+    print(f"WARNING: LlamaParse API error: {e}", file=sys.stderr)
+    return None
+  except Exception as e:
+    print(f"WARNING: LlamaParse error: {e}", file=sys.stderr)
+    return None
+
 
 # --- OCR ---
 
@@ -39,72 +94,56 @@ def has_text_layer(fitz_doc: fitz.Document) -> bool:
   return False
 
 
-def _ocr_page_with_tesseract(page: fitz.Page, dpi: int = 400) -> str:
-  """OCR a single fitz page by rendering to image and running tesseract CLI."""
-  pix = page.get_pixmap(dpi=dpi)
-  img_bytes = pix.tobytes("png")
-  tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-  tmp.write(img_bytes)
-  tmp.close()
+def ocr_with_tesseract(pdf_path: Path, output_path: Path) -> bool:
+  """OCR a scanned PDF using rapidocr for text detection and tesseract for rendering."""
   try:
-    output = subprocess.run(
-        ["tesseract", tmp.name, "stdout", "-l", "eng", "--psm", "6"],
-        capture_output=True, text=True, timeout=60,
+    sys.path.append("/usr/lib/python3.14/site-packages")
+    from rapidocr_onnxruntime import RapidOCR
+  except ImportError:
+    print(
+        "WARNING: rapidocr-onnxruntime not installed.\n"
+        "         Install: pip install rapidocr-onnxruntime",
+        file=sys.stderr,
     )
-    return output.stdout.strip() if output.returncode == 0 else ""
-  except (FileNotFoundError, subprocess.TimeoutExpired):
-    return ""
-  finally:
-    os.unlink(tmp.name)
+    return False
 
+  ocr = RapidOCR()
+  doc = fitz.open(pdf_path)
+  out_doc = fitz.open()
 
-def ocr_with_tesseract(fitz_doc: fitz.Document, dpi: int = 400) -> dict[int, str]:
-  """OCR all pages by rendering each with fitz and running tesseract CLI."""
-  result: dict[int, str] = {}
-  for i in range(len(fitz_doc)):
-    page_num = i + 1
-    text = _ocr_page_with_tesseract(fitz_doc[i], dpi)
-    result[page_num] = normalize_text(text) if text else ""
-  return result
-
-
-def ocr_with_rapidocr(fitz_doc: fitz.Document, dpi: int = 400) -> dict[int, str]:
-  """OCR each page of a fitz doc using system-installed rapidocr-onnxruntime."""
-  import sys as _sys
-  _sys.path.append("/usr/lib/python3.14/site-packages")
-  from rapidocr_onnxruntime import RapidOCR
-
-  engine = RapidOCR()
-  result: dict[int, str] = {}
-
-  for i in range(len(fitz_doc)):
-    page = fitz_doc[i]
-    page_num = i + 1
-
-    pix = page.get_pixmap(dpi=dpi)
+  for page_num in range(doc.page_count):
+    page = doc[page_num]
+    pix = page.get_pixmap(dpi=300)
     img_bytes = pix.tobytes("png")
 
-    blocks, _ = engine(img_bytes)
-    if blocks:
-      blocks.sort(key=lambda b: b[0][1])
-      lines = []
-      for _, text, conf in blocks:
-        text = text.strip()
-        if text and conf > 0.3:
-          lines.append(text)
-      result[page_num] = normalize_text("\n".join(lines)) if lines else ""
-    else:
-      result[page_num] = ""
+    result, _ = ocr(img_bytes)
+    if not result:
+      continue
 
-  return result
+    blocks = []
+    for bbox, text, conf in result:
+      x0, y0, x1, y1 = bbox[0][0], bbox[0][1], bbox[2][0], bbox[2][1]
+      blocks.append((y0, x0, x1, y1, text))
 
+    blocks.sort(key=lambda b: (b[0], b[1]))
 
-def extract_metadata_fitz(fitz_doc: fitz.Document) -> dict:
-  meta = fitz_doc.metadata or {}
-  return {k: v for k, v in meta.items() if v}
+    out_page = out_doc.new_page(width=page.rect.width, height=page.rect.height)
+    for y0, x0, x1, y1, text in blocks:
+      rect = fitz.Rect(x0, y0, x1, y1)
+      out_page.insert_textbox(rect, text, fontsize=10)
+
+  out_doc.save(str(output_path))
+  out_doc.close()
+  doc.close()
+  return True
 
 
 # --- Extraction ---
+
+
+def extract_metadata(fitz_doc: fitz.Document) -> dict:
+  meta = fitz_doc.metadata or {}
+  return {k: v for k, v in meta.items() if v}
 
 
 def extract_outline(fitz_doc: fitz.Document) -> list[dict]:
@@ -112,231 +151,71 @@ def extract_outline(fitz_doc: fitz.Document) -> list[dict]:
   return [{"level": lvl, "title": title, "page": page} for lvl, title, page in toc]
 
 
-def get_table_headers(table_objs: dict[int, list]) -> dict[int, set[str]]:
-  """Extract table header text lines from pdfplumber table data (list[list[str]])."""
-  result: dict[int, set[str]] = {}
-  for page_num, tables in table_objs.items():
-    headers: set[str] = set()
-    for t_data in tables:
-      if not t_data or not t_data[0]:
-        continue
-      header_line = " ".join(str(cell or "").strip() for cell in t_data[0])
-      header_normalized = re.sub(r"\s+", " ", header_line).lower()
-      if header_normalized:
-        headers.add(header_normalized)
-      for cell in t_data[0]:
-        cell_text = str(cell or "").strip().lower()
-        if cell_text and len(cell_text) <= 50:
-          headers.add(cell_text)
-    if headers:
-      result[page_num] = headers
-  return result
-
-
-def _normalize_pua(text: str) -> str:
-  """Replace Private Use Area characters with their ASCII equivalents.
-
-  Some PDF fonts encode common glyphs (parens, math, list markers) as PUA
-  codepoints. pdfplumber extracts them verbatim, producing garbled output.
-  """
-  _PUA_MAP = {
-      "\ue072": "1", "\ue073": "2", "\ue074": "3",
-      "\ue075": "4", "\ue076": "5",
-      "\ue081": "(", "\ue082": ")",
-      "\ue088": "-", "\ue089": "-",
-      "\ue092": ":", "\ue094": " ",
-      "\ue09d": "+", "\ue09f": "x",
-      "\ue0a3": "~", "\ue1d7": "->",
-  }
-  for ch, repl in _PUA_MAP.items():
-    text = text.replace(ch, repl)
-  return text
-
-
-def normalize_text(text: str) -> str:
-  text = re.sub(r"\n{3,}", "\n\n", text)
-  lines = text.splitlines()
-  lines = [re.sub(r" {2,}", " ", line).strip() for line in lines]
-  lines = [line for line in lines if line]
-  return "\n".join(lines)
-
-
-# --- pdfplumber Extraction ---
-
-
-def extract_metadata_plumber(plumber_doc) -> dict:
-  meta = plumber_doc.metadata or {}
-  result = {}
-  for k, v in meta.items():
-    if v and k != "producer":
-      result[k] = v
-  return result
-
-
-def extract_links_plumber(plumber_doc) -> dict[int, list[str]]:
+def extract_links(fitz_doc: fitz.Document) -> dict[int, list[str]]:
   result: dict[int, list[str]] = {}
-  for i, page in enumerate(plumber_doc.pages):
+  for page in fitz_doc:
     seen: set[str] = set()
     uris: list[str] = []
-    for link in page.hyperlinks or []:
-      uri = link.get("uri", "")
-      if not uri or uri in seen:
-        continue
-      # Skip internal PDF anchors – not useful for coding agents
-      if uri.startswith("af://") or uri.startswith("#"):
-        continue
-      seen.add(uri)
-      uris.append(uri)
+    for link in page.get_links():
+      if link.get("kind") == fitz.LINK_URI and link.get("uri"):
+        uri: str = link["uri"]
+        if uri not in seen:
+          seen.add(uri)
+          uris.append(uri)
     if uris:
-      result[i + 1] = uris
+      num = page.number
+      if isinstance(num, int):
+        result[num + 1] = uris
   return result
 
 
-def _is_valid_table_plumber(table_data: list[list[str]]) -> bool:
-  if not table_data or not table_data[0]:
+def extract_tables(plumber_pdf: pdfplumber.PDF) -> dict[int, list[list]]:
+  result: dict[int, list[list]] = {}
+  for page in plumber_pdf.pages:
+    tables = page.extract_tables()
+    if tables:
+      result[page.page_number] = tables
+  return result
+
+
+def is_valid_table(table: list[list[str]]) -> bool:
+  if not table or not table[0]:
     return False
-  if len(table_data[0]) < 2:
+  if len(table[0]) < 2:
     return False
-  cells = [cell for row in table_data for cell in row if cell]
-  filled = sum(1 for c in cells if c.strip())
+  cells = [cell for row in table for cell in row]
+  filled = sum(1 for c in cells if c and c.strip())
   if filled / max(len(cells), 1) < 0.5:
     return False
   joined = " ".join(cells)
   if "----" in joined or "---" in joined:
     return False
-  # Reject single-column-heavy tables that are likely code blocks or form fields
-  col_counts = [len(row) for row in table_data]
-  if len(set(col_counts)) == 1 and col_counts[0] == 2:
-    # 2-column table with many empty cells in second column = likely code block
-    second_col_empty = sum(1 for row in table_data if not row[1].strip())
-    if second_col_empty / max(len(table_data), 1) > 0.5:
-      return False
   return True
 
 
-def _find_tables_with_fallback(page) -> list:
-  """Try default line-based detection, then fall back to text-based strategy."""
-  tables = page.find_tables()
-  if tables:
-    return list(tables)
-  # Fallback: text-based strategy for tables without drawn borders
-  table_settings = {
-      "vertical_strategy": "text",
-      "horizontal_strategy": "text",
-      "min_words_vertical": 3,
-      "min_words_horizontal": 1,
-  }
-  tables = page.find_tables(table_settings)
-  return list(tables) if tables else []
+def table_overlaps_text(table, text: str) -> bool:
+  flat = " ".join(cell.strip() for row in table for cell in row if cell)
+  table_flat = re.sub(r"\s+", " ", flat)
+  text_flat = re.sub(r"\s+", " ", text)
+  return table_flat[:200] in text_flat
 
 
-def extract_tables_plumber(plumber_doc) -> dict[int, list]:
-  result: dict[int, list] = {}
-  for i, page in enumerate(plumber_doc.pages):
-    tables = _find_tables_with_fallback(page)
-    if not tables:
-      continue
-    page_tables: list = []
-    for t in tables:
-      data = t.extract()
-      if data:
-        processed = [[_normalize_pua(str(cell or "")).strip() for cell in row] for row in data]
-        if _is_valid_table_plumber(processed):
-          page_tables.append(processed)
-    if page_tables:
-      result[i + 1] = page_tables
-  return result
+def table_hash(table):
+  return tuple(tuple(cell or "" for cell in row) for row in table)
 
 
-def _format_plumber_table(table_data: list[list[str]]) -> str:
-  """Render pdfplumber table data as markdown."""
-  if not table_data:
-    return ""
-  # Build markdown table
-  header = table_data[0]
-  lines = []
-  lines.append("| " + " | ".join(str(c or "") for c in header) + " |")
-  lines.append("| " + " | ".join("---" for _ in header) + " |")
-  for row in table_data[1:]:
-    lines.append("| " + " | ".join(str(c or "") for c in row) + " |")
-  return "\n".join(lines)
+def normalize_text(text: str) -> str:
+  text = re.sub(r" {2,}", " ", text)
+  text = re.sub(r"\n{3,}", "\n\n", text)
+  return text.strip()
 
 
-def _plumber_has_text_layer(plumber_doc) -> bool:
-  """Check if any page has extractable text."""
-  for page in plumber_doc.pages:
-    text = page.extract_text(x_tolerance=3, y_tolerance=3) or ""
-    if text.strip():
-      return True
-  return False
-
-
-def _extract_page_text_plumber(page, table_objs: dict[int, list] | None, page_num: int) -> str:
-  """Extract text from a single pdfplumber page, optionally excluding table regions."""
-  if table_objs and page_num in table_objs:
-    all_tables = _find_tables_with_fallback(page)
-    table_bboxes = [t.bbox for t in all_tables]
-
-    if table_bboxes:
-      table_placeholders: dict[float, str] = {}
-      for t_idx, bbox in enumerate(table_bboxes, 1):
-        y_pos = round(bbox[1], 1)
-        table_placeholders[y_pos] = f"(table {t_idx})"
-
-      lines_by_y: dict[float, list[str]] = {}
-      for word in page.extract_words(x_tolerance=3, y_tolerance=3):
-        word_in_table = False
-        for bbox in table_bboxes:
-          x0, top, x1, bottom = bbox
-          if (word["x0"] >= x0 - 2 and word["x1"] <= x1 + 2 and
-              word["top"] >= top - 2 and word["bottom"] <= bottom + 2):
-            word_in_table = True
-            break
-        if not word_in_table:
-          y_key = round(word["top"], 1)
-          lines_by_y.setdefault(y_key, []).append(word["text"])
-      for y_pos, placeholder in table_placeholders.items():
-        lines_by_y.setdefault(y_pos, []).insert(0, placeholder)
-      sorted_lines = [" ".join(words) for _, words in sorted(lines_by_y.items())]
-      return "\n".join(sorted_lines)
-    return page.extract_text(x_tolerance=3, y_tolerance=3) or ""
-  return page.extract_text(x_tolerance=3, y_tolerance=3) or ""
-
-
-def extract_text_by_page_plumber(plumber_doc, table_objs: dict[int, list] | None = None) -> dict[int, str]:
+def extract_text_by_page(plumber_pdf: pdfplumber.PDF) -> dict[int, str]:
   result: dict[int, str] = {}
-  for i, page in enumerate(plumber_doc.pages):
-    page_num = i + 1
-    text = _extract_page_text_plumber(page, table_objs, page_num)
-    result[page_num] = normalize_text(_normalize_pua(text))
+  for page in plumber_pdf.pages:
+    text = page.extract_text(layout=True) or ""
+    result[page.page_number] = normalize_text(text)
   return result
-
-
-def extract_text_hybrid(
-    plumber_doc,
-    fitz_doc: fitz.Document,
-    table_objs: dict[int, list] | None = None,
-    ocr_page_fn = None,
-) -> tuple[dict[int, str], bool]:
-  """Extract text per page via pdfplumber, falling back to `ocr_page_fn` for image-only pages.
-
-  Returns (text_by_page, ocr_used) where ocr_used indicates if any page needed OCR.
-  """
-  result: dict[int, str] = {}
-  ocr_used = False
-
-  for i, page in enumerate(plumber_doc.pages):
-    page_num = i + 1
-    text = _extract_page_text_plumber(page, table_objs, page_num)
-    text = normalize_text(_normalize_pua(text))
-
-    if not text.strip() and ocr_page_fn:
-      text = ocr_page_fn(fitz_doc[i])
-      ocr_used = True
-
-    result[page_num] = text
-
-  return result, ocr_used
 
 
 # --- Formatting ---
@@ -359,43 +238,57 @@ def format_outline(outline: list[dict]) -> str:
   return "\n".join(lines)
 
 
+def format_table(table: list[list]) -> str:
+  if not table:
+    return ""
+
+  # Normalize cells
+  rows = [[str(cell or "").strip() for cell in row] for row in table]
+
+  # Column widths
+  col_count = max(len(row) for row in rows)
+  widths = [0] * col_count
+  for row in rows:
+    for i, cell in enumerate(row):
+      if i < col_count:
+        widths[i] = max(widths[i], len(cell))
+
+  def render_row(row: list[str]) -> str:
+    padded = [
+        row[i].ljust(widths[i]) if i < len(row) else " " * widths[i]
+        for i in range(col_count)
+    ]
+    return "  | " + " | ".join(padded) + " |"
+
+  separator = "  |" + "|".join("-" * (w + 2) for w in widths) + "|"
+
+  lines = [render_row(rows[0]), separator]
+  for row in rows[1:]:
+    lines.append(render_row(row))
+  return "\n".join(lines)
+
+
 def is_heading(line: str) -> bool:
   stripped = line.strip()
 
   if not stripped or len(stripped) > 120:
     return False
 
-  lower = stripped.lower()
-
   # Avoid code / protocol / url lines
-  if lower.startswith(("get ", "post ", "put ", "delete ", "http")):
+  if stripped.startswith(("GET ", "POST ", "PUT ", "DELETE ", "HTTP", "http")):
     return False
 
   if "/" in stripped and "/" in stripped[:5]:
     return False
 
-  # Numbered heading: "1. Title", "2.1 Subtitle", "3.2.1 Deep heading"
-  if (re.match(r"^\d+\.\s+[A-Za-z]", stripped) or
-      re.match(r"^\d+(\.\d+)+\s+[A-Za-z]", stripped)):
-    if len(stripped) >= 80:
-      return False
-    # Label pattern: "1. Router:" — headings don't end in colons
-    if stripped.endswith(":"):
-      return False
-    # Sentence-ending punctuation = list item, not heading ("1. Open a PC...")
-    if stripped.endswith((".", ";")) and not stripped.endswith("..."):
-      return False
-    # Wordy list item: more than 7 words is likely a procedure step
-    if len(stripped.split()) > 7:
-      return False
+  # Numbered heading like "1.7 A Simple Java Program"
+  if re.match(r"^\d+\.\d+\s+[A-Z]", stripped) and len(stripped) <= 80:
     return True
 
-  # Step marker: "Step 1: Place Devices"
-  if re.match(r"^Step\s+\d+\s*:", stripped):
+  if stripped.isupper() and len(stripped) > 3:
     return True
 
-  # ALLCAPS words: "CCNA", "TCP", "OSPF" (letters only, min 4 chars)
-  if len(stripped) > 3 and stripped.isupper() and all(c.isalpha() or c.isspace() for c in stripped):
+  if stripped.endswith(":") and " " not in stripped.rstrip(":"):
     return True
 
   # Avoid sentence endings, bullets, emails
@@ -409,30 +302,30 @@ def is_heading(line: str) -> bool:
   if not words:
     return False
 
-  # Single word: PascalCase (min 5 chars)
+  # Single word: short, starts with uppercase
   if len(words) == 1:
-    if not (4 < len(stripped) <= 45):
+    return 1 < len(stripped) <= 45 and stripped[0].isupper()
+
+  # Multi-word (2-4): all words capitalized, short, no structural markers
+  if len(words) <= 4 and len(stripped) <= 50:
+    if "|" in stripped or "(" in stripped or ")" in stripped:
       return False
-    if re.match(r"^\d+$", stripped):
+    if any(c.isdigit() for c in stripped):
       return False
-    # Trailing colon = label, not heading ("Calculation:", "Note:")
-    if stripped.endswith(":"):
+    # Avoid label-value pairs like "Address: Cairo, Egypt"
+    if ":" in stripped and not stripped.endswith(":"):
       return False
-    if re.search(r"[A-Z][a-z]", stripped) and stripped[0].isupper():
+    if all(w[0].isupper() for w in words if w):
       return True
-    return False
 
   return False
 
 
-def format_page_text(text: str, skip_headings: set[str] | None = None) -> str:
+def format_page_text(text: str) -> str:
   lines = text.splitlines()
   out = []
   for line in lines:
-    stripped = line.strip().lower()
-    if skip_headings and stripped in skip_headings:
-      out.append(line.strip())
-    elif is_heading(line):
+    if is_heading(line):
       out.append(f"\n## {line.strip()}\n")
     else:
       out.append(line)
@@ -447,46 +340,48 @@ def print_pages(
     tables,
     links,
     chunk_size,
-    markdown: bool,
-    show_tables: bool = False,
-    skip_headings_by_page: dict[int, set[str]] | None = None,
 ) -> None:
   buffer_len = 0
   chunk_index = 1
 
   for page_num in sorted(text_by_page):
-    skip = (skip_headings_by_page or {}).get(page_num)
-    text = format_page_text(text_by_page[page_num], skip
+    text = format_page_text(text_by_page[page_num]
                             ) if text_by_page[page_num] else "  (empty)"
     page_links = links.get(page_num, [])
 
-    header = f"\n## Page {page_num}" if markdown else f"\n--- Page {page_num} ---"
+    header = f"\n## Page {page_num}"
     lines: list[str] = [header, text]
 
     if page_links:
-      lines.append("\n### Links" if markdown else "\n[Links]")
+      lines.append("\n### Links")
       for uri in page_links:
         lines.append(f"  {uri}")
 
-    if show_tables:
-      page_tables = tables.get(page_num, [])
-      if page_tables:
-        lines.append("\n### Tables" if markdown else "\n[Tables]")
-        for i, t_data in enumerate(page_tables, 1):
-          if len(page_tables) > 1:
-            lines.append(f"  (table {i})")
-          # pdfplumber tables are list[list[str]], format as markdown
-          if isinstance(t_data, list) and t_data and isinstance(t_data[0], list):
-            lines.append(_format_plumber_table(t_data))
+    page_tables = tables.get(page_num, [])
+    seen: set = set()
+    valid_tables: list = []
+    for table in page_tables:
+      h = table_hash(table)
+      if h in seen:
+        continue
+      seen.add(h)
+      if not is_valid_table(table):
+        continue
+      if len(table) <= 2 and table_overlaps_text(table, text_by_page[page_num]):
+        continue
+      valid_tables.append(table)
+    if valid_tables:
+      lines.append("\n### Tables")
+      for i, table in enumerate(valid_tables, 1):
+        if len(valid_tables) > 1:
+          lines.append(f"  (table {i})")
+        lines.append(format_table(table))
 
     block = "\n".join(lines)
 
     if chunk_size:
       if buffer_len > 0 and buffer_len + len(block) > chunk_size:
-        print(
-            f"\n\n--- CHUNK BREAK ({chunk_index}) ---\n"
-            if markdown else f"\n=== CHUNK BREAK ({chunk_index}) ==="
-        )
+        print(f"\n\n--- CHUNK BREAK ({chunk_index}) ---\n")
         chunk_index += 1
         buffer_len = 0
       buffer_len += len(block)
@@ -497,109 +392,61 @@ def print_pages(
 # --- Main ---
 
 
-def _make_ocr_page_fn(ocr_engine: str):
-  """Return a callable `ocr_page_fn(fitz_page) -> str` for the given engine."""
-  if ocr_engine == "tesseract":
-    return _ocr_page_with_tesseract
-
-  import sys as _sys
-  _sys.path.append("/usr/lib/python3.14/site-packages")
-  from rapidocr_onnxruntime import RapidOCR
-
-  engine = RapidOCR()
-
-  def _ocr_page_with_rapidocr(page: fitz.Page, _engine=engine) -> str:
-    pix = page.get_pixmap(dpi=400)
-    img_bytes = pix.tobytes("png")
-    blocks, _ = _engine(img_bytes)
-    if not blocks:
-      return ""
-    blocks.sort(key=lambda b: b[0][1])
-    lines = []
-    for _, t, conf in blocks:
-      t = t.strip()
-      if t and conf > 0.3:
-        lines.append(t)
-    return normalize_text("\n".join(lines)) if lines else ""
-
-  return _ocr_page_with_rapidocr
-
-
 def process(
     pdf_path: Path,
     chunk_size: int | None = None,
-    markdown: bool = False,
-    show_tables: bool = False,
-    ocr_engine: str = "rapidocr",
+    local_only: bool = False,
 ) -> None:
-  import warnings
-  import logging
-  warnings.filterwarnings("ignore", message=".*FontBBox.*")
-  logging.getLogger("pdfminer").setLevel(logging.CRITICAL)
-  logging.getLogger("pdfplumber").setLevel(logging.CRITICAL)
-
-  if ocr_engine == "tesseract" and not shutil.which("tesseract"):
-    print("WARNING: tesseract not found. Install tesseract-ocr.", file=sys.stderr)
-
-  fitz_doc = fitz.open(pdf_path)
-  has_text = has_text_layer(fitz_doc)
-
-  if not has_text:
-    print("No text layer detected. Using OCR...", file=sys.stderr)
-    ocr_used = True
-    metadata = extract_metadata_fitz(fitz_doc)
-    outline = extract_outline(fitz_doc)
-    page_count = len(fitz_doc)
-
-    if ocr_engine == "rapidocr":
-      text_by_page = ocr_with_rapidocr(fitz_doc)
+  # --- Try LlamaParse first ---
+  if not local_only:
+    print("Attempting LlamaParse...", file=sys.stderr)
+    llama_md = parse_with_llamaparse(pdf_path)
+    if llama_md is not None:
+      print("LlamaParse succeeded.", file=sys.stderr)
+      print(f"\n{'=' * 60}")
+      print(f"PDF CONTEXT: {pdf_path}")
+      print(f"(parsed via LlamaParse)")
+      print(f"{'=' * 60}\n")
+      print(llama_md)
+      return
     else:
-      text_by_page = ocr_with_tesseract(fitz_doc)
+      print("LlamaParse unavailable or failed. Falling back to local OCR.", file=sys.stderr)
 
-    fitz_doc.close()
-    _print_output(pdf_path, ocr_used, markdown, metadata, page_count, outline,
-                  text_by_page, {}, {}, chunk_size, show_tables, {})
-    return
+  # --- Local fallback ---
+  fitz_doc = fitz.open(pdf_path)
+  page_count = fitz_doc.page_count
+  scanned = not has_text_layer(fitz_doc)
+  ocr_used = False
 
-  # --- Hybrid / text PDF ---
+  if scanned:
+    print("No text layer detected. Running local OCR...", file=sys.stderr)
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+    tmp.close()
+    target = Path(tmp.name)
+
+    if ocr_with_tesseract(pdf_path, target):
+      fitz_doc.close()
+      fitz_doc = fitz.open(target)
+      page_count = fitz_doc.page_count
+      scanned = False
+      ocr_used = True
+      print(f"OCR complete. Using: {target}", file=sys.stderr)
+    else:
+      print("OCR failed. Text and table extraction will be empty.", file=sys.stderr)
+      target.unlink(missing_ok=True)
+
+  plumber_pdf = pdfplumber.open(fitz_doc.name)
+
+  metadata = extract_metadata(fitz_doc)
   outline = extract_outline(fitz_doc)
-  ocr_page_fn = _make_ocr_page_fn(ocr_engine)
+  links = extract_links(fitz_doc)
+  tables = extract_tables(plumber_pdf) if not scanned else {}
+  text_by_page = extract_text_by_page(plumber_pdf) if not scanned else {}
 
-  old_stderr = sys.stderr
-  sys.stderr = open(os.devnull, "w", encoding="utf-8")
-  try:
-    with pdfplumber.open(pdf_path) as plumber_doc:
-      page_count = len(plumber_doc.pages)
-      metadata = extract_metadata_plumber(plumber_doc)
-      links = extract_links_plumber(plumber_doc)
-      tables = extract_tables_plumber(plumber_doc) if show_tables else {}
-      table_headers = get_table_headers(tables) if show_tables else {}
-      text_by_page, ocr_used = extract_text_hybrid(
-          plumber_doc, fitz_doc, tables if show_tables else None, ocr_page_fn,
-      )
-  finally:
-    sys.stderr.close()
-    sys.stderr = old_stderr
-
+  plumber_pdf.close()
   fitz_doc.close()
-  _print_output(pdf_path, ocr_used, markdown, metadata, page_count, outline,
-                text_by_page, tables, links, chunk_size, show_tables, table_headers)
 
-
-def _print_output(
-    pdf_path: Path,
-    ocr_used: bool,
-    markdown: bool,
-    metadata: dict,
-    page_count: int,
-    outline: list[dict],
-    text_by_page: dict[int, str],
-    tables: dict[int, list],
-    links: dict[int, list[str]],
-    chunk_size: int | None,
-    show_tables: bool,
-    table_headers: dict[int, set[str]],
-) -> None:
   print(f"{'=' * 60}")
   print(f"PDF CONTEXT: {pdf_path}")
   if ocr_used:
@@ -607,7 +454,7 @@ def _print_output(
   print(f"{'=' * 60}")
   print()
 
-  print("# Metadata" if markdown else "=== METADATA ===")
+  print("# Metadata")
   print(format_metadata(metadata, page_count))
   print()
 
@@ -616,10 +463,12 @@ def _print_output(
   print()
 
   print("=== TEXT BY PAGE ===")
-  if not text_by_page:
+  if scanned:
+    print("  (skipped - no text layer and OCR unavailable)")
+  elif not text_by_page:
     print("  (no text extracted)")
   else:
-    print_pages(text_by_page, tables, links, chunk_size, markdown, show_tables, table_headers)
+    print_pages(text_by_page, tables, links, chunk_size)
 
 
 def main() -> None:
@@ -632,7 +481,7 @@ def main() -> None:
           "  uv run pdfx.py file.pdf\n"
           "  uv run pdfx.py file.pdf > context.txt\n"
           "  uv run pdfx.py file.pdf --chunk 12000\n"
-          "  uv run pdfx.py file.pdf --ocr-engine tesseract\n"
+          "  uv run pdfx.py file.pdf --local\n"
       ),
   )
   parser.add_argument("file", type=Path, help="Path to the PDF file")
@@ -642,24 +491,10 @@ def main() -> None:
       metavar="CHARS",
       help="Insert chunk break markers every N characters",
   )
-
   parser.add_argument(
-      "--text",
+      "--local",
       action="store_true",
-      help="Output in plain text format (default is markdown)",
-  )
-
-  parser.add_argument(
-      "--no-tables",
-      action="store_true",
-      help="Disable table extraction (tables are included by default)",
-  )
-
-  parser.add_argument(
-      "--ocr-engine",
-      choices=["rapidocr", "tesseract"],
-      default="rapidocr",
-      help="OCR engine for scanned PDFs (default: rapidocr)",
+      help="Skip LlamaParse, use local OCR only",
   )
 
   args = parser.parse_args()
@@ -667,11 +502,7 @@ def main() -> None:
   if not args.file.exists():
     parser.error(f"file not found: {args.file}")
 
-  # Default: markdown=True, show_tables=True
-  markdown = not args.text
-  show_tables = not args.no_tables
-
-  process(args.file, args.chunk, markdown, show_tables, args.ocr_engine)
+  process(args.file, args.chunk, args.local)
 
 
 if __name__ == "__main__":
