@@ -14,7 +14,7 @@ Usage:
   uv run pdfx.py file.pdf --chunk 12000
   uv run pdfx.py file.pdf --text
   uv run pdfx.py file.pdf --no-tables
-  uv run pdfx.py file.pdf --ocr-engine rapidocr
+  uv run pdfx.py file.pdf --ocr-engine tesseract
 """
 
 import sys
@@ -467,7 +467,7 @@ def process(
     chunk_size: int | None = None,
     markdown: bool = False,
     show_tables: bool = False,
-    ocr_engine: str = "tesseract",
+    ocr_engine: str = "rapidocr",
 ) -> None:
   import warnings
   import logging
@@ -634,9 +634,9 @@ def main() -> None:
 
   parser.add_argument(
       "--ocr-engine",
-      choices=["tesseract", "rapidocr"],
-      default="tesseract",
-      help="OCR engine for scanned PDFs (default: tesseract)",
+      choices=["rapidocr", "tesseract"],
+      default="rapidocr",
+      help="OCR engine for scanned PDFs (default: rapidocr)",
   )
 
   args = parser.parse_args()
