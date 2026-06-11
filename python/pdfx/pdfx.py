@@ -92,38 +92,44 @@ def extract_links(fitz_doc: fitz.Document) -> dict[int, list[str]]:
   return result
 
 
-def extract_tables(fitz_doc: fitz.Document) -> dict[int, list[list]]:
-  """Extract tables using fitz's find_tables()."""
-  result: dict[int, list[list]] = {}
+def extract_tables(fitz_doc: fitz.Document) -> dict[int, list]:
+  """Extract tables via find_tables(). Returns fitz Table objects per page."""
+  result: dict[int, list] = {}
   for page_num in range(fitz_doc.page_count):
     page = fitz_doc[page_num]
-    with contextlib.redirect_stdout(open(os.devnull, "w", encoding="utf-8")):
+    devnull = open(os.devnull, "w", encoding="utf-8")
+    with contextlib.redirect_stdout(devnull):
       tables = page.find_tables()
+    devnull.close()
     if tables.tables:
-      page_tables: list[list] = []
+      page_tables: list = []
       for t in tables.tables:
         data = t.extract()
-        if data:
-          page_tables.append([[str(cell or "").strip() for cell in row] for row in data])
+        if not data:
+          continue
+        processed = [[str(cell or "").strip() for cell in row] for row in data]
+        if is_valid_table(processed):
+          page_tables.append(t)
       if page_tables:
         result[page_num + 1] = page_tables
   return result
 
 
-def get_table_headers_per_page(fitz_tables: dict[int, list[list]]) -> dict[int, set[str]]:
+def get_table_headers_per_page(table_objs: dict[int, list]) -> dict[int, set[str]]:
   """Extract table header text lines to skip during heading detection."""
   result: dict[int, set[str]] = {}
-  for page_num, tables in fitz_tables.items():
+  for page_num, tables in table_objs.items():
     headers: set[str] = set()
-    for table in tables:
-      if table and table[0]:
+    for t in tables:
+      data = t.extract()
+      if data and data[0]:
         # Full header row as a line
-        header_line = " ".join(str(cell or "").strip() for cell in table[0])
+        header_line = " ".join(str(cell or "").strip() for cell in data[0])
         header_normalized = re.sub(r"\s+", " ", header_line).lower()
         if header_normalized:
           headers.add(header_normalized)
         # Individual header cells
-        for cell in table[0]:
+        for cell in data[0]:
           cell_text = str(cell or "").strip().lower()
           if cell_text and len(cell_text) <= 50:
             headers.add(cell_text)
@@ -132,12 +138,16 @@ def get_table_headers_per_page(fitz_tables: dict[int, list[list]]) -> dict[int, 
   return result
 
 
-def is_valid_table(table: list[list[str]]) -> bool:
-  if not table or not table[0]:
+def is_valid_table(table_data: list[list[str]]) -> bool:
+  if not table_data or not table_data[0]:
     return False
-  if len(table[0]) < 2:
+  if len(table_data[0]) < 2:
     return False
-  cells = [cell for row in table for cell in row]
+  # Header with line breaks = code block artifact, not a real table
+  header_text = " ".join(str(c or "").strip() for c in table_data[0])
+  if "<br>" in header_text:
+    return False
+  cells = [cell for row in table_data for cell in row]
   filled = sum(1 for c in cells if c and c.strip())
   if filled / max(len(cells), 1) < 0.5:
     return False
@@ -145,17 +155,6 @@ def is_valid_table(table: list[list[str]]) -> bool:
   if "----" in joined or "---" in joined:
     return False
   return True
-
-
-def table_overlaps_text(table, text: str) -> bool:
-  flat = " ".join(cell.strip() for row in table for cell in row if cell)
-  table_flat = re.sub(r"\s+", " ", flat)
-  text_flat = re.sub(r"\s+", " ", text)
-  return table_flat[:200] in text_flat
-
-
-def table_hash(table):
-  return tuple(tuple(cell or "" for cell in row) for row in table)
 
 
 def normalize_text(text: str) -> str:
@@ -166,10 +165,68 @@ def normalize_text(text: str) -> str:
   return "\n".join(lines)
 
 
-def extract_text_by_page(fitz_doc: fitz.Document) -> dict[int, str]:
+def _get_text_excluding(page: fitz.Page, table_objs: list) -> str:
+  """Extract page text from regions NOT covered by tables, using bounding boxes."""
+  page_rect = page.rect
+  table_rects = [t.bbox for t in table_objs]
+
+  # Start with full page as one free region
+  free_rects = [fitz.Rect(0, 0, page_rect.width, page_rect.height)]
+
+  margin = 2  # safety margin to avoid boundary artifacts
+  for trect in table_rects:
+    # bbox is a tuple (x0, y0, x1, y1); convert to Rect for manipulation
+    trect = fitz.Rect(trect[0] - margin, trect[1] - margin,
+                      trect[2] + margin, trect[3] + margin).intersect(page_rect)
+
+    new_free = []
+    for free in free_rects:
+      if not free.intersects(trect):
+        new_free.append(free)
+      else:
+        # Above the table
+        if free.y0 < trect.y0:
+          new_free.append(fitz.Rect(free.x0, free.y0, free.x1, trect.y0))
+        # Below the table
+        if free.y1 > trect.y1:
+          new_free.append(fitz.Rect(free.x0, trect.y1, free.x1, free.y1))
+        # Left of the table (within the table's y-range)
+        if free.x0 < trect.x0:
+          y0 = max(free.y0, trect.y0)
+          y1 = min(free.y1, trect.y1)
+          if y0 < y1:
+            new_free.append(fitz.Rect(free.x0, y0, trect.x0, y1))
+        # Right of the table (within the table's y-range)
+        if free.x1 > trect.x1:
+          y0 = max(free.y0, trect.y0)
+          y1 = min(free.y1, trect.y1)
+          if y0 < y1:
+            new_free.append(fitz.Rect(trect.x1, y0, free.x1, y1))
+    free_rects = new_free
+
+  # Drop tiny leftover rects
+  free_rects = [r for r in free_rects if r.width > 5 and r.height > 5]
+
+  # Extract text from each free region, joined in reading order
+  texts = []
+  for rect in free_rects:
+    with contextlib.redirect_stdout(open(os.devnull, "w", encoding="utf-8")):
+      part = page.get_text(sort=True, clip=rect) or ""
+    if part.strip():
+      texts.append(part)
+  return "\n".join(texts)
+
+
+def extract_text_by_page(fitz_doc: fitz.Document,
+                         table_objs: dict[int, list] | None = None) -> dict[int, str]:
   result: dict[int, str] = {}
   for page_num in range(fitz_doc.page_count):
-    result[page_num + 1] = normalize_text(_get_text_silent(fitz_doc[page_num]))
+    page = fitz_doc[page_num]
+    if table_objs and page_num + 1 in table_objs:
+      text = _get_text_excluding(page, table_objs[page_num + 1])
+    else:
+      text = _get_text_silent(page)
+    result[page_num + 1] = normalize_text(text)
   return result
 
 
@@ -193,34 +250,11 @@ def format_outline(outline: list[dict]) -> str:
   return "\n".join(lines)
 
 
-def format_table(table: list[list]) -> str:
-  if not table:
-    return ""
-
-  # Normalize cells
-  rows = [[str(cell or "").strip() for cell in row] for row in table]
-
-  # Column widths
-  col_count = max(len(row) for row in rows)
-  widths = [0] * col_count
-  for row in rows:
-    for i, cell in enumerate(row):
-      if i < col_count:
-        widths[i] = max(widths[i], len(cell))
-
-  def render_row(row: list[str]) -> str:
-    padded = [
-        row[i].ljust(widths[i]) if i < len(row) else " " * widths[i]
-        for i in range(col_count)
-    ]
-    return "  | " + " | ".join(padded) + " |"
-
-  separator = "  |" + "|".join("-" * (w + 2) for w in widths) + "|"
-
-  lines = [render_row(rows[0]), separator]
-  for row in rows[1:]:
-    lines.append(render_row(row))
-  return "\n".join(lines)
+def format_table(t) -> str:
+  """Render a fitz Table as clean markdown, stripping PDF line-wrapping artifacts."""
+  md = t.to_markdown()
+  # <br> tags are PDF line-wrapping artifacts, not meaningful breaks
+  return md.replace("<br>", " ")
 
 
 def is_heading(line: str) -> bool:
@@ -334,24 +368,12 @@ def print_pages(
 
     if show_tables:
       page_tables = tables.get(page_num, [])
-      seen: set = set()
-      valid_tables: list = []
-      for table in page_tables:
-        h = table_hash(table)
-        if h in seen:
-          continue
-        seen.add(h)
-        if not is_valid_table(table):
-          continue
-        if len(table) <= 2 and table_overlaps_text(table, text_by_page[page_num]):
-          continue
-        valid_tables.append(table)
-      if valid_tables:
+      if page_tables:
         lines.append("\n### Tables" if markdown else "\n[Tables]")
-        for i, table in enumerate(valid_tables, 1):
-          if len(valid_tables) > 1:
+        for i, t in enumerate(page_tables, 1):
+          if len(page_tables) > 1:
             lines.append(f"  (table {i})")
-          lines.append(format_table(table))
+          lines.append(format_table(t))
 
     block = "\n".join(lines)
 
@@ -423,7 +445,7 @@ def process(
   if not scanned:
     tables = extract_tables(fitz_doc)
     table_headers = get_table_headers_per_page(tables)
-    text_by_page = extract_text_by_page(fitz_doc)
+    text_by_page = extract_text_by_page(fitz_doc, tables if show_tables else None)
   else:
     tables = {}
     table_headers = {}
