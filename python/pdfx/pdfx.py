@@ -217,8 +217,8 @@ def is_valid_table(table: list[list[str]]) -> bool:
     return False
   if len(table[0]) < 2:
     return False
-  cells = [cell for row in table for cell in row]
-  filled = sum(1 for c in cells if c and c.strip())
+  cells = [str(cell or "") for row in table for cell in row]
+  filled = sum(1 for c in cells if c.strip())
   if filled / max(len(cells), 1) < 0.5:
     return False
   joined = " ".join(cells)
