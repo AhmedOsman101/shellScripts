@@ -37,9 +37,10 @@ cmdarg_parse "$@"
 
 limit=${cmdarg_cfg['limit']}
 
+QUEUED="$(printMagenta -n '●') Queued"
+BUILDING="$(printYellow -n '●') Building"
 READY="$(printGreen -n '●') Ready"
 ERROR="$(printRed -n '●') Error"
-BUILDING="$(printYellow -n '●') Building"
 
 AUTH_HEADER="Authorization: Bearer $(pass show vercel/token)"
 
@@ -62,8 +63,9 @@ parseJson() {
 
   status=$(echo "${record}" | jq -r '.state' | trim)
   case "${status}" in
-  'READY') status="${READY}" ;;
+  'QUEUED') status="${QUEUED}" ;;
   'BUILDING') status="${BUILDING}" ;;
+  'READY') status="${READY}" ;;
   'ERROR') status="${ERROR}" ;;
   *) log-error "Invalid status: '${status}'" ;;
   esac
