@@ -31,14 +31,18 @@ cmdarg_parse "$@"
 # ---  Main script logic --- #
 declare -a files
 
-target="${argv[0]:-.}"
-
-if [[ -d "${target}" ]] || ((argc == 0)); then
+if ((argc == 0)); then
   # Populate the array directly from fd output
-  mapfile -t files < <(fd.sh . -I -e md -e markdown "${target}")
+  mapfile -t files < <(fd.sh . -I -e md -e markdown .)
 else
-  for file in "${argv[@]}"; do
-    [[ "${file##*.}" =~ ^(md|markdown)$ ]] && files+=("${file}")
+  for arg in "${argv[@]}"; do
+    if [[ -d "${arg}" ]]; then
+      # Populate the array directly from fd output
+      mapfile -t _files < <(fd.sh . -I -e md -e markdown "${arg}")
+      files+=("${_files[@]}")
+    else
+      [[ "${arg##*.}" =~ ^(md|markdown)$ ]] && files+=("${arg}")
+    fi
   done
 fi
 

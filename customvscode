@@ -3,6 +3,7 @@
 if command -v code &>/dev/null; then
   sudo chown -R "$(whoami)" "$(command -v code)"
   sudo chown -R "$(whoami)" /opt/visual-studio-code
+  sudo chown -R "$(whoami)" /usr/share/code
 fi
 
 if command -v cursor &>/dev/null; then
