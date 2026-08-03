@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#                      ▄▄                                                      ▄▄        ▄▄
+#                      ██                                                      ██        ██
+#  ████▄██▄   ▄█████▄  ██ ▄██▀    ▄████▄              ▄█████▄   ▄█████▄   ▄███▄██   ▄███▄██  ▀██  ███
+#  ██ ██ ██   ▀ ▄▄▄██  ██▄██     ██▄▄▄▄██            ██▀    ▀   ▀ ▄▄▄██  ██▀  ▀██  ██▀  ▀██   ██▄ ██
+#  ██ ██ ██  ▄██▀▀▀██  ██▀██▄    ██▀▀▀▀▀▀   █████    ██        ▄██▀▀▀██  ██    ██  ██    ██    ████▀
+#  ██ ██ ██  ██▄▄▄███  ██  ▀█▄   ▀██▄▄▄▄█            ▀██▄▄▄▄█  ██▄▄▄███  ▀██▄▄███  ▀██▄▄███     ███
+#  ▀▀ ▀▀ ▀▀   ▀▀▀▀ ▀▀  ▀▀   ▀▀▀    ▀▀▀▀▀               ▀▀▀▀▀    ▀▀▀▀ ▀▀    ▀▀▀ ▀▀    ▀▀▀ ▀▀     ██
+#                                                                                             ███
+#
+# --- DESCRIPTION --- #
+# Creates a Caddy reverse proxy site for local development: writes a site
+# config to /etc/caddy/sites, generates a local TLS certificate with
+# mkcert, adds a /etc/hosts entry, and restarts Caddy to apply it.
+# --- DEPENDENCIES --- #
+# - mkcert
+# - caddy
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "s:" "source" "The local endpoint (e.g. localhost:3000)" ""
+cmdarg "t:" "target" "The target proxy url (e.g. local.dev)" ""
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+source="${cmdarg_cfg['source']}"
+target="${cmdarg_cfg['target']}"
+
+cat <<Caddyfile | sudo tee "/etc/caddy/sites/${target%.*}.caddy" >/dev/null
+${target} {
+  import common
+
+  reverse_proxy ${source}
+  tls /etc/caddy/certs/${target}.pem /etc/caddy/certs/${target}-key.pem
+}
+Caddyfile
+log-info "Created a new site config at /etc/caddy/sites/${target%.*}.caddy"
+
+(
+  cd /etc/caddy/certs
+  sudo mkcert "${target}" &>/dev/null
+  sudo chmod 644 "${target}"*.pem
+) && log-info "Created a new certificate at /etc/caddy/certs/${target}.pem"
+
+case "${source}" in
+localhost* | 127.0.0.1 | 0.0.0.0*) hostLine="127.0.0.1        ${target}" ;;
+*) hostLine="${source}        ${target}" ;;
+esac
+
+if grep -qF "${hostLine}" /etc/hosts; then
+  log-info "Entry already in /etc/hosts, skipping"
+else
+  echo "${hostLine}" | sudo tee -a /etc/hosts >/dev/null
+  log-info "Updated /etc/hosts"
+fi
+
+sudo systemctl restart caddy >/dev/null || log-error "Failed to restart caddy service"
+
+log-success "Reverse proxy created successfully"
