@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄           ██     ▄▄▄▄      ▄▄▄▄
+#  ██           ▀▀     ▀▀██      ▀▀██
+#  ██ ▄██▀    ████       ██        ██                ██▄███▄    ██▄████   ▄████▄    ▄█████▄   ▄████▄   ▄▄█████▄  ▄▄█████▄
+#  ██▄██        ██       ██        ██                ██▀  ▀██   ██▀      ██▀  ▀██  ██▀    ▀  ██▄▄▄▄██  ██▄▄▄▄ ▀  ██▄▄▄▄ ▀
+#  ██▀██▄       ██       ██        ██       █████    ██    ██   ██       ██    ██  ██        ██▀▀▀▀▀▀   ▀▀▀▀██▄   ▀▀▀▀██▄
+#  ██  ▀█▄   ▄▄▄██▄▄▄    ██▄▄▄     ██▄▄▄             ███▄▄██▀   ██       ▀██▄▄██▀  ▀██▄▄▄▄█  ▀██▄▄▄▄█  █▄▄▄▄▄██  █▄▄▄▄▄██
+#  ▀▀   ▀▀▀  ▀▀▀▀▀▀▀▀     ▀▀▀▀      ▀▀▀▀             ██ ▀▀▀     ▀▀         ▀▀▀▀      ▀▀▀▀▀     ▀▀▀▀▀    ▀▀▀▀▀▀    ▀▀▀▀▀▀
+#                                                    ██
+#
+# --- DESCRIPTION --- #
+# Interactively search for running processes by name or pattern, show the
+# matches, then kill them after confirmation. Sends SIGTERM first, then
+# SIGKILL to any process that survives the grace period.
+#
+# --- DEPENDENCIES --- #
+# - gum
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+# Ask for search pattern (you type it manually)
+query="$(gum input --placeholder "Enter process name or pattern")"
+[[ -n "${query}" ]] || log-error "Empty search pattern"
+
+# pgrep never matches itself, no need to filter the matcher out
+matches="$(pgrep afli "${query}" || true)"
+
+if [[ -z "${matches}" ]]; then
+  log-error "No matching processes found"
+fi
+
+echo "Matches:"
+echo "${matches}"
+
+# Extract PIDs
+pids="$(awk '{print $1}' <<<"${matches}")"
+
+# Confirm before killing
+if gum confirm "Kill these processes?"; then
+  survivors=()
+
+  # Graceful first: SIGTERM, 2s grace, SIGKILL the survivors
+  echo "${pids}" | xargs -r kill 2>/dev/null || true
+  sleep 2
+  for pid in ${pids}; do
+    kill -0 "${pid}" 2>/dev/null && survivors+=("${pid}")
+  done
+
+  if (("${#survivors[@]}")); then
+    log-warning "Still alive after SIGTERM, sending SIGKILL: ${survivors[*]}"
+    echo "${survivors[@]}" | xargs -r kill -9
+  fi
+  log-info "Done"
+else
+  terminate
+fi
