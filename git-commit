@@ -107,7 +107,7 @@ if "${useAi}"; then
   spinner.sh 1>&2 &
   # Capture the PID immediately after launching
   SPINNER_PID=$!
-  if ! commit-sage >"${logFile}" 2>&1; then
+  if ! commit-sage generate >"${logFile}" 2>&1; then
     killwait "${SPINNER_PID}"
     log-error "$(sed 's|\[ERROR\] ||' "${logFile}")"
   fi
