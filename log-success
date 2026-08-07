@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Prints success messages in green with a '[SUCCESS] ' prefix; reads from stdin or arguments
 # --- DEPENDENCIES --- #
-# - tput
+#
 # --- END SIGNATURE --- #
 
 set -eo pipefail

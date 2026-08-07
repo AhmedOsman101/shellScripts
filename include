@@ -12,7 +12,7 @@
 #
 #
 # --- DESCRIPTION --- #
-# Utility script to include other bash files safely
+# Utility script to include other bash files safely, path is relative to SCRIPTS_DIR
 # --- END SIGNATURE --- #
 
 # ---  Main script logic --- #
