@@ -1,23 +1,13 @@
 #!/usr/bin/env bash
 
+source "$(include 'lib/helpers.sh' )"
+
 # ---  Main script logic --- #
 # Common compiler helpers for cppc and clangc
 # - safe array passing via namerefs
 # - cache key includes compiler version
 # - optional NO_CACHE to disable caching
 # - writes stderr of failed builds to cache dir (stderr.log)
-
-# Detect a hashing command and return it as an array for safe exec
-_find_hasher() {
-  if command -v xxh3sum >/dev/null 2>&1; then
-    echo "xxh3sum"
-  elif command -v xxhsum >/dev/null 2>&1; then
-    # xxhsum expects -H3 to select xxh3; keep as separate token
-    echo "xxhsum -H3"
-  else
-    echo "sha1sum"
-  fi
-}
 
 # generate_cache_key <cmd_array_name> <files_array_name>
 # Uses namerefs so caller passes an array name (not a joined string).
@@ -26,7 +16,7 @@ generate_cache_key() {
   local -n _gen_key_files="$2"
 
   local hasher_spec
-  hasher_spec="$(_find_hasher)"
+  hasher_spec="$(findHasher)"
 
   # split hasher_spec into array (to handle "xxhsum -H3")
   local -a hasher_cmd=()
