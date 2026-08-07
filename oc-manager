@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#
+#   ▄████▄    ▄█████▄            ████▄██▄   ▄█████▄  ██▄████▄   ▄█████▄   ▄███▄██   ▄████▄    ██▄████
+#  ██▀  ▀██  ██▀    ▀            ██ ██ ██   ▀ ▄▄▄██  ██▀   ██   ▀ ▄▄▄██  ██▀  ▀██  ██▄▄▄▄██   ██▀
+#  ██    ██  ██         █████    ██ ██ ██  ▄██▀▀▀██  ██    ██  ▄██▀▀▀██  ██    ██  ██▀▀▀▀▀▀   ██
+#  ▀██▄▄██▀  ▀██▄▄▄▄█            ██ ██ ██  ██▄▄▄███  ██    ██  ██▄▄▄███  ▀██▄▄███  ▀██▄▄▄▄█   ██
+#    ▀▀▀▀      ▀▀▀▀▀             ▀▀ ▀▀ ▀▀   ▀▀▀▀ ▀▀  ▀▀    ▀▀   ▀▀▀▀ ▀▀   ▄▀▀▀ ██    ▀▀▀▀▀    ▀▀
+#                                                                         ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# A script for managing OpenCode web interface instances
+# --- DEPENDENCIES --- #
+# - opencode | opencode (opencode-bin)
+# - ansifilter
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+
+declare -a corsDomains
+cmdarg "c?[]" "corsDomains" "Additional domains to allow for CORS"
+cmdarg "d?" "mdnsDomain" "custom domain name for mDNS service (default: opencode.local)"
+cmdarg "m" "mdns" "enable mDNS service discovery (defaults hostname: 0.0.0.0)"
+cmdarg "n?" "hostname" "Which hostname to listen on (default: 127.0.0.1)"
+cmdarg "p?" "port" "Which port to listen on"
+cmdarg "r" "pure" "Run without external plugins"
+cmdarg "s?" "password" "Add a password to your server"
+cmdarg "u?" "username" "Which username to use (default: opencode)"
+
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+action="${argv[0]}"
+if ((argc == 0)); then
+  cmdarg_usage
+  exit 0
+fi
+
+# --- Store flags --- #
+mdnsDomain="${cmdarg_cfg['mdnsDomain']}"
+hostname="${cmdarg_cfg['hostname']}"
+mdns="${cmdarg_cfg['mdns']}"
+port="${cmdarg_cfg['port']}"
+pure="${cmdarg_cfg['pure']}"
+password="${cmdarg_cfg['password']}"
+username="${cmdarg_cfg['username']}"
+
+# --- App variables --- #
+declare localUrl networkUrl PID
+scriptName="${BASH_SOURCE[0]##*/}"
+configDir="${XDG_CONFIG_HOME:-${HOME}/.config}/opencode"
+cacheDir="${XDG_CACHE_HOME:-${HOME}/.cache}/${scriptName}"
+hashFile="${cacheDir}/opencode.hash"
+lockFile="${cacheDir}/opencode.lock"
+logFile="${cacheDir}/opencode.log"
+
+# --- Helpers --- #
+hashCmd=()
+read -ra hashCmd <<<"$(findHasher)"
+hasher() {
+  local hash
+  read -d' ' -r hash < <("${hashCmd[@]}" "$@")
+  echo "${hash}"
+}
+
+setup() {
+  if [[ -s "${configDir}/opencode.jsonc" ]]; then
+    configFile="${configDir}/opencode.jsonc"
+  elif [[ -s "${configDir}/opencode.jsonc" ]]; then
+    configFile="${configDir}/opencode.jsonc"
+  else
+    log-warning "No config file found at ${cacheDir}"
+    log-error "Create an opencode.json or opencode.jsonc file first."
+  fi
+
+  mkdir -p "${cacheDir}" || log-error "Failed to create cache directory: ${cacheDir}"
+  touch "${hashFile}" || log-error "Failed to create the config hash file: ${hashFile}"
+
+  hasher "${configFile}" >"${hashFile}" || log-error "Failed to write on ${hashFile}"
+  return 0
+}
+
+logContent() {
+  if [[ -s "${logFile}" ]]; then
+    ansifilter "${logFile}"
+  else
+    echo ""
+  fi
+}
+
+isRunning() { [[ -s "${lockFile}" ]]; }
+
+# --- Actions --- #
+start() {
+  isRunning && terminate "The program is already running with pid: $(pid), port: $(port)"
+  local args=(web)
+
+  [[ -n "${port}" ]] && args+=("--port" "${port}")
+  [[ -n "${hostname}" ]] && args+=("--hostname" "${hostname}")
+  [[ -n "${mdnsDomain}" ]] && args+=("--mdns-domain" "${mdnsDomain}")
+  "${mdns}" && args+=("--mdns")
+  "${pure}" && args+=("--pure")
+  (("${#corsDomains[@]}")) && args+=("--cors" "${corsDomains[@]}")
+
+  OPENCODE_SERVER_PASSWORD="${password:-${OPENCODE_SERVER_PASSWORD}}" \
+    OPENCODE_SERVER_USERNAME="${username:-${OPENCODE_SERVER_USERNAME}}" \
+    opencode "${args[@]}" &>"${logFile}" &
+  PID=$!
+
+  localUrl="$(logContent | rg -i 'Local access:' | awk '{ print $3 }')"
+  networkUrl="$(logContent | rg -i 'Network access:' | awk '{ print $3 }' || true)"
+
+  printf '%d\n%s\n%s\n' "${PID}" "${localUrl}" "${networkUrl}" >"${lockFile}"
+
+  trim "${lockFile}" &>/dev/null
+  log-success "OpenCode is running at ${localUrl}${networkUrl+" and ${networkUrl}"}"
+}
+
+stop() {
+  isRunning || terminate "OpenCode is not running!"
+  killwait "$(pid)" || log-error "Failed to kill OpenCode, try running 'kill-process opencode' instead."
+  rm "${lockFile}" "${logFile}"
+  log-info "OpenCode stopped successfully."
+}
+
+restart() { stop && start; }
+
+status() {
+  isRunning || terminate "OpenCode is not running!"
+  local net="$(viewlines 2 "${lockFile}")"
+
+  printBlue -n "PID: "
+  pid
+
+  printYellow -n "Local Access: "
+  viewlines 2 "${lockFile}"
+
+  printYellow -n "Network Access: "
+  echo "${net:-N/A}"
+}
+
+pid() {
+  isRunning || log-error "OpenCode is not running!"
+  viewlines 1 "${lockFile}"
+}
+
+# Evaluate the action
+setup
+case "${action}" in
+start) start ;;
+stop) stop ;;
+restart) restart ;;
+status) status ;;
+pid) pid ;;
+*) cmdarg_usage && exit 1 ;;
+esac
