@@ -61,9 +61,16 @@ declare localUrl networkUrl PID
 scriptName="${BASH_SOURCE[0]##*/}"
 configDir="${XDG_CONFIG_HOME:-${HOME}/.config}/opencode"
 cacheDir="${XDG_CACHE_HOME:-${HOME}/.cache}/${scriptName}"
-hashFile="${cacheDir}/opencode.hash"
-lockFile="${cacheDir}/opencode.lock"
-logFile="${cacheDir}/opencode.log"
+hashFile="${cacheDir}/hash"
+lockFile="${cacheDir}/lock"
+logFile="${cacheDir}/log"
+watchPidFile="${cacheDir}/watch"
+watchLog="${cacheDir}/watch.log"
+
+# Watch configuration: how often to poll the config file (seconds) and how
+# long the config must stay unchanged before we treat the change as settled (seconds).
+watchInterval=5
+watchDebounce=2
 
 # --- Helpers --- #
 hashCmd=()
@@ -77,18 +84,22 @@ hasher() {
 setup() {
   if [[ -s "${configDir}/opencode.jsonc" ]]; then
     configFile="${configDir}/opencode.jsonc"
-  elif [[ -s "${configDir}/opencode.jsonc" ]]; then
-    configFile="${configDir}/opencode.jsonc"
+  elif [[ -s "${configDir}/opencode.json" ]]; then
+    configFile="${configDir}/opencode.json"
   else
-    log-warning "No config file found at ${cacheDir}"
+    log-warning "No config file found at ${configDir}"
     log-error "Create an opencode.json or opencode.jsonc file first."
   fi
 
   mkdir -p "${cacheDir}" || log-error "Failed to create cache directory: ${cacheDir}"
   touch "${hashFile}" || log-error "Failed to create the config hash file: ${hashFile}"
 
-  hasher "${configFile}" >"${hashFile}" || log-error "Failed to write on ${hashFile}"
   return 0
+}
+
+# Store the current config hash so later runs/watchers can detect changes.
+storeHash() {
+  hasher "${configFile}" >"${hashFile}" || log-error "Failed to write config hash to ${hashFile}"
 }
 
 logContent() {
@@ -101,9 +112,54 @@ logContent() {
 
 isRunning() { [[ -s "${lockFile}" ]]; }
 
+# Kill only the OpenCode server process (keeps the watcher alive across restarts).
+killServer() {
+  isRunning || return 0
+  killwait "$(pid)" || log-error "Failed to kill OpenCode, try running 'kill-process opencode' instead."
+  rm -f "${lockFile}" "${logFile}"
+  return 0
+}
+
+# Spawn the background config watcher (idempotent: returns early if one is alive).
+startWatcher() {
+  [[ -s "${watchPidFile}" ]] && kill -0 "$(cat "${watchPidFile}")" 2>/dev/null && return 0
+  nohup "${BASH_SOURCE[0]}" __watch >>"${watchLog}" 2>&1 </dev/null &
+  echo "$!" >"${watchPidFile}"
+}
+
+# Hidden action: poll the config file and restart OpenCode whenever it changes.
+watch() {
+  local current last stable ticks
+  ticks=$((watchDebounce * 5)) # 0.2s granularity
+  while true; do
+    sleep "${watchInterval}"
+    current="$(hasher "${configFile}")"
+    [[ "${current}" == "$(cat "${hashFile}")" ]] && continue
+
+    # Config changed — wait for the editor to settle (coalesce rapid saves).
+    stable=0
+    last="${current}"
+    while ((stable < ticks)); do
+      sleep 0.2
+      current="$(hasher "${configFile}")"
+      if [[ "${current}" == "${last}" ]]; then
+        ((++stable))
+      else
+        last="${current}"
+        stable=0
+      fi
+    done
+
+    if [[ "$(hasher "${configFile}")" != "$(cat "${hashFile}")" ]]; then
+      log-info "Config file changed — restarting OpenCode"
+      "${BASH_SOURCE[0]}" restart
+    fi
+  done
+}
+
 # --- Actions --- #
 start() {
-  isRunning && terminate "The program is already running with pid: $(pid), port: $(port)"
+  isRunning && terminate "OpenCode is already running with pid: $(pid), check '${scriptName} status'."
   local args=(web)
 
   [[ -n "${port}" ]] && args+=("--port" "${port}")
@@ -118,27 +174,47 @@ start() {
     opencode "${args[@]}" &>"${logFile}" &
   PID=$!
 
-  localUrl="$(logContent | rg -i 'Local access:' | awk '{ print $3 }')"
-  networkUrl="$(logContent | rg -i 'Network access:' | awk '{ print $3 }' || true)"
+  # Wait for opencode to report the listening URLs (new format: "Web interface:",
+  # old format: "Local access:" / "Network access:").
+  local maxWait=15 waited=0 logOut
+  while ((waited < maxWait)); do
+    logOut="$(logContent)"
+    localUrl="$(echo "${logOut}" | rg -i 'Web interface:|Local access:' | awk '{ print $3 }' || true)"
+    networkUrl="$(echo "${logOut}" | rg -i 'Network access:' | awk '{ print $3 }' || true)"
+    [[ -n "${localUrl}" ]] && break
+    sleep 1
+    ((++waited))
+  done
+
+  if [[ -z "${localUrl}" ]]; then
+    log-error "Timeout waiting for OpenCode to start (check ${logFile})"
+  fi
 
   printf '%d\n%s\n%s\n' "${PID}" "${localUrl}" "${networkUrl}" >"${lockFile}"
 
   trim "${lockFile}" &>/dev/null
   log-success "OpenCode is running at ${localUrl}${networkUrl+" and ${networkUrl}"}"
+
+  # Remember the config we started with, then start watching it for changes.
+  storeHash
+  startWatcher
 }
 
 stop() {
   isRunning || terminate "OpenCode is not running!"
-  killwait "$(pid)" || log-error "Failed to kill OpenCode, try running 'kill-process opencode' instead."
-  rm "${lockFile}" "${logFile}"
+  killServer
+  if [[ -s "${watchPidFile}" ]]; then
+    killwait "$(cat "${watchPidFile}")" 2>/dev/null || true
+    rm -f "${watchPidFile}"
+  fi
   log-info "OpenCode stopped successfully."
 }
 
-restart() { stop && start; }
+restart() { killServer && start; }
 
 status() {
   isRunning || terminate "OpenCode is not running!"
-  local net="$(viewlines 2 "${lockFile}")"
+  local net="$(viewlines 3 "${lockFile}")"
 
   printBlue -n "PID: "
   pid
@@ -163,5 +239,6 @@ stop) stop ;;
 restart) restart ;;
 status) status ;;
 pid) pid ;;
+__watch) watch ;;
 *) cmdarg_usage && exit 1 ;;
 esac
