@@ -222,10 +222,7 @@ Generate the wiki page now.
 PROMPT
   }
 
-  # Copy prompt to clipboard
-  full_prompt | clipcopy
-  logInfo "Prompt copied to clipboard for: ${project_name}"
-  logInfo "Paste the prompt into ${PROVIDER} to generate the documentation."
+  logInfo "Opening ${PROVIDER} for: ${project_name}"
 
   # Providers expect a directory, but C/C++/Lua projects are single files
   local run_dir="${project_path}"
@@ -234,20 +231,11 @@ PROMPT
   # Execute based on provider
   case "${PROVIDER}" in
   opencode)
-    opencode "${run_dir}"
-    local exitCode=$?
-    if ((exitCode != 0)); then
-      log-error --no-kill "opencode failed for ${project_name} (exit ${exitCode})"
-      return 1
-    fi
+    opencode --prompt "$(full_prompt)" ${MODEL:+--model "${MODEL}"} "${run_dir}"
     ;;
   pi)
     cd "${run_dir}" || exit
-    if [[ -n "${MODEL}" ]]; then
-      pi --model "${MODEL}"
-    else
-      pi
-    fi
+    pi ${MODEL:+--model "${MODEL}"} "$(full_prompt)"
     ;;
   claude)
     cd "${run_dir}" || exit
@@ -256,9 +244,9 @@ PROMPT
         ANTHROPIC_DEFAULT_OPUS_MODEL="${MODEL:-}" \
         ANTHROPIC_DEFAULT_SONNET_MODEL="${MODEL:-}" \
         ANTHROPIC_DEFAULT_HAIKU_MODEL="${MODEL:-}" \
-        claude --model "opus"
+        claude --model "opus" "$(full_prompt)"
     else
-      claude
+      claude "$(full_prompt)"
     fi
     ;;
   *) log-error --no-kill "Unknown provider: ${PROVIDER}" ;;
