@@ -73,7 +73,8 @@ password="${cmdarg_cfg['password']}"
 username="${cmdarg_cfg['username']}"
 
 # --- App variables --- #
-declare localUrl networkUrl PID
+declare localUrl PID
+declare -a networkUrls
 scriptName="${BASH_SOURCE[0]##*/}"
 configDir="${XDG_CONFIG_HOME:-${HOME}/.config}/opencode"
 cacheDir="/tmp/${scriptName}"
@@ -151,13 +152,12 @@ start() {
     opencode "${args[@]}" &>"${logFile}" &
   PID=$!
 
-  # Wait for opencode to report the listening URLs (new format: "Web interface:",
-  # old format: "Local access:" / "Network access:").
-  local maxWait=15 waited=0 logOut
+  # Wait for opencode to report the listening URLs
+  # new format: "Web interface:", old format: "Local access:" / "Network access:".
+  local maxWait=15 waited=0
   while ((waited < maxWait)); do
-    logOut="$(logContent)"
-    localUrl="$(echo "${logOut}" | rg -i 'Web interface:|Local access:' | awk '{ print $3 }' || true)"
-    networkUrl="$(echo "${logOut}" | rg -i 'Network access:' | awk '{ print $3 }' || true)"
+    localUrl="$(logContent | rg -i 'Web interface:|Local access:' | awk '{ print $3 }' || true)"
+    mapfile -t networkUrls < <(logContent | rg -i 'Network access:' | awk '{ print $3 }' || true)
     [[ -n "${localUrl}" ]] && break
     sleep 1
     ((++waited))
@@ -167,10 +167,25 @@ start() {
     log-error "Timeout waiting for OpenCode to start (check ${logFile})"
   fi
 
-  printf '%d\n%s\n%s\n' "${PID}" "${localUrl}" "${networkUrl}" >"${lockFile}"
+  # Write lock file: PID, localUrl, then networkUrls (one per line)
+  {
+    printf '%d\n' "${PID}"
+    printf '%s\n' "${localUrl}"
+    printf '%s\n' "${networkUrls[@]}"
+  } >"${lockFile}"
 
   trim "${lockFile}" &>/dev/null
-  log-success "OpenCode is running at ${localUrl}${networkUrl+" and ${networkUrl}"}"
+
+  # Build success message
+  local msg="OpenCode is running at $(printCyan -n "${localUrl}")"
+  local prefix len="${#networkUrls[@]}"
+  for ((i = 0; i < len; ++i)); do
+    prefix=","
+    ((i == len - 1)) && prefix=", and"
+
+    msg+="${prefix} $(printCyan -n "${networkUrls[${i}]}")"
+  done
+  log-success "${msg}"
 
   # Start watching config for changes.
   startWatcher
@@ -190,7 +205,6 @@ restart() { killServer && start; }
 
 status() {
   isRunning || terminate "OpenCode is not running!"
-  local net="$(viewlines 3 "${lockFile}")"
 
   printBlue -n "PID: "
   pid
@@ -198,8 +212,18 @@ status() {
   printYellow -n "Local Access: "
   viewlines 2 "${lockFile}"
 
-  printYellow -n "Network Access: "
-  echo "${net:-N/A}"
+  local -a net
+  mapfile -t net < <(tail -n +3 "${lockFile}")
+  if ((${#net[@]})); then
+    local ip
+    for ip in "${net[@]}"; do
+      printYellow -n "Network Access: "
+      printf '%s\n' "${ip}"
+    done
+  else
+    printYellow -n "Network Access: "
+    echo "N/A"
+  fi
 }
 
 pid() {
