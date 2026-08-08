@@ -1,0 +1,486 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2016
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#        ▄▄                                                                                               ██               ▄▄                  ▄▄▄▄      ▄▄▄▄
+#        ██                                                                ██                             ▀▀       ██      ██                  ▀▀██      ▀▀██
+#   ▄███▄██   ▄████▄    ▄█████▄  ██    ██  ████▄██▄   ▄████▄   ██▄████▄  ███████            ██      ██  ████     ███████   ██▄████▄              ██        ██      ████▄██▄
+#  ██▀  ▀██  ██▀  ▀██  ██▀    ▀  ██    ██  ██ ██ ██  ██▄▄▄▄██  ██▀   ██    ██               ▀█  ██  █▀    ██       ██      ██▀   ██              ██        ██      ██ ██ ██
+#  ██    ██  ██    ██  ██        ██    ██  ██ ██ ██  ██▀▀▀▀▀▀  ██    ██    ██       █████    ██▄██▄██     ██       ██      ██    ██   █████      ██        ██      ██ ██ ██
+#  ▀██▄▄███  ▀██▄▄██▀  ▀██▄▄▄▄█  ██▄▄▄███  ██ ██ ██  ▀██▄▄▄▄█  ██    ██    ██▄▄▄             ▀██  ██▀  ▄▄▄██▄▄▄    ██▄▄▄   ██    ██              ██▄▄▄     ██▄▄▄   ██ ██ ██
+#    ▀▀▀ ▀▀    ▀▀▀▀      ▀▀▀▀▀    ▀▀▀▀ ▀▀  ▀▀ ▀▀ ▀▀    ▀▀▀▀▀   ▀▀    ▀▀     ▀▀▀▀              ▀▀  ▀▀   ▀▀▀▀▀▀▀▀     ▀▀▀▀   ▀▀    ▀▀               ▀▀▀▀      ▀▀▀▀   ▀▀ ▀▀ ▀▀
+#
+# --- DESCRIPTION --- #
+# Documents non-bash scripts using an LLM to generate wiki pages
+# --- DEPENDENCIES --- #
+# - opencode | pi | claude
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+eval "$(include "lib/cmdarg.sh")"
+eval "$(include "lib/helpers.sh")"
+eval "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "d?" "dir" "Wiki directory" "${SCRIPTS_DIR}/wiki"
+cmdarg "p?" "provider" "LLM provider (opencode, pi, claude)" "pi"
+cmdarg "m?" "model" "LLM model to use"
+cmdarg "f" "force" "Overwrite existing pages"
+cmdarg "v" "verbose" "Enable verbose output"
+cmdarg_parse "$@"
+
+# --- Config --- #
+WIKI_DIR="${cmdarg_cfg['dir']}"
+PROVIDER="${cmdarg_cfg['provider']}"
+MODEL="${cmdarg_cfg['model']}"
+FORCE="${cmdarg_cfg['force']}"
+VERBOSE="${cmdarg_cfg['verbose']}"
+SCRIPTS_DIR="${SCRIPTS_DIR:-${HOME}/scripts}"
+
+logVerbose() {
+  "${VERBOSE}" && logInfo "$1"
+}
+
+# --- Prompt --- #
+prompt() {
+  cat <<'PROMPT'
+You are a technical documentation writer. Your task is to generate a Markdown wiki page for a script or project.
+
+## INPUT
+
+You will receive:
+1. The project structure (files and directories)
+2. The source code of the main script(s)
+3. Build configuration (deno.json, package.json, etc.) if present
+
+## OUTPUT FORMAT
+
+Generate ONLY a valid Markdown document with this exact structure:
+
+```markdown
+# <project-name>
+
+## Description
+
+<2-3 sentence summary. Be specific about purpose and functionality.>
+
+## Installation
+
+<How to build/compile the project, if applicable>
+
+## Usage
+
+<How to run the script with example commands and output>
+
+## Source
+
+[<project-name>](<relative_path_to_directory>)
+```
+
+## RULES
+
+1. **Description**: Write 2-3 concise sentences explaining:
+   - What the project does (primary function)
+   - Key features or capabilities
+   - When to use it
+
+2. **Installation**: Show build commands based on project type:
+   - Deno/TypeScript: `cd typescript/<name> && deno task compile` or mention it compiles with `release.sh`
+   - C: `cd c && clangc --compile <file>.c`
+   - C++: `cd cpp && cppc --compile <file>.cpp`
+   - Python: `cd python/<name> && uv install` (run directly after that)
+   - Lua: No installation needed (run directly)
+
+3. **Usage**: Provide concrete examples:
+   - Show the actual command to run
+   - Include example arguments
+   - Show expected output if helpful
+
+4. **NO HALLUCINATIONS**: Only document what exists in the code. Do not invent features or flags.
+
+5. **Source path**: Point to the project directory, not individual files.
+
+## PROJECT TYPES
+
+### TypeScript Projects
+- Located in: `typescript/<project-name>/`
+- Contains: `<project>.ts`, `deno.json`, optionally `deno.lock`
+- Built with: `cd typescript && ./release.sh` (compiles all)
+- Compiled binary goes to: `~/scripts/bin/<project-name>`
+- Run with: `<project-name> [args]` (after compilation)
+
+### C Projects
+- Located in: `c/`
+- Single file: `c/<name>.c`
+- Built with: `c/release.sh *.c` (or `clangc --compile <name>.c`)
+- Compiled binary goes to: `~/scripts/bin/<name>`
+- Run with: `<name> [args]`
+
+### C++ Projects
+- Located in: `cpp/`
+- Single file: `cpp/<name>.cpp`
+- Built with: `cpp/release.sh *.cpp` (or `cppc --compile <name>.cpp`)
+- Compiled binary goes to: `~/scripts/bin/<name>`
+- Run with: `<name> [args]`
+
+### Python Projects
+- Located in: `python/<project-name>/`
+- Entry point: `main.py`
+- Run with: `runpy <project-name>` or `<project-name>` (each script has a mirror at project root)
+- Created with: `mkpython` script
+
+### Lua Scripts
+- Located in: `lua/`
+- Single file with shebang: `lua/<name>.lua`
+- Run directly: `<name>.lua [args]`
+
+## EXAMPLES
+
+### Example 1: C file
+
+Input structure:
+```
+c/
+├── get-terminal-size.c
+└── release.sh
+```
+
+Input source (get-terminal-size.c):
+```c
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+int main() {
+  struct winsize ws;
+  if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1) {
+    perror("ioctl");
+    return 1;
+  }
+  printf("Rows: %d, Cols: %d\n", ws.ws_row, ws.ws_col);
+  return 0;
+}
+```
+
+Output:
+```markdown
+# get-terminal-size
+
+## Description
+
+Gets the terminal dimensions (rows and columns) using the ioctl system call. Reports the current terminal size to stdout.
+
+## Installation
+
+```bash
+c/release.sh c/get-terminal-size.c
+```
+
+## Usage
+
+```bash
+get-terminal-size
+# Output: Rows: 40, Cols: 120
+```
+
+## Source
+
+[get-terminal-size](https://github.com/AhmedOsman101/shellScripts/blob/main/c/get-terminal-size.c)
+```
+
+### Example 2: TypeScript project
+
+Input structure:
+```
+typescript/signal-map/
+├── deno.json
+├── deno.lock
+└── signal-map.ts
+```
+
+Input source (deno.json):
+```json
+{
+  "tasks": {
+    "compile": "deno compile --allow-env --allow-net signal-map.ts"
+  }
+}
+```
+
+Output:
+```markdown
+# signal-map
+
+## Description
+
+Maps Unix signal names to their numbers and vice versa. Converts between signal names (SIGTERM, SIGINT) and their numeric values.
+
+## Installation
+
+```bash
+typescript/release.sh
+```
+
+## Usage
+
+```bash
+signal-map SIGTERM
+# Output: 15 SIGTERM 143
+
+signal-map 15
+# Output: 15 SIGTERM 143
+```
+
+## Source
+
+[signal-map](https://github.com/AhmedOsman101/shellScripts/tree/typescript/signal-map)
+```
+
+### Example 3: Python project
+
+Input structure:
+```
+python/pdfx/
+├── main.py
+└── pyproject.toml # Contains description
+```
+
+Output:
+```markdown
+# pdfx
+
+## Description
+
+Extracts text and metadata from PDF files. Supports various extraction modes for different use cases.
+
+## Usage
+
+```bash
+pdfx --help
+```
+
+## Source
+
+[pdfx](https://github.com/AhmedOsman101/shellScripts/tree/python/pdfx)
+```
+
+## FINAL CHECK
+
+Before outputting, verify:
+- [ ] Description is 2-3 sentences, specific and accurate
+- [ ] Installation shows correct build command for project type
+- [ ] Usage shows real commands with examples
+- [ ] No invented features or flags
+- [ ] Source path points to directory, not individual files
+PROMPT
+}
+
+# --- Functions --- #
+
+# Get project directories for a language
+getProjects() {
+  local lang="$1"
+  case "${lang}" in
+  typescript)
+    # TypeScript projects are directories under typescript/
+    find "${SCRIPTS_DIR}/typescript" -mindepth 1 -maxdepth 1 -type d 2>/dev/null
+    ;;
+  python)
+    # Python projects are directories under python/
+    find "${SCRIPTS_DIR}/python" -mindepth 1 -maxdepth 1 -type d 2>/dev/null
+    ;;
+  c)
+    # C files are individual .c files in c/
+    find "${SCRIPTS_DIR}/c" -maxdepth 1 -name "*.c" -type f 2>/dev/null
+    ;;
+  cpp)
+    # C++ files are individual .cpp files in cpp/
+    find "${SCRIPTS_DIR}/cpp" -maxdepth 1 -name "*.cpp" -type f 2>/dev/null
+    ;;
+  lua)
+    # Lua files are individual .lua files in lua/
+    find "${SCRIPTS_DIR}/lua" -maxdepth 1 -name "*.lua" -type f 2>/dev/null
+    ;;
+  *) : ;;
+  esac
+}
+
+# Get project name from path
+getProjectName() {
+  local path="$1"
+  basename "${path}"
+}
+
+# Get wiki subdirectory for language
+getWikiDir() {
+  local lang="$1"
+  case "${lang}" in
+  typescript | c | cpp | python | lua) echo "${lang}" ;;
+  *) echo "" ;;
+  esac
+}
+
+# Collect project context for LLM
+collectContext() {
+  local project_path="$1"
+  local lang="$2"
+  local context=""
+
+  context+="## Project Structure\n\n"
+
+  case "${lang}" in
+  typescript)
+    # List directory contents
+    context+="$(find "${project_path}" -maxdepth 1 -type f | sed "s|${project_path}/||" | sort | sed 's/^/- /')\n\n"
+    # Add deno.json if exists
+    if [[ -f "${project_path}/deno.json" ]]; then
+      context+="## deno.json\n\n"
+      context+="\`\`\`json\n$(cat "${project_path}/deno.json")\n\`\`\`\n\n"
+    fi
+    # Add main TypeScript file
+    local ts_file
+    ts_file=$(find "${project_path}" -maxdepth 1 -name "*.ts" -type f | head -1)
+    if [[ -n "${ts_file}" ]]; then
+      context+="## $(basename "${ts_file}")\n\n"
+      context+="\`\`\`typescript\n$(cat "${ts_file}")\n\`\`\`\n\n"
+    fi
+    ;;
+  python)
+    # List directory contents
+    context+="$(find "${project_path}" -maxdepth 1 -type f | sed "s|${project_path}/||" | sort | sed 's/^/- /')\n\n"
+    # Add main.py
+    if [[ -f "${project_path}/main.py" ]]; then
+      context+="## main.py\n\n"
+      context+="\`\`\`python\n$(cat "${project_path}/main.py")\n\`\`\`\n\n"
+    fi
+    ;;
+  c | cpp)
+    # Single file
+    local src_file="${project_path}"
+    context+="## $(basename "${src_file}")\n\n"
+    context+="\`\`\`${lang}\n$(cat "${src_file}")\n\`\`\`\n\n"
+    ;;
+  lua)
+    # Single file
+    context+="## $(basename "${project_path}")\n\n"
+    context+="\`\`\`lua\n$(cat "${project_path}")\n\`\`\`\n\n"
+    ;;
+  *) : ;;
+  esac
+
+  echo -e "${context}"
+}
+
+# Generate wiki page using LLM
+generateWithLLM() {
+  local project_path="$1"
+  local lang="$2"
+
+  local project_name wiki_dir output_file
+  project_name=$(getProjectName "${project_path}")
+  wiki_dir=$(getWikiDir "${lang}")
+
+  # For TypeScript/Python, project_name is the dir name
+  # For C/C++/Lua, project_name is the filename without extension
+  if [[ "${lang}" == "c" ]]; then
+    project_name="${project_name%.c}"
+  elif [[ "${lang}" == "cpp" ]]; then
+    project_name="${project_name%.cpp}"
+  elif [[ "${lang}" == "lua" ]]; then
+    project_name="${project_name%.lua}"
+  fi
+
+  output_file="${WIKI_DIR}/${wiki_dir}/${project_name}.md"
+
+  # Skip if exists and not forced
+  if [[ -f "${output_file}" ]] && ! "${FORCE}"; then
+    logVerbose "Skipping ${project_name} (exists)"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "${output_file}")"
+
+  logInfo "Documenting: ${project_name}"
+
+  local context
+  context=$(collectContext "${project_path}" "${lang}")
+
+  # Build the full prompt
+  local full_prompt
+  full_prompt="$(prompt)
+
+## PROJECT PATH
+
+${lang}/${project_name}/
+
+## PROJECT CONTEXT
+
+${context}
+
+Generate the wiki page now."
+
+  # Copy prompt to clipboard
+  clipcopy "${full_prompt}"
+  logInfo "Prompt copied to clipboard for: ${project_name}"
+  logInfo "Paste the prompt into ${PROVIDER} to generate the documentation."
+
+  # Execute based on provider
+  case "${PROVIDER}" in
+  opencode)
+    if [[ -n "${MODEL}" ]]; then
+      opencode --model "${MODEL}" "${project_path}"
+    else
+      opencode "${project_path}"
+    fi
+    ;;
+  pi)
+    cd "${project_path}"
+    if [[ -n "${MODEL}" ]]; then
+      pi -m "${MODEL}"
+    else
+      pi
+    fi
+    ;;
+  claude)
+    cd "${project_path}"
+    if [[ -n "${MODEL}" ]]; then
+      ANTHROPIC_DEFAULT_FABLE_MODEL="${MODEL:-}" \
+        ANTHROPIC_DEFAULT_OPUS_MODEL="${MODEL:-}" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="${MODEL:-}" \
+        ANTHROPIC_DEFAULT_HAIKU_MODEL="${MODEL:-}" \
+        claude --model "opus"
+    else
+      claude
+    fi
+    ;;
+  *) log-error --no-kill "Unknown provider: ${PROVIDER}" ;;
+  esac
+
+  logSuccess "Documentation session complete for: ${project_name}"
+}
+
+# --- Main --- #
+
+# Supported languages
+LANGUAGES=(c cpp python typescript lua)
+
+total=0
+
+for lang in "${LANGUAGES[@]}"; do
+  while IFS= read -r project; do
+    [[ -e "${project}" ]] || continue
+    ((++total))
+    generateWithLLM "${project}" "${lang}"
+  done < <(getProjects "${lang}")
+done
+
+echo ""
+logSuccess "LLM documentation sessions complete!"
+echo "  Total projects: ${total}"
+echo ""
+echo "The prompt files have been generated. Review them and let the LLM generate documentation."
