@@ -34,6 +34,6 @@ else
   [[ ! -f "${file}" ]] && log-error "Script '${file}' was not found"
 fi
 
-sed -n '/# --- DEPENDENCIES --- #/,/# --- END SIGNATURE --- #/{/\# - /p;}' "${file}" |
+sed -n '/# --- DEPENDENCIES --- #/,/# --- END SIGNATURE --- #/{/\# - /p;/# --- END SIGNATURE --- #/q}' "${file}" |
   replace.sh '# - ' '' |
   grep -v " --- " || echo "x-none"

@@ -12,7 +12,7 @@
 #   ▀████▀▀                                                              ██
 #
 # --- DESCRIPTION --- #
-# Returns a suitable askpass program for sudo -A
+# Returns a suitable askpass program for `sudo -A`
 # --- DEPENDENCIES --- #
 #
 # --- END SIGNATURE --- #

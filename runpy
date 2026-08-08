@@ -12,7 +12,7 @@
 #                                ██         ███
 #
 # --- DESCRIPTION --- #
-# Run a Python script from $SCRIPTS_DIR/python with optional venv
+# Run a Python script from `$SCRIPTS_DIR/python` directory with an optional venv
 # --- DEPENDENCIES --- #
 # - python3
 # - fd | fdfind (fd-find)

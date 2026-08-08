@@ -16,7 +16,6 @@
 # --- DEPENDENCIES --- #
 # - toilet
 # - sed
-# - printf
 # --- END SIGNATURE --- #
 
 set -eo pipefail
