@@ -39,8 +39,24 @@ cmdarg "r" "pure" "Run without external plugins"
 cmdarg "s?" "password" "Add a password to your server"
 cmdarg "u?" "username" "Which username to use (default: opencode)"
 
+# Setup the usage function
+usageMsg="$(cmdarg_usage)"
+unset -f 'cmdarg_usage'
+
+cmdarg_usage() {
+  echo "${usageMsg}"
+  cat <<EOF
+Subcommands:
+    start      Start the OpenCode web interface server
+    stop       Stop the running server and config watcher
+    restart    Restart the server (stop then start)
+    status     Show PID and access URLs
+    pid        Show only the server PID
+EOF
+}
 cmdarg_parse "$@"
 # ---  Main script logic --- #
+
 action="${argv[0]}"
 if ((argc == 0)); then
   cmdarg_usage
@@ -60,7 +76,7 @@ username="${cmdarg_cfg['username']}"
 declare localUrl networkUrl PID
 scriptName="${BASH_SOURCE[0]##*/}"
 configDir="${XDG_CONFIG_HOME:-${HOME}/.config}/opencode"
-cacheDir="${XDG_CACHE_HOME:-${HOME}/.cache}/${scriptName}"
+cacheDir="/tmp/${scriptName}"
 hashFile="${cacheDir}/hash"
 lockFile="${cacheDir}/lock"
 logFile="${cacheDir}/log"
