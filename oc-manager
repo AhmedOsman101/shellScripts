@@ -16,6 +16,7 @@
 # --- DEPENDENCIES --- #
 # - opencode | opencode (opencode-bin)
 # - ansifilter
+# - watchexec
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -39,13 +40,14 @@ cmdarg "r" "pure" "Run without external plugins"
 cmdarg "s?" "password" "Add a password to your server"
 cmdarg "u?" "username" "Which username to use (default: opencode)"
 
-# Setup the usage function
+# --- Setup the usage function --- #
 usageMsg="$(cmdarg_usage)"
 unset -f 'cmdarg_usage'
 
 cmdarg_usage() {
   echo "${usageMsg}"
   cat <<EOF
+
 Subcommands:
     start      Start the OpenCode web interface server
     stop       Stop the running server and config watcher
@@ -53,15 +55,13 @@ Subcommands:
     status     Show PID and access URLs
     pid        Show only the server PID
 EOF
+  exit "${1:-0}"
 }
+
 cmdarg_parse "$@"
 # ---  Main script logic --- #
-
 action="${argv[0]}"
-if ((argc == 0)); then
-  cmdarg_usage
-  exit 0
-fi
+((argc)) || cmdarg_usage
 
 # --- Store flags --- #
 mdnsDomain="${cmdarg_cfg['mdnsDomain']}"
@@ -77,45 +77,22 @@ declare localUrl networkUrl PID
 scriptName="${BASH_SOURCE[0]##*/}"
 configDir="${XDG_CONFIG_HOME:-${HOME}/.config}/opencode"
 cacheDir="/tmp/${scriptName}"
-hashFile="${cacheDir}/hash"
 lockFile="${cacheDir}/lock"
 logFile="${cacheDir}/log"
 watchPidFile="${cacheDir}/watch"
 watchLog="${cacheDir}/watch.log"
 
-# Watch configuration: how often to poll the config file (seconds) and how
-# long the config must stay unchanged before we treat the change as settled (seconds).
-watchInterval=5
-watchDebounce=2
-
 # --- Helpers --- #
-hashCmd=()
-read -ra hashCmd <<<"$(findHasher)"
-hasher() {
-  local hash
-  read -d' ' -r hash < <("${hashCmd[@]}" "$@")
-  echo "${hash}"
-}
 
 setup() {
-  if [[ -s "${configDir}/opencode.jsonc" ]]; then
-    configFile="${configDir}/opencode.jsonc"
-  elif [[ -s "${configDir}/opencode.json" ]]; then
-    configFile="${configDir}/opencode.json"
-  else
+  if ! [[ -s "${configDir}/opencode.jsonc" || -s "${configDir}/opencode.json" ]]; then
     log-warning "No config file found at ${configDir}"
     log-error "Create an opencode.json or opencode.jsonc file first."
   fi
 
   mkdir -p "${cacheDir}" || log-error "Failed to create cache directory: ${cacheDir}"
-  touch "${hashFile}" || log-error "Failed to create the config hash file: ${hashFile}"
 
   return 0
-}
-
-# Store the current config hash so later runs/watchers can detect changes.
-storeHash() {
-  hasher "${configFile}" >"${hashFile}" || log-error "Failed to write config hash to ${hashFile}"
 }
 
 logContent() {
@@ -136,41 +113,25 @@ killServer() {
   return 0
 }
 
-# Spawn the background config watcher (idempotent: returns early if one is alive).
+# Spawn the background config watcher using watchexec (idempotent).
 startWatcher() {
   [[ -s "${watchPidFile}" ]] && kill -0 "$(cat "${watchPidFile}")" 2>/dev/null && return 0
-  nohup "${BASH_SOURCE[0]}" __watch >>"${watchLog}" 2>&1 </dev/null &
+  nohup watchexec \
+    -w "${configDir}" \
+    -f "opencode.json" \
+    -f "opencode.jsonc" \
+    -d 5s \
+    -p \
+    -r \
+    -- "${BASH_SOURCE[0]}" __watch \
+    >>"${watchLog}" 2>&1 </dev/null &
   echo "$!" >"${watchPidFile}"
 }
 
-# Hidden action: poll the config file and restart OpenCode whenever it changes.
+# Hidden action: restart OpenCode (called by watchexec on config changes).
 watch() {
-  local current last stable ticks
-  ticks=$((watchDebounce * 5)) # 0.2s granularity
-  while true; do
-    sleep "${watchInterval}"
-    current="$(hasher "${configFile}")"
-    [[ "${current}" == "$(cat "${hashFile}")" ]] && continue
-
-    # Config changed — wait for the editor to settle (coalesce rapid saves).
-    stable=0
-    last="${current}"
-    while ((stable < ticks)); do
-      sleep 0.2
-      current="$(hasher "${configFile}")"
-      if [[ "${current}" == "${last}" ]]; then
-        ((++stable))
-      else
-        last="${current}"
-        stable=0
-      fi
-    done
-
-    if [[ "$(hasher "${configFile}")" != "$(cat "${hashFile}")" ]]; then
-      log-info "Config file changed — restarting OpenCode"
-      "${BASH_SOURCE[0]}" restart
-    fi
-  done
+  log-info "Config file changed — restarting OpenCode"
+  restart
 }
 
 # --- Actions --- #
@@ -211,8 +172,7 @@ start() {
   trim "${lockFile}" &>/dev/null
   log-success "OpenCode is running at ${localUrl}${networkUrl+" and ${networkUrl}"}"
 
-  # Remember the config we started with, then start watching it for changes.
-  storeHash
+  # Start watching config for changes.
   startWatcher
 }
 
@@ -256,5 +216,5 @@ restart) restart ;;
 status) status ;;
 pid) pid ;;
 __watch) watch ;;
-*) cmdarg_usage && exit 1 ;;
+? | *) cmdarg_usage 1 ;;
 esac
