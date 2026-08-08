@@ -12,7 +12,7 @@
 #    ▀▀▀▀▀    ▀▀         ▀▀▀▀▀    ▀▀▀▀ ▀▀     ▀▀▀▀     ▀▀▀▀▀              ▀▀  ▀▀   ▀▀▀▀▀▀▀▀  ▀▀   ▀▀▀  ▀▀▀▀▀▀▀▀
 #
 # --- DESCRIPTION --- #
-# Generates wiki pages for all bash scripts in the repository
+# Generates wiki pages for all scripts in the repository
 # --- DEPENDENCIES --- #
 #
 # --- END SIGNATURE --- #
@@ -29,12 +29,18 @@ checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "d?" "dir" "Wiki directory" "${SCRIPTS_DIR}/wiki"
 cmdarg "f" "force" "Overwrite existing pages"
+cmdarg "a" "all" "Also generate pages for non-bash scripts using LLM"
+cmdarg "p?" "provider" "LLM provider (opencode, pi, claude)" "pi"
+cmdarg "m?" "model" "LLM model to use"
 cmdarg "v" "verbose" "Enable verbose output"
 cmdarg_parse "$@"
 
 # --- Config --- #
 WIKI_DIR="${cmdarg_cfg['dir']}"
 FORCE="${cmdarg_cfg['force']}"
+ALL="${cmdarg_cfg['all']}"
+PROVIDER="${cmdarg_cfg['provider']}"
+MODEL="${cmdarg_cfg['model']}"
 VERBOSE="${cmdarg_cfg['verbose']}"
 SCRIPTS_DIR="${SCRIPTS_DIR:-${HOME}/scripts}"
 
@@ -112,10 +118,18 @@ generateScriptPage() {
 
   # Determine relative directory
   rel_dir=$(dirname "${file}" | sed "s|^${SCRIPTS_DIR}||; s|^/||")
-  if [[ -z "${rel_dir}" ]]; then
-    rel_dir="bash"
-  fi
-  # Other dirs (c, cpp, python, etc.) keep their name: wiki/c/, wiki/cpp/
+  case "${rel_dir}" in
+    "")
+      rel_dir="bash"
+      ;;
+    lib|rofi|external)
+      # Bash scripts: lib→bash/lib/, rofi→bash/rofi/, external→bash/external/
+      rel_dir="bash/${rel_dir}"
+      ;;
+    *)
+      # Other languages keep their dir: wiki/c/, wiki/cpp/, etc.
+      ;;
+  esac
 
   mkdir -p "${WIKI_DIR}/${rel_dir}"
   output_file="${WIKI_DIR}/${rel_dir}/${script_name}.md"
@@ -252,9 +266,12 @@ created=0
 skipped=0
 ignored=false
 
-# Find all bash scripts (root + lib)
-for file in "${SCRIPTS_DIR}"/* "${SCRIPTS_DIR}/lib"/*.sh; do
+# Find all bash scripts (root + lib + rofi + external)
+for file in "${SCRIPTS_DIR}"/* "${SCRIPTS_DIR}/lib"/*.sh "${SCRIPTS_DIR}/rofi"/* "${SCRIPTS_DIR}/external"/*; do
   [[ -f "${file}" ]] || continue
+
+  # Skip non-script files
+  [[ "${file}" == *.rasi ]] && continue
 
   first_line=$(head -1 "${file}" 2>/dev/null || true)
   if [[ "${first_line}" != *"bash"* ]] && [[ "${first_line}" != *"#!/bin/bash"* ]]; then
@@ -330,6 +347,11 @@ if [[ ! -f "${home_file}" ]] || "${FORCE}"; then
     echo ""
   } >"${home_file}"
   logSuccess "Created: Home.md"
+fi
+
+# Generate pages for non-bash scripts using LLM
+if "${ALL}"; then
+  document-with-llm -d "${WIKI_DIR}" -p "${PROVIDER}" ${MODEL:+-m "${MODEL}"} ${FORCE:+-f} ${VERBOSE:+-v}
 fi
 
 mdfmt "${WIKI_DIR}" &>/dev/null
