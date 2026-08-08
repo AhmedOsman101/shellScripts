@@ -105,11 +105,20 @@ parseCmdargFlags() {
 }
 
 # Generate wiki page for a script
-generateWikiPage() {
+generateScriptPage() {
   local file="$1"
-  local script_name output_file
+  local script_name output_file rel_dir
   script_name=$(basename "${file}")
-  output_file="${WIKI_DIR}/${script_name}.md"
+
+  # Determine relative directory
+  rel_dir=$(dirname "${file}" | sed "s|^${SCRIPTS_DIR}||; s|^/||")
+  if [[ -z "${rel_dir}" ]]; then
+    rel_dir="bash"
+  fi
+  # Other dirs (c, cpp, python, etc.) keep their name: wiki/c/, wiki/cpp/
+
+  mkdir -p "${WIKI_DIR}/${rel_dir}"
+  output_file="${WIKI_DIR}/${rel_dir}/${script_name}.md"
 
   if [[ -f "${output_file}" ]] && ! "${FORCE}"; then
     logVerbose "Skipping ${script_name} (exists, use -f to overwrite)"
@@ -178,25 +187,73 @@ generateWikiPage() {
 
     echo "## Source"
     echo ""
-    echo "[${script_name}](${REPO_URL}/blob/main/${script_name})"
+    echo "[${script_name}](${REPO_URL}/blob/main/${rel_dir}/${script_name})"
     echo ""
 
   } >"${output_file}"
 
-  logSuccess "Created: ${script_name}.md"
+  logSuccess "Created: ${rel_dir}/${script_name}.md"
+}
+
+# Generate wiki page for a library
+generateLibPage() {
+  local file="$1"
+  local lib_name output_file
+  lib_name=$(basename "${file}" .sh)
+
+  mkdir -p "${WIKI_DIR}/bash/lib"
+  output_file="${WIKI_DIR}/bash/lib/${lib_name}.md"
+
+  if [[ -f "${output_file}" ]] && ! "${FORCE}"; then
+    logVerbose "Skipping lib/${lib_name} (exists, use -f to overwrite)"
+    return 0
+  fi
+
+  logVerbose "Generating page for lib/${lib_name}..."
+
+  local desc
+  desc="$(get-desc "${file}" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')"
+
+  {
+    echo "# lib/${lib_name}"
+    echo ""
+    echo "## Description"
+    echo ""
+    if [[ -n "${desc}" ]]; then
+      echo "${desc}"
+    else
+      echo "*No description available.*"
+    fi
+    echo ""
+    echo "## Usage"
+    echo ""
+    echo "Include this library in your script:"
+    echo ""
+    echo '```bash'
+    # shellcheck disable=SC2016
+    echo 'eval "$(include "lib/'"${lib_name}"'.sh")"'
+    echo '```'
+    echo ""
+    echo "## Source"
+    echo ""
+    echo "[lib/${lib_name}.sh](${REPO_URL}/blob/main/lib/${lib_name}.sh)"
+    echo ""
+  } >"${output_file}"
+
+  logSuccess "Created: bash/lib/${lib_name}.md"
 }
 
 # --- Main --- #
 
-mkdir -p "${WIKI_DIR}"
+mkdir -p "${WIKI_DIR}/bash"
 
 total=0
 created=0
 skipped=0
 ignored=false
 
-# Process all bash scripts in the root directory
-for file in "${SCRIPTS_DIR}"/*; do
+# Find all bash scripts (root + lib)
+for file in "${SCRIPTS_DIR}"/* "${SCRIPTS_DIR}/lib"/*.sh; do
   [[ -f "${file}" ]] || continue
 
   first_line=$(head -1 "${file}" 2>/dev/null || true)
@@ -220,64 +277,16 @@ for file in "${SCRIPTS_DIR}"/*; do
     continue
   fi
 
-  output_file="${WIKI_DIR}/${script_name}.md"
-
-  if [[ -f "${output_file}" ]] && ! "${FORCE}"; then
-    ((++skipped))
-    continue
+  # Generate page based on file location
+  if [[ "${file}" == *"/lib/"* ]]; then
+    generateLibPage "${file}"
+  else
+    generateScriptPage "${file}"
   fi
-
-  generateWikiPage "${file}"
   ((++created))
 done
 
-total=$((created + skipped))
 
-# Process lib files
-for file in "${SCRIPTS_DIR}/lib"/*.sh; do
-  [[ -f "${file}" ]] || continue
-  ((++total))
-
-  lib_name=$(basename "${file}" .sh)
-  output_file="${WIKI_DIR}/lib-${lib_name}.md"
-
-  if [[ -f "${output_file}" ]] && ! "${FORCE}"; then
-    ((++skipped))
-    continue
-  fi
-
-  logVerbose "Generating page for lib/${lib_name}..."
-
-  desc=$(get-desc "${file}")
-
-  {
-    echo "# lib/${lib_name}"
-    echo ""
-    echo "## Description"
-    echo ""
-    if [[ -n "${desc}" ]]; then
-      echo "${desc}"
-    else
-      echo "*No description available.*"
-    fi
-    echo ""
-    echo "## Usage"
-    echo ""
-    echo "Include this library in your script:"
-    echo ""
-    echo '```bash'
-    echo 'eval "$(include "lib/'"${lib_name}"'.sh")"'
-    echo '```'
-    echo ""
-    echo "## Source"
-    echo ""
-    echo "[lib/${lib_name}.sh](${REPO_URL}/blob/main/lib/${lib_name}.sh)"
-    echo ""
-  } >"${output_file}"
-
-  logSuccess "Created: lib-${lib_name}.md"
-  ((++created))
-done
 
 # Generate Home.md
 home_file="${WIKI_DIR}/Home.md"
@@ -296,17 +305,19 @@ if [[ ! -f "${home_file}" ]] || "${FORCE}"; then
     echo ""
     echo "| Library | Description |"
     echo "|---------|-------------|"
+    # Libraries
     for file in "${SCRIPTS_DIR}/lib"/*.sh; do
       [[ -f "${file}" ]] || continue
       lib_name=$(basename "${file}" .sh)
       desc=$(get-desc "${file}" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')
-      echo "| [lib/${lib_name}](lib/${lib_name}.md) | ${desc:-No description} |"
+      echo "| [lib/${lib_name}](bash/lib/${lib_name}.md) | ${desc:-No description} |"
     done
     echo ""
     echo "## Scripts"
     echo ""
     echo "| Script | Description |"
     echo "|--------|-------------|"
+    # Bash scripts from root
     for file in "${SCRIPTS_DIR}"/*; do
       [[ -f "${file}" ]] || continue
       first_line=$(head -1 "${file}" 2>/dev/null || true)
