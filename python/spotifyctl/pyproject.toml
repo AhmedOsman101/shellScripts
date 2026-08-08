@@ -1,0 +1,6 @@
+[project]
+name = "spotifyctl"
+version = "0.1.0"
+description = "A script for controling spotify"
+requires-python = ">=3.13"
+dependencies = []

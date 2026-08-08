@@ -1,7 +1,7 @@
 [project]
 name = "yt-music-playlist"
 version = "0.1.0"
-description = "Add your description here"
+description = "Extracts you YouTube Music playlist into a text file."
 requires-python = ">=3.14"
 dependencies = [
     "rich>=14.3.3",
