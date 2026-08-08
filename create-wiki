@@ -53,7 +53,7 @@ IGNORED_SCRIPTS=(
 )
 
 # Get repo URL from git remote
-remote="$(git -C "${SCRIPTS_DIR}" remote get-url origin)"
+remote="$(git -C "${SCRIPTS_DIR}" remote get-url origin | sed 's|\.git$||')"
 REPO_URL="${remote/git@github.com:/https://github.com/}"
 
 # --- Helper Functions --- #
@@ -117,18 +117,15 @@ generateScriptPage() {
   script_name=$(basename "${file}")
 
   # Determine relative directory
-  rel_dir=$(dirname "${file}" | sed "s|^${SCRIPTS_DIR}||; s|^/||")
+  local orig_rel_dir
+  orig_rel_dir=$(dirname "${file}" | sed -e "s|^${SCRIPTS_DIR}||" -e " s|^/||")
+  rel_dir="${orig_rel_dir}"
   case "${rel_dir}" in
-    "")
-      rel_dir="bash"
-      ;;
-    lib|rofi|external)
-      # Bash scripts: lib→bash/lib/, rofi→bash/rofi/, external→bash/external/
-      rel_dir="bash/${rel_dir}"
-      ;;
-    *)
-      # Other languages keep their dir: wiki/c/, wiki/cpp/, etc.
-      ;;
+  "") rel_dir="bash" ;;
+  # Bash scripts: lib -> bash/lib/, rofi -> bash/rofi/, external -> bash/external/
+  lib | rofi | external) rel_dir="bash/${rel_dir}" ;;
+  # Other languages keep their dir: wiki/c/, wiki/cpp/, etc.
+  *) : ;;
   esac
 
   mkdir -p "${WIKI_DIR}/${rel_dir}"
@@ -142,7 +139,7 @@ generateScriptPage() {
   logVerbose "Generating page for ${script_name}..."
 
   local desc deps help_output
-  desc="$(get-desc "${file}" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')"
+  desc="$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')"
   deps="$(get-deps "${file}")"
   help_output=$(getHelpOutput "${file}")
 
@@ -201,7 +198,8 @@ generateScriptPage() {
 
     echo "## Source"
     echo ""
-    echo "[${script_name}](${REPO_URL}/blob/main/${rel_dir}/${script_name})"
+    local source_path="${orig_rel_dir:+${orig_rel_dir}/}${script_name}"
+    echo "[${script_name}](${REPO_URL}/blob/main/${source_path})"
     echo ""
 
   } >"${output_file}"
@@ -226,7 +224,7 @@ generateLibPage() {
   logVerbose "Generating page for lib/${lib_name}..."
 
   local desc
-  desc="$(get-desc "${file}" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')"
+  desc="$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e' s/ $//')"
 
   {
     echo "# lib/${lib_name}"
@@ -303,8 +301,6 @@ for file in "${SCRIPTS_DIR}"/* "${SCRIPTS_DIR}/lib"/*.sh "${SCRIPTS_DIR}/rofi"/*
   ((++created))
 done
 
-
-
 # Generate Home.md
 home_file="${WIKI_DIR}/Home.md"
 if [[ ! -f "${home_file}" ]] || "${FORCE}"; then
@@ -326,7 +322,7 @@ if [[ ! -f "${home_file}" ]] || "${FORCE}"; then
     for file in "${SCRIPTS_DIR}/lib"/*.sh; do
       [[ -f "${file}" ]] || continue
       lib_name=$(basename "${file}" .sh)
-      desc=$(get-desc "${file}" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')
+      desc=$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')
       echo "| [lib/${lib_name}](bash/lib/${lib_name}.md) | ${desc:-No description} |"
     done
     echo ""
@@ -340,7 +336,7 @@ if [[ ! -f "${home_file}" ]] || "${FORCE}"; then
       first_line=$(head -1 "${file}" 2>/dev/null || true)
       if [[ "${first_line}" == *"bash"* ]] || [[ "${first_line}" == *"#!/bin/bash"* ]]; then
         script_name=$(basename "${file}")
-        desc=$(get-desc "${file}" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')
+        desc=$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')
         echo "| [${script_name}](bash/${script_name}.md) | ${desc:-No description} |"
       fi
     done

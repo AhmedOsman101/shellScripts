@@ -57,7 +57,10 @@ The file must be a valid Markdown document with this exact structure:
 
 4. **NO HALLUCINATIONS**: Only document what exists in the code. Do not invent features or flags.
 
-5. **Source path**: Point to the project directory on GitHub, not individual files.
+5. **Source path**: Use the correct GitHub link type:
+   - **Directory** (project has multiple files): use `/tree/main/<path>` — e.g., `[signal-map](https://github.com/AhmedOsman101/shellScripts/tree/main/typescript/signal-map)`
+   - **Single file** (one script): use `/blob/main/<path>` with extension — e.g., `[get-terminal-size](https://github.com/AhmedOsman101/shellScripts/blob/main/c/get-terminal-size.c)`
+   - Always use the full path from the repo root, no extra prefixes.
 
 ## PROJECT TYPES
 
@@ -203,7 +206,7 @@ signal-map 15
 
 ## Source
 
-[signal-map](https://github.com/AhmedOsman101/shellScripts/tree/typescript/signal-map)
+[signal-map](https://github.com/AhmedOsman101/shellScripts/tree/main/typescript/signal-map)
 ````
 
 ### Example 3: Python project
@@ -233,7 +236,7 @@ pdfx --help
 
 ## Source
 
-[pdfx](https://github.com/AhmedOsman101/shellScripts/tree/python/pdfx)
+[pdfx](https://github.com/AhmedOsman101/shellScripts/tree/main/python/pdfx)
 ````
 
 ## FINAL CHECK
@@ -244,4 +247,4 @@ Before outputting, verify:
 - [ ] Installation shows correct build command for project type
 - [ ] Usage shows real commands with examples
 - [ ] No invented features or flags
-- [ ] Source path points to directory, not individual files
+- [ ] Source path uses `/tree/main/` for directories, `/blob/main/` for single files (with extension)
