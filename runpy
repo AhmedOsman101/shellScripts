@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Run a Python script from `$SCRIPTS_DIR/python` directory with an optional venv
 # --- DEPENDENCIES --- #
-# - python3
+# - uv
 # - fd | fdfind (fd-find)
 # --- END SIGNATURE --- #
 
@@ -26,7 +26,7 @@ checkDeps "$0"
 # ---  Main script logic --- #
 dir="${SCRIPTS_DIR}/python"
 
-pattern="/$(strip-ext "$1" sh zsh fish bash).py\$"
+pattern="/$(strip-ext "$1" sh zsh fish bash)/main\.py\$"
 file=$(fd.sh "${pattern}" -p "${dir}")
 
 venv=$(fd.sh 'venv$' -t d -p "$(dirname "${file}")" --no-ignore)
@@ -36,13 +36,14 @@ activateVenv="${venv}bin/activate" # fd output adds a trailing /
 shift
 
 withVenv() {
+  trap 'deactivate' EXIT SIGTERM
   source "${activateVenv}" || log-error "Couldn't execute the activate file: ${activateVenv}"
-  python3 "${file}" "$@"
+  uv run "${file}" "$@"
   deactivate && exit $?
 }
 
 if [[ -f "${activateVenv}" ]]; then
   withVenv "$@"
 else
-  python3 "${file}" "$@" && exit $?
+  uv run "${file}" "$@" && exit $?
 fi

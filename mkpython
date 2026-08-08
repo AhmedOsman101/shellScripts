@@ -69,8 +69,6 @@ scriptContent >"${scriptPath}" || log-error "Failed to write to file '${scriptPa
 
 chmod u+x "${scriptPath}" || log-error "Failed to make '${scriptPath}' executable"
 
-renamefile "main.py" "${name}" &>/dev/null
-
-"${EDITOR:-nano}" "${name}"
+"${EDITOR:-nano}" "main.py"
 
 log-success "Script '${scriptPath}' created succefully!"
