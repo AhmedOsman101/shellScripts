@@ -94,8 +94,10 @@ parseCmdargFlags() {
       local flag_type="String"
       if [[ "${flag}" != *":"* ]] && [[ "${flag}" != *"?"* ]]; then
         flag_type="Boolean"
-      elif [[ "${flag}" == *"?"* ]]; then
-        flag_type="Optional"
+      elif [[ "${flag}" == *"[]"* ]]; then
+        flag_type="Array"
+      elif [[ "${flag}" == *"{}"* ]]; then
+        flag_type="Hash Map"
       fi
       echo "| -${flag%%:*} | --${longopt} | ${flag_type} | ${desc_text:-No description} |"
     fi
@@ -117,8 +119,8 @@ generateWikiPage() {
   logVerbose "Generating page for ${script_name}..."
 
   local desc deps help_output
-  desc=$(get-desc "${file}")
-  deps=$(get-deps "${file}")
+  desc="$(get-desc "${file}" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')"
+  deps="$(get-deps "${file}")"
   help_output=$(getHelpOutput "${file}")
 
   {
@@ -297,8 +299,8 @@ if [[ ! -f "${home_file}" ]] || "${FORCE}"; then
     for file in "${SCRIPTS_DIR}/lib"/*.sh; do
       [[ -f "${file}" ]] || continue
       lib_name=$(basename "${file}" .sh)
-      desc=$(get-desc "${file}")
-      echo "| [lib/${lib_name}](lib-${lib_name}.md) | ${desc:-No description} |"
+      desc=$(get-desc "${file}" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')
+      echo "| [lib/${lib_name}](lib/${lib_name}.md) | ${desc:-No description} |"
     done
     echo ""
     echo "## Scripts"
@@ -310,8 +312,8 @@ if [[ ! -f "${home_file}" ]] || "${FORCE}"; then
       first_line=$(head -1 "${file}" 2>/dev/null || true)
       if [[ "${first_line}" == *"bash"* ]] || [[ "${first_line}" == *"#!/bin/bash"* ]]; then
         script_name=$(basename "${file}")
-        desc=$(get-desc "${file}")
-        echo "| [${script_name}](${script_name}.md) | ${desc:-No description} |"
+        desc=$(get-desc "${file}" | tr '\n' ' ' | sed 's/  */ /g; s/^ //; s/ $//')
+        echo "| [${script_name}](bash/${script_name}.md) | ${desc:-No description} |"
       fi
     done
     echo ""
