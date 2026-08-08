@@ -31,7 +31,7 @@ The file must be a valid Markdown document with this exact structure:
 
 ## Source
 
-[<project-name>](relative_path_to_directory)
+[<project-name>](full_path_for_project_in_the_repo)
 ```
 
 ## RULES
@@ -42,10 +42,10 @@ The file must be a valid Markdown document with this exact structure:
    - When to use it
 
 2. **Installation**: Show build commands based on project type:
-   - Deno/TypeScript: `cd typescript/<name> && deno task compile` or mention it compiles with `release.sh`
-   - C: `cd c && clangc --compile <file>.c`
-   - C++: `cd cpp && cppc --compile <file>.cpp`
-   - Python: `cd python/<name> && uv install` (run directly after that)
+   - Deno/TypeScript: `./typescript/release.sh` (compiles all projects, output goes to `~/scripts/bin/`)
+   - C: `c/release.sh <file>.c` (compile all with `c/release.sh *.c`)
+   - C++: `cpp/release.sh <file>.cpp` (compile all with `cpp/release.sh *.cpp`)
+   - Python: run directly with `<project-name>` (repo is on PATH, mirror at `~/scripts/<project-name>`)
    - Lua: No installation needed (run directly)
 
 3. **Usage**: Provide concrete examples:
@@ -55,7 +55,7 @@ The file must be a valid Markdown document with this exact structure:
 
 4. **NO HALLUCINATIONS**: Only document what exists in the code. Do not invent features or flags.
 
-5. **Source path**: Point to the project directory, not individual files.
+5. **Source path**: Point to the project directory on GitHub, not individual files.
 
 ## PROJECT TYPES
 
@@ -71,7 +71,7 @@ The file must be a valid Markdown document with this exact structure:
 
 - Located in: `c/`
 - Single file: `c/<name>.c`
-- Built with: `c/release.sh *.c` (or `clangc --compile <name>.c`)
+- Built with: `c/release.sh <file>.c` (or `c/release.sh *.c` to compile all)
 - Compiled binary goes to: `~/scripts/bin/<name>`
 - Run with: `<name> [args]`
 
@@ -79,7 +79,7 @@ The file must be a valid Markdown document with this exact structure:
 
 - Located in: `cpp/`
 - Single file: `cpp/<name>.cpp`
-- Built with: `cpp/release.sh *.cpp` (or `cppc --compile <name>.cpp`)
+- Built with: `cpp/release.sh <file>.cpp` (or `cpp/release.sh *.cpp` to compile all)
 - Compiled binary goes to: `~/scripts/bin/<name>`
 - Run with: `<name> [args]`
 
@@ -87,7 +87,7 @@ The file must be a valid Markdown document with this exact structure:
 
 - Located in: `python/<project-name>/`
 - Entry point: `main.py`
-- Run with: `runpy <project-name>` or `<project-name>` (each script has a mirror at project root)
+- Run with: `<project-name>` directly (the repo is on PATH, each script has a mirror at `~/scripts/<project-name>`)
 - Created with: `mkpython` script
 
 ### Lua Scripts

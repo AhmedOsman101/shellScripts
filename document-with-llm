@@ -210,6 +210,9 @@ generateWithLLM() {
     prompt
     cat <<PROMPT
 
+## PROJECT OUTPUT FILE
+Write the documentation to: ${output_file}
+
 ## PROJECT PATH
 
 ${lang}/${project_name}/
