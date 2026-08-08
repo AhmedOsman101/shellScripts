@@ -12,6 +12,8 @@ You will receive:
 
 Write the generated Markdown wiki page to the file path provided in **PROJECT OUTPUT FILE** below using your file write tool (e.g., Write, bash, etc.). Do NOT output the full markdown content in chat. Confirm briefly when done.
 
+First check whether the file in **PROJECT OUTPUT FILE** already exists. If it does, read it and update it in place — fill any gaps, fix inaccuracies, and keep the existing structure where it is already correct. If it does not exist, create it fresh.
+
 The file must be a valid Markdown document with this exact structure:
 
 ```markdown

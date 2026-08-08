@@ -42,6 +42,10 @@ MODEL="${cmdarg_cfg['model']}"
 FORCE="${cmdarg_cfg['force']}"
 VERBOSE="${cmdarg_cfg['verbose']}"
 
+scriptName="${BASH_SOURCE[0]##*/}"
+cacheDir="${XDG_CACHE_HOME:-${HOME}/.cache}/${scriptName}"
+mkdir -p "${cacheDir}"
+
 logVerbose() {
   "${VERBOSE}" && logInfo "$1"
 }
@@ -59,11 +63,11 @@ getProjects() {
   case "${lang}" in
   typescript)
     # TypeScript projects are directories under typescript/
-    find "${SCRIPTS_DIR}/typescript" -mindepth 1 -maxdepth 1 -type d 2>/dev/null
+    find "${SCRIPTS_DIR}/typescript" -mindepth 1 -maxdepth 1 -type d ! -name '.*' 2>/dev/null
     ;;
   python)
     # Python projects are directories under python/
-    find "${SCRIPTS_DIR}/python" -mindepth 1 -maxdepth 1 -type d 2>/dev/null
+    find "${SCRIPTS_DIR}/python" -mindepth 1 -maxdepth 1 -type d ! -name '.*' 2>/dev/null
     ;;
   c)
     # C files are individual .c files in c/
@@ -171,6 +175,23 @@ collectContext() {
   printf '%s' "${context}"
 }
 
+# Compute a content hash for a project (all files for dirs, single file otherwise)
+projectHash() {
+  local project_path="$1"
+  local -a files
+
+  if [[ -d "${project_path}" ]]; then
+    # fd.sh excludes noise (node_modules, dist, .git, ...)
+    mapfile -t files < <(fd.sh . "${project_path}" --type f | sort)
+  else
+    files=("${project_path}")
+  fi
+
+  local -a hasher
+  read -ra hasher <<<"$(findHasher)"
+  cat "${files[@]}" 2>/dev/null | "${hasher[@]}" | awk '{print $1}'
+}
+
 # Generate wiki page using LLM
 generateWithLLM() {
   local project_path="$1"
@@ -191,6 +212,15 @@ generateWithLLM() {
   fi
 
   output_file="${WIKI_DIR}/${wiki_dir}/${project_name}.md"
+
+  # Change-detection cache: skip if the page exists and the project hasn't changed
+  local hash cache_file
+  hash="$(projectHash "${project_path}")"
+  cache_file="${cacheDir}/${lang}-${project_name}.hash"
+  if [[ -f "${output_file}" ]] && [[ -f "${cache_file}" ]] && [[ "$(<"${cache_file}")" == "${hash}" ]] && ! "${FORCE}"; then
+    logVerbose "Skipping ${project_name} (unchanged)"
+    return 0
+  fi
 
   # Skip if exists and not forced
   if [[ -f "${output_file}" ]] && ! "${FORCE}"; then
@@ -256,6 +286,9 @@ PROMPT
   esac
 
   logSuccess "Documentation session complete for: ${project_name}"
+
+  # Record the hash so unchanged projects are skipped next run
+  printf '%s\n' "${hash}" >"${cache_file}"
 }
 
 # --- Main --- #
