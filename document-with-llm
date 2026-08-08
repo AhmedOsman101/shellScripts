@@ -17,8 +17,9 @@
 # - opencode | pi | claude
 # --- END SIGNATURE --- #
 
-set -eo pipefail
+# set -eo pipefail
 trap 'exit 1' SIGUSR1
+SCRIPTS_DIR="${SCRIPTS_DIR:-${HOME}/scripts}"
 
 eval "$(include "lib/cmdarg.sh")"
 eval "$(include "lib/helpers.sh")"
@@ -40,7 +41,6 @@ PROVIDER="${cmdarg_cfg['provider']}"
 MODEL="${cmdarg_cfg['model']}"
 FORCE="${cmdarg_cfg['force']}"
 VERBOSE="${cmdarg_cfg['verbose']}"
-SCRIPTS_DIR="${SCRIPTS_DIR:-${HOME}/scripts}"
 
 logVerbose() {
   "${VERBOSE}" && logInfo "$1"
@@ -48,236 +48,7 @@ logVerbose() {
 
 # --- Prompt --- #
 prompt() {
-  cat <<'PROMPT'
-You are a technical documentation writer. Your task is to generate a Markdown wiki page for a script or project.
-
-## INPUT
-
-You will receive:
-1. The project structure (files and directories)
-2. The source code of the main script(s)
-3. Build configuration (deno.json, package.json, etc.) if present
-
-## OUTPUT FORMAT
-
-Generate ONLY a valid Markdown document with this exact structure:
-
-```markdown
-# <project-name>
-
-## Description
-
-<2-3 sentence summary. Be specific about purpose and functionality.>
-
-## Installation
-
-<How to build/compile the project, if applicable>
-
-## Usage
-
-<How to run the script with example commands and output>
-
-## Source
-
-[<project-name>](<relative_path_to_directory>)
-```
-
-## RULES
-
-1. **Description**: Write 2-3 concise sentences explaining:
-   - What the project does (primary function)
-   - Key features or capabilities
-   - When to use it
-
-2. **Installation**: Show build commands based on project type:
-   - Deno/TypeScript: `cd typescript/<name> && deno task compile` or mention it compiles with `release.sh`
-   - C: `cd c && clangc --compile <file>.c`
-   - C++: `cd cpp && cppc --compile <file>.cpp`
-   - Python: `cd python/<name> && uv install` (run directly after that)
-   - Lua: No installation needed (run directly)
-
-3. **Usage**: Provide concrete examples:
-   - Show the actual command to run
-   - Include example arguments
-   - Show expected output if helpful
-
-4. **NO HALLUCINATIONS**: Only document what exists in the code. Do not invent features or flags.
-
-5. **Source path**: Point to the project directory, not individual files.
-
-## PROJECT TYPES
-
-### TypeScript Projects
-- Located in: `typescript/<project-name>/`
-- Contains: `<project>.ts`, `deno.json`, optionally `deno.lock`
-- Built with: `cd typescript && ./release.sh` (compiles all)
-- Compiled binary goes to: `~/scripts/bin/<project-name>`
-- Run with: `<project-name> [args]` (after compilation)
-
-### C Projects
-- Located in: `c/`
-- Single file: `c/<name>.c`
-- Built with: `c/release.sh *.c` (or `clangc --compile <name>.c`)
-- Compiled binary goes to: `~/scripts/bin/<name>`
-- Run with: `<name> [args]`
-
-### C++ Projects
-- Located in: `cpp/`
-- Single file: `cpp/<name>.cpp`
-- Built with: `cpp/release.sh *.cpp` (or `cppc --compile <name>.cpp`)
-- Compiled binary goes to: `~/scripts/bin/<name>`
-- Run with: `<name> [args]`
-
-### Python Projects
-- Located in: `python/<project-name>/`
-- Entry point: `main.py`
-- Run with: `runpy <project-name>` or `<project-name>` (each script has a mirror at project root)
-- Created with: `mkpython` script
-
-### Lua Scripts
-- Located in: `lua/`
-- Single file with shebang: `lua/<name>.lua`
-- Run directly: `<name>.lua [args]`
-
-## EXAMPLES
-
-### Example 1: C file
-
-Input structure:
-```
-c/
-├── get-terminal-size.c
-└── release.sh
-```
-
-Input source (get-terminal-size.c):
-```c
-#include <stdio.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-
-int main() {
-  struct winsize ws;
-  if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1) {
-    perror("ioctl");
-    return 1;
-  }
-  printf("Rows: %d, Cols: %d\n", ws.ws_row, ws.ws_col);
-  return 0;
-}
-```
-
-Output:
-```markdown
-# get-terminal-size
-
-## Description
-
-Gets the terminal dimensions (rows and columns) using the ioctl system call. Reports the current terminal size to stdout.
-
-## Installation
-
-```bash
-c/release.sh c/get-terminal-size.c
-```
-
-## Usage
-
-```bash
-get-terminal-size
-# Output: Rows: 40, Cols: 120
-```
-
-## Source
-
-[get-terminal-size](https://github.com/AhmedOsman101/shellScripts/blob/main/c/get-terminal-size.c)
-```
-
-### Example 2: TypeScript project
-
-Input structure:
-```
-typescript/signal-map/
-├── deno.json
-├── deno.lock
-└── signal-map.ts
-```
-
-Input source (deno.json):
-```json
-{
-  "tasks": {
-    "compile": "deno compile --allow-env --allow-net signal-map.ts"
-  }
-}
-```
-
-Output:
-```markdown
-# signal-map
-
-## Description
-
-Maps Unix signal names to their numbers and vice versa. Converts between signal names (SIGTERM, SIGINT) and their numeric values.
-
-## Installation
-
-```bash
-typescript/release.sh
-```
-
-## Usage
-
-```bash
-signal-map SIGTERM
-# Output: 15 SIGTERM 143
-
-signal-map 15
-# Output: 15 SIGTERM 143
-```
-
-## Source
-
-[signal-map](https://github.com/AhmedOsman101/shellScripts/tree/typescript/signal-map)
-```
-
-### Example 3: Python project
-
-Input structure:
-```
-python/pdfx/
-├── main.py
-└── pyproject.toml # Contains description
-```
-
-Output:
-```markdown
-# pdfx
-
-## Description
-
-Extracts text and metadata from PDF files. Supports various extraction modes for different use cases.
-
-## Usage
-
-```bash
-pdfx --help
-```
-
-## Source
-
-[pdfx](https://github.com/AhmedOsman101/shellScripts/tree/python/pdfx)
-```
-
-## FINAL CHECK
-
-Before outputting, verify:
-- [ ] Description is 2-3 sentences, specific and accurate
-- [ ] Installation shows correct build command for project type
-- [ ] Usage shows real commands with examples
-- [ ] No invented features or flags
-- [ ] Source path points to directory, not individual files
-PROMPT
+  cat "${SCRIPTS_DIR}/templates/document-with-llm/prompt.md"
 }
 
 # --- Functions --- #
@@ -331,49 +102,73 @@ collectContext() {
   local lang="$2"
   local context=""
 
-  context+="## Project Structure\n\n"
+  context+="## Project Structure"
+  context+=$'\n\n'
 
   case "${lang}" in
   typescript)
-    # List directory contents
-    context+="$(find "${project_path}" -maxdepth 1 -type f | sed "s|${project_path}/||" | sort | sed 's/^/- /')\n\n"
-    # Add deno.json if exists
+    context+="$(find "${project_path}" -maxdepth 1 -type f | sed "s|${project_path}/||" | sort | sed 's/^/- /')"
+    context+=$'\n\n'
+
     if [[ -f "${project_path}/deno.json" ]]; then
-      context+="## deno.json\n\n"
-      context+="\`\`\`json\n$(cat "${project_path}/deno.json")\n\`\`\`\n\n"
+      context+="## deno.json"
+      context+=$'\n\n'
+      context+='```json'
+      context+=$'\n'
+      context+="$(cat "${project_path}/deno.json")"
+      context+=$'\n''```'
+      context+=$'\n\n'
     fi
-    # Add main TypeScript file
+
     local ts_file
     ts_file=$(find "${project_path}" -maxdepth 1 -name "*.ts" -type f | head -1)
     if [[ -n "${ts_file}" ]]; then
-      context+="## $(basename "${ts_file}")\n\n"
-      context+="\`\`\`typescript\n$(cat "${ts_file}")\n\`\`\`\n\n"
+      context+="## $(basename "${ts_file}")"
+      context+=$'\n\n'
+      context+='```typescript'
+      context+=$'\n'
+      context+="$(cat "${ts_file}")"
+      context+=$'\n''```'
+      context+=$'\n\n'
     fi
     ;;
   python)
-    # List directory contents
-    context+="$(find "${project_path}" -maxdepth 1 -type f | sed "s|${project_path}/||" | sort | sed 's/^/- /')\n\n"
-    # Add main.py
+    context+="$(find "${project_path}" -maxdepth 1 -type f | sed "s|${project_path}/||" | sort | sed 's/^/- /')"
+    context+=$'\n\n'
+
     if [[ -f "${project_path}/main.py" ]]; then
-      context+="## main.py\n\n"
-      context+="\`\`\`python\n$(cat "${project_path}/main.py")\n\`\`\`\n\n"
+      context+="## main.py"
+      context+=$'\n\n'
+      context+='```python'
+      context+=$'\n'
+      context+="$(cat "${project_path}/main.py")"
+      context+=$'\n''```'
+      context+=$'\n\n'
     fi
     ;;
   c | cpp)
-    # Single file
     local src_file="${project_path}"
-    context+="## $(basename "${src_file}")\n\n"
-    context+="\`\`\`${lang}\n$(cat "${src_file}")\n\`\`\`\n\n"
+    context+="## $(basename "${src_file}")"
+    context+=$'\n\n'
+    context+="\`\`\`${lang}"
+    context+=$'\n'
+    context+="$(cat "${src_file}")"
+    context+=$'\n''```'
+    context+=$'\n\n'
     ;;
   lua)
-    # Single file
-    context+="## $(basename "${project_path}")\n\n"
-    context+="\`\`\`lua\n$(cat "${project_path}")\n\`\`\`\n\n"
+    context+="## $(basename "${project_path}")"
+    context+=$'\n\n'
+    context+='```lua'
+    context+=$'\n'
+    context+="$(cat "${project_path}")"
+    context+=$'\n''```'
+    context+=$'\n\n'
     ;;
   *) : ;;
   esac
 
-  echo -e "${context}"
+  printf '%s' "${context}"
 }
 
 # Generate wiki page using LLM
@@ -411,8 +206,9 @@ generateWithLLM() {
   context=$(collectContext "${project_path}" "${lang}")
 
   # Build the full prompt
-  local full_prompt
-  full_prompt="$(prompt)
+  full_prompt() {
+    prompt
+    cat <<PROMPT
 
 ## PROJECT PATH
 
@@ -422,32 +218,39 @@ ${lang}/${project_name}/
 
 ${context}
 
-Generate the wiki page now."
+Generate the wiki page now.
+PROMPT
+  }
 
   # Copy prompt to clipboard
-  clipcopy "${full_prompt}"
+  full_prompt | clipcopy
   logInfo "Prompt copied to clipboard for: ${project_name}"
   logInfo "Paste the prompt into ${PROVIDER} to generate the documentation."
+
+  # Providers expect a directory, but C/C++/Lua projects are single files
+  local run_dir="${project_path}"
+  [[ -d "${run_dir}" ]] || run_dir="$(dirname "${run_dir}")"
 
   # Execute based on provider
   case "${PROVIDER}" in
   opencode)
-    if [[ -n "${MODEL}" ]]; then
-      opencode --model "${MODEL}" "${project_path}"
-    else
-      opencode "${project_path}"
+    opencode "${run_dir}"
+    local exitCode=$?
+    if ((exitCode != 0)); then
+      log-error --no-kill "opencode failed for ${project_name} (exit ${exitCode})"
+      return 1
     fi
     ;;
   pi)
-    cd "${project_path}"
+    cd "${run_dir}" || exit
     if [[ -n "${MODEL}" ]]; then
-      pi -m "${MODEL}"
+      pi --model "${MODEL}"
     else
       pi
     fi
     ;;
   claude)
-    cd "${project_path}"
+    cd "${run_dir}" || exit
     if [[ -n "${MODEL}" ]]; then
       ANTHROPIC_DEFAULT_FABLE_MODEL="${MODEL:-}" \
         ANTHROPIC_DEFAULT_OPUS_MODEL="${MODEL:-}" \
@@ -472,11 +275,15 @@ LANGUAGES=(c cpp python typescript lua)
 total=0
 
 for lang in "${LANGUAGES[@]}"; do
-  while IFS= read -r project; do
+  unset projects &>/dev/null || true
+  mapfile -t projects < <(getProjects "${lang}")
+  ((${#projects[@]})) || continue
+
+  for project in "${projects[@]}"; do
     [[ -e "${project}" ]] || continue
     ((++total))
     generateWithLLM "${project}" "${lang}"
-  done < <(getProjects "${lang}")
+  done
 done
 
 echo ""
