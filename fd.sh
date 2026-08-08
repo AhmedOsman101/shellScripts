@@ -30,6 +30,8 @@ excludes=(
   '.cache'
   'dist'
   'build'
+  'venv'
+  '.venv'
 )
 
 for exclude in "${excludes[@]}"; do
