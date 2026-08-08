@@ -49,11 +49,11 @@ cmdarg_usage() {
   cat <<EOF
 
 Subcommands:
-    start      Start the OpenCode web interface server
-    stop       Stop the running server and config watcher
-    restart    Restart the server (stop then start)
-    status     Show PID and access URLs
-    pid        Show only the server PID
+    start        Start the OpenCode web interface server
+    stop|kill    Stop the running server and config watcher
+    restart      Restart the server (stop then start)
+    status       Show PID and access URLs
+    pid          Show only the server PID
 EOF
   exit "${1:-0}"
 }
@@ -211,7 +211,7 @@ pid() {
 setup
 case "${action}" in
 start) start ;;
-stop) stop ;;
+stop | kill) stop ;;
 restart) restart ;;
 status) status ;;
 pid) pid ;;
