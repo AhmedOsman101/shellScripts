@@ -17,7 +17,6 @@
 # - tr
 # - awk
 # - paste
-# - mktemp
 # --- END SIGNATURE --- #
 
 set -eo pipefail

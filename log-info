@@ -12,7 +12,7 @@
 #                      ▀████▀▀
 #
 # --- DESCRIPTION --- #
-# Prints purple info text
+# Prints info messages in purple with a '[SUCCESS] ' prefix; reads from stdin or arguments
 # --- DEPENDENCIES --- #
 #
 # --- END SIGNATURE --- #

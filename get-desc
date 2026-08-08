@@ -44,6 +44,7 @@ sed -n '
     :loop
     n
     /# --- DEPENDENCIES --- #/q
+    /# --- END SIGNATURE --- #/q
     /\# /p
     b loop
   }
