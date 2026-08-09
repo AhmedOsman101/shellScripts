@@ -17,25 +17,23 @@
 # - fd | fdfind (fd-find)
 # --- END SIGNATURE --- #
 
-set -uo pipefail
+set -eo pipefail
 
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
-if [[ -z "${SCRIPTS_DIR}" ]]; then
-  SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
-fi
+INIT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 
-export PATH="${PATH}:${SCRIPTS_DIR}"
+export PATH="${PATH}:${INIT_DIR}"
 
-file="${SCRIPTS_DIR}/check-deps"
+checkDepsFile="${INIT_DIR}/check-deps"
 declare -a scripts
 
-if [[ -f "${file}" ]]; then
-  source "${file}"
+if [[ -s "${checkDepsFile}" ]]; then
+  source "${checkDepsFile}"
   checkDeps "${BASH_SOURCE[0]}"
 else
-  echo "Dependency check script not found at ${file}" 1>&2
+  echo "Dependency check script not found at ${checkDepsFile}" 1>&2
   exit 1
 fi
 
@@ -57,7 +55,7 @@ if ! command -v fd &>/dev/null; then
   logError "${error}"
 fi
 
-SCRIPTS_DIR="${HOME}/scripts"
+: "${SCRIPTS_DIR:=${HOME}/scripts}"
 DESTINATION_DIR="${HOME}/.local/bin/scripts"
 
 if [[ ! -d "${SCRIPTS_DIR}" ]]; then
@@ -80,7 +78,7 @@ fi
 fd . -t l -t x "${DESTINATION_DIR}" -x sudo rm 2>/dev/null || true
 
 # Check if PATH doesn't contain DESTINATION_DIR
-if grep "${DESTINATION_DIR}" -vq < <(echo "${PATH}"); then
+if [[ ":${PATH}:" != *":${DESTINATION_DIR}:"* ]]; then
   logWarning "Add this to your .$(basename "${SHELL}")rc file to make scripts globally available:"
 
   # shellcheck disable=2016 # literally print it don't expand
