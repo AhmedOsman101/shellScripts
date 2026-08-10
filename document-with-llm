@@ -15,6 +15,7 @@
 # Documents non-bash scripts using an LLM to generate wiki pages
 # --- DEPENDENCIES --- #
 # - opencode | pi | claude
+# - xxh3sum (xxhash) | xxhsum (xxhash) | sha1sum (coreutils)
 # --- END SIGNATURE --- #
 
 # set -eo pipefail

@@ -18,6 +18,7 @@
 # --- DEPENDENCIES --- #
 # - piper-tts (piper-tts-git) | piper-tts
 # - aplay | mpv
+# - b2sum (coreutils)
 # --- END SIGNATURE --- #
 
 set -eo pipefail

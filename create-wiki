@@ -15,6 +15,7 @@
 # Generates wiki pages for all scripts in the repository
 # --- DEPENDENCIES --- #
 # - parallel
+# - xxh3sum (xxhash) | xxhsum (xxhash) | sha1sum (coreutils)
 # --- END SIGNATURE --- #
 
 set -eo pipefail

@@ -15,7 +15,7 @@
 # Compiles and optionally runs C files with customizable compiler arguments
 # --- DEPENDENCIES --- #
 # - clang
-# - xxh3sum (xxhash) | xxhsum (xxhash)
+# - xxh3sum (xxhash) | xxhsum (xxhash) | sha1sum (coreutils)
 # --- END SIGNATURE --- #
 
 set -eo pipefail
