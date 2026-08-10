@@ -36,7 +36,7 @@ cmdarg_parse "$@"
 # Check if the correct number of arguments is passed
 if ! ((argc)); then
   cmdarg_usage
-  exit 1
+  exit 2
 fi
 
 isQuiet="${cmdarg_cfg['quiet']}"

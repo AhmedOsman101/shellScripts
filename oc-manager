@@ -55,7 +55,7 @@ Subcommands:
     status       Show PID and access URLs
     pid          Show only the server PID
 EOF
-  exit "${1:-0}"
+  exit "${2:-0}"
 }
 
 cmdarg_parse "$@"
@@ -240,5 +240,5 @@ restart) restart ;;
 status) status ;;
 pid) pid ;;
 __watch) watch ;;
-? | *) cmdarg_usage 1 ;;
+? | *) cmdarg_usage 2 ;;
 esac
