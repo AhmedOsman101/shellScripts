@@ -42,6 +42,7 @@ fi
 
 isQuiet="${cmdarg_cfg['quiet']}"
 jobs="${cmdarg_cfg['jobs']}"
+isPositive "${jobs}" || log-error "Number of threads must be positive"
 
 # Count occurrences of all delimiters to be replaced
 get_total_count() {

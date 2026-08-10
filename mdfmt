@@ -27,10 +27,13 @@ source "$(include "check-deps")"
 checkDeps "$0"
 
 cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "j" "jobs" "How many threads to use in parallel?" "$(nproc)"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
-declare -a files
+jobs="${cmdarg_cfg['jobs']}"
+isPositive "${jobs}" || log-error "Number of threads must be positive"
 
+declare -a files
 if ((argc == 0)); then
   # Populate the array directly from fd output
   mapfile -t files < <(fd.sh . -I -e md -e markdown .)
@@ -52,8 +55,8 @@ filesCount=${#files[@]}
 spinner.sh "Formatting ${filesCount} files..." 1>&2 &
 SPINNER_PID=$!
 
-mdmath -q "${files[@]}" || log-warning "Failed to fix math in ${filesCount} files"
-mdclean -q "${files[@]}" || log-warning "Failed to clean ${filesCount} files"
+mdmath -q -j "${jobs}" "${files[@]}" || log-warning "Failed to fix math in ${filesCount} files"
+mdclean -q -j "${jobs}" "${files[@]}" || log-warning "Failed to clean ${filesCount} files"
 
 killwait "${SPINNER_PID}"
 
