@@ -308,6 +308,11 @@ function cmdarg_parse {
     elif [[ "${fullopt:0:1}" == "-" ]] && [[ ${#fullopt} -eq 2 ]]; then
       opt=${fullopt:1}
       longopt=${CMDARG[${opt}]}
+    elif [[ "${fullopt}" == "-" ]]; then
+      # A bare "-" is the standard convention for a special value
+      # (e.g. stdin or "rest of file"). Treat it as a positional argument.
+      argv+=("${fullopt}")
+      continue
     elif [[ "${fullopt:0:1}" != "-" ]]; then
       argv+=("${fullopt}")
       continue

@@ -16,7 +16,6 @@
 # --- END SIGNATURE --- #
 
 source "$(include "lib/helpers.sh")"
-
 # ---  Main script logic --- #
 
 checkDep() {
