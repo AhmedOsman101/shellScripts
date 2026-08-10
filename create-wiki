@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Generates wiki pages for all scripts in the repository
 # --- DEPENDENCIES --- #
-#
+# - parallel
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -33,6 +33,7 @@ cmdarg "a" "all" "Also generate pages for non-bash scripts using LLM"
 cmdarg "p?" "provider" "LLM provider (opencode, pi, claude)" "pi"
 cmdarg "m?" "model" "LLM model to use"
 cmdarg "v" "verbose" "Enable verbose output"
+cmdarg "j?" "jobs" "How many threads to use in parallel?" "$(nproc)"
 cmdarg_parse "$@"
 
 # --- Config --- #
@@ -43,6 +44,8 @@ PROVIDER="${cmdarg_cfg['provider']}"
 MODEL="${cmdarg_cfg['model']}"
 VERBOSE="${cmdarg_cfg['verbose']}"
 SCRIPTS_DIR="${SCRIPTS_DIR:-${HOME}/scripts}"
+JOBS="${cmdarg_cfg['jobs']}"
+isPositive "${JOBS}" || log-error "Number of threads must be positive"
 
 # Scripts to exclude from wiki generation
 IGNORED_SCRIPTS=(
@@ -59,7 +62,7 @@ REPO_URL="${remote/git@github.com:/https://github.com/}"
 # --- Helper Functions --- #
 
 logVerbose() {
-  "${VERBOSE}" && logInfo "$@" || true
+  "${VERBOSE}" && log-info "$@" || true
 }
 
 # Check if script uses cmdarg
@@ -76,36 +79,29 @@ getHelpOutput() {
     return
   fi
 
-  local help_output
-  help_output=$(timeout 2 "${file}" --help 2>&1 || true)
-
-  if [[ "${help_output}" == *"--"* ]] || [[ "${help_output}" == *"Arguments"* ]]; then
-    echo "${help_output}"
-  else
-    echo ""
-  fi
+  timeout 2 "${file}" --help 2>&1 || true
 }
 
 # Parse cmdarg flags from script
 parseCmdargFlags() {
   local file="$1"
   while IFS= read -r line; do
-    local flag longopt desc_text
+    local flag longopt descText
     # Extract values using sed with simple patterns
     flag=$(echo "${line}" | sed 's/.*cmdarg "\([^"]*\)".*/\1/' | head -1)
     longopt=$(echo "${line}" | sed 's/.*cmdarg "[^"]*" "\([^"]*\)".*/\1/' | head -1)
-    desc_text=$(echo "${line}" | sed 's/.*cmdarg "[^"]*" "[^"]*" "\([^"]*\)".*/\1/' | head -1)
+    descText=$(echo "${line}" | sed 's/.*cmdarg "[^"]*" "[^"]*" "\([^"]*\)".*/\1/' | head -1)
 
     if [[ -n "${flag}" ]]; then
-      local flag_type="String"
+      local flagType="String"
       if [[ "${flag}" != *":"* ]] && [[ "${flag}" != *"?"* ]]; then
-        flag_type="Boolean"
+        flagType="Boolean"
       elif [[ "${flag}" == *"[]"* ]]; then
-        flag_type="Array"
+        flagType="Array"
       elif [[ "${flag}" == *"{}"* ]]; then
-        flag_type="Hash Map"
+        flagType="Hash Map"
       fi
-      echo "| -${flag%%:*} | --${longopt} | ${flag_type} | ${desc_text:-No description} |"
+      echo "| -${flag%%:*} | --${longopt} | ${flagType} | ${descText:-No description} |"
     fi
   done < <(grep -E '^\s*cmdarg\s+"' "${file}")
 }
@@ -113,38 +109,38 @@ parseCmdargFlags() {
 # Generate wiki page for a script
 generateScriptPage() {
   local file="$1"
-  local script_name output_file rel_dir
-  script_name=$(basename "${file}")
+  local scriptName outputFile relDir
+  scriptName=$(basename "${file}")
 
   # Determine relative directory
-  local orig_rel_dir
-  orig_rel_dir=$(dirname "${file}" | sed -e "s|^${SCRIPTS_DIR}||" -e " s|^/||")
-  rel_dir="${orig_rel_dir}"
-  case "${rel_dir}" in
-  "") rel_dir="bash" ;;
+  local origRelDir
+  origRelDir=$(dirname "${file}" | sed -e "s|^${SCRIPTS_DIR}||" -e " s|^/||")
+  relDir="${origRelDir}"
+  case "${relDir}" in
+  "") relDir="bash" ;;
   # Bash scripts: lib -> bash/lib/, rofi -> bash/rofi/, external -> bash/external/
-  lib | rofi | external) rel_dir="bash/${rel_dir}" ;;
+  lib | rofi | external) relDir="bash/${relDir}" ;;
   # Other languages keep their dir: wiki/c/, wiki/cpp/, etc.
   *) : ;;
   esac
 
-  mkdir -p "${WIKI_DIR}/${rel_dir}"
-  output_file="${WIKI_DIR}/${rel_dir}/${script_name}.md"
+  mkdir -p "${WIKI_DIR}/${relDir}"
+  outputFile="${WIKI_DIR}/${relDir}/${scriptName}.md"
 
-  if [[ -f "${output_file}" ]] && ! "${FORCE}"; then
-    logVerbose "Skipping ${script_name} (exists, use -f to overwrite)"
+  if [[ -f "${outputFile}" ]] && ! "${FORCE}"; then
+    logVerbose "Skipping ${scriptName} (exists, use -f to overwrite)"
     return 0
   fi
 
-  logVerbose "Generating page for ${script_name}..."
+  logVerbose "Generating page for ${scriptName}..."
 
-  local desc deps help_output
-  desc="$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')"
+  local desc deps helpOutput
+  desc="$(get-desc "${file}" | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')"
   deps="$(get-deps "${file}")"
-  help_output=$(getHelpOutput "${file}")
+  helpOutput=$(getHelpOutput "${file}")
 
   {
-    echo "# ${script_name}"
+    echo "# ${scriptName}"
     echo ""
     echo "## Description"
     echo ""
@@ -157,23 +153,23 @@ generateScriptPage() {
     echo "## Usage"
     echo ""
     echo '```bash'
-    if [[ -n "${help_output}" ]]; then
-      echo "${help_output}"
+    if [[ -n "${helpOutput}" ]]; then
+      echo "${helpOutput}"
     else
-      echo "${script_name} [options] [arguments]"
+      echo "${scriptName} [options] [arguments]"
     fi
     echo '```'
     echo ""
 
     # Document flags if script uses cmdarg
     if usesCmdarg "${file}"; then
-      flags_table=$(parseCmdargFlags "${file}")
-      if [[ -n "${flags_table}" ]]; then
+      flagsTable=$(parseCmdargFlags "${file}")
+      if [[ -n "${flagsTable}" ]]; then
         echo "## Flags & Options"
         echo ""
         echo "| Short | Long | Type | Description |"
         echo "|-------|------|------|-------------|"
-        echo "${flags_table}"
+        echo "${flagsTable}"
         echo ""
       fi
     fi
@@ -198,36 +194,36 @@ generateScriptPage() {
 
     echo "## Source"
     echo ""
-    local source_path="${orig_rel_dir:+${orig_rel_dir}/}${script_name}"
-    echo "[${script_name}](${REPO_URL}/blob/main/${source_path})"
+    local sourcePath="${origRelDir:+${origRelDir}/}${scriptName}"
+    echo "[${scriptName}](${REPO_URL}/blob/main/${sourcePath})"
     echo ""
 
-  } >"${output_file}"
+  } >"${outputFile}"
 
-  logSuccess "Created: ${rel_dir}/${script_name}.md"
+  log-success "Created: ${relDir}/${scriptName}.md"
 }
 
 # Generate wiki page for a library
 generateLibPage() {
   local file="$1"
-  local lib_name output_file
-  lib_name=$(basename "${file}" .sh)
+  local libName outputFile
+  libName=$(basename "${file}" .sh)
 
   mkdir -p "${WIKI_DIR}/bash/lib"
-  output_file="${WIKI_DIR}/bash/lib/${lib_name}.md"
+  outputFile="${WIKI_DIR}/bash/lib/${libName}.md"
 
-  if [[ -f "${output_file}" ]] && ! "${FORCE}"; then
-    logVerbose "Skipping lib/${lib_name} (exists, use -f to overwrite)"
+  if [[ -f "${outputFile}" ]] && ! "${FORCE}"; then
+    logVerbose "Skipping lib/${libName} (exists, use -f to overwrite)"
     return 0
   fi
 
-  logVerbose "Generating page for lib/${lib_name}..."
+  logVerbose "Generating page for lib/${libName}..."
 
   local desc
-  desc="$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e' s/ $//')"
+  desc="$(get-desc "${file}" | sed -e 's/  */ /g' -e 's/^ //' -e' s/ $//')"
 
   {
-    echo "# lib/${lib_name}"
+    echo "# lib/${libName}"
     echo ""
     echo "## Description"
     echo ""
@@ -243,67 +239,78 @@ generateLibPage() {
     echo ""
     echo '```bash'
     # shellcheck disable=SC2016
-    echo 'source "$(include "lib/'"${lib_name}"'.sh")"'
+    echo 'source "$(include "lib/'"${libName}"'.sh")"'
     echo '```'
     echo ""
     echo "## Source"
     echo ""
-    echo "[lib/${lib_name}.sh](${REPO_URL}/blob/main/lib/${lib_name}.sh)"
+    echo "[lib/${libName}.sh](${REPO_URL}/blob/main/lib/${libName}.sh)"
     echo ""
-  } >"${output_file}"
+  } >"${outputFile}"
 
-  logSuccess "Created: bash/lib/${lib_name}.md"
+  log-success "Created: bash/lib/${libName}.md"
 }
 
 # --- Main --- #
 
 mkdir -p "${WIKI_DIR}/bash"
 
-total=0
-created=0
-skipped=0
-ignored=false
+# Process script files (called by parallel)
+main() {
+  local file
+  # Reconstruct IGNORED_SCRIPTS array from serialized string
+  local ignoredScripts=()
+  while IFS= read -r ignoredScript; do
+    ignoredScripts+=("${ignoredScript}")
+  done <<< "${IGNORED_SCRIPTS_LIST}"
 
-# Find all bash scripts (root + lib + rofi + external)
-for file in "${SCRIPTS_DIR}"/* "${SCRIPTS_DIR}/lib"/*.sh "${SCRIPTS_DIR}/rofi"/* "${SCRIPTS_DIR}/external"/*; do
-  [[ -f "${file}" ]] || continue
+  for file in "$@"; do
+    [[ -f "${file}" ]] || continue
 
-  # Skip non-script files
-  [[ "${file}" == *.rasi ]] && continue
+    # Skip non-script files
+    [[ "${file}" == *.rasi ]] && continue
 
-  first_line=$(head -1 "${file}" 2>/dev/null || true)
-  if [[ "${first_line}" != *"bash"* ]] && [[ "${first_line}" != *"#!/bin/bash"* ]]; then
-    continue
-  fi
+    local firstLine
+    firstLine=$(head -1 "${file}" 2>/dev/null || true)
+    [[ "${firstLine}" == *"bash"* ]] || continue
 
-  script_name=$(basename "${file}")
+    local scriptName
+    scriptName=$(basename "${file}")
 
-  # Skip ignored scripts
-  ignored=false
-  for ignored_script in "${IGNORED_SCRIPTS[@]}"; do
-    if [[ "${script_name}" == "${ignored_script}" ]]; then
-      ignored=true
-      break
+    # Skip ignored scripts
+    local ignoredScript
+    for ignoredScript in "${ignoredScripts[@]}"; do
+      if [[ "${scriptName}" == "${ignoredScript}" ]]; then
+        logVerbose "Skipping ${scriptName} (ignored)"
+        continue 2
+      fi
+    done
+
+    # Generate page based on file location
+    if [[ "${file}" == *"/lib/"* ]]; then
+      generateLibPage "${file}"
+    else
+      generateScriptPage "${file}"
     fi
   done
-  if "${ignored}"; then
-    ((++skipped))
-    logVerbose "Skipping ${script_name} (ignored)"
-    continue
-  fi
+}
 
-  # Generate page based on file location
-  if [[ "${file}" == *"/lib/"* ]]; then
-    generateLibPage "${file}"
-  else
-    generateScriptPage "${file}"
-  fi
-  ((++created))
-done
+export -f main
+export -f logVerbose
+export -f generateScriptPage
+export -f generateLibPage
+export -f usesCmdarg
+export -f getHelpOutput
+export -f parseCmdargFlags
+export WIKI_DIR FORCE VERBOSE SCRIPTS_DIR REPO_URL
+# Bash cannot export arrays through the environment — serialize to a plain string
+export IGNORED_SCRIPTS_LIST="$(printf '%s\n' "${IGNORED_SCRIPTS[@]}")"
+
+printf '%s\0' "${SCRIPTS_DIR}"/* "${SCRIPTS_DIR}/lib"/*.sh "${SCRIPTS_DIR}/rofi"/* "${SCRIPTS_DIR}/external"/* | parallel -0 -j "${JOBS}" -k -m --tty main
 
 # Generate Home.md
-home_file="${WIKI_DIR}/Home.md"
-if [[ ! -f "${home_file}" ]] || "${FORCE}"; then
+homeFile="${WIKI_DIR}/Home.md"
+if [[ ! -f "${homeFile}" ]] || "${FORCE}"; then
   {
     echo "# Scripts Wiki"
     echo ""
@@ -321,9 +328,9 @@ if [[ ! -f "${home_file}" ]] || "${FORCE}"; then
     # Libraries
     for file in "${SCRIPTS_DIR}/lib"/*.sh; do
       [[ -f "${file}" ]] || continue
-      lib_name=$(basename "${file}" .sh)
+      libName=$(basename "${file}" .sh)
       desc=$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')
-      echo "| [lib/${lib_name}](bash/lib/${lib_name}.md) | ${desc:-No description} |"
+      echo "| [lib/${libName}](bash/lib/${libName}.md) | ${desc:-No description} |"
     done
     echo ""
     echo "## Scripts"
@@ -333,16 +340,15 @@ if [[ ! -f "${home_file}" ]] || "${FORCE}"; then
     # Bash scripts from root
     for file in "${SCRIPTS_DIR}"/*; do
       [[ -f "${file}" ]] || continue
-      first_line=$(head -1 "${file}" 2>/dev/null || true)
-      if [[ "${first_line}" == *"bash"* ]] || [[ "${first_line}" == *"#!/bin/bash"* ]]; then
-        script_name=$(basename "${file}")
-        desc=$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')
-        echo "| [${script_name}](bash/${script_name}.md) | ${desc:-No description} |"
-      fi
+      firstLine=$(head -1 "${file}" 2>/dev/null || true)
+      [[ "${firstLine}" == *"bash"* ]] || continue
+      scriptName=$(basename "${file}")
+      desc=$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')
+      echo "| [${scriptName}](bash/${scriptName}.md) | ${desc:-No description} |"
     done
     echo ""
-  } >"${home_file}"
-  logSuccess "Created: Home.md"
+  } >"${homeFile}"
+  log-success "Created: Home.md"
 fi
 
 # Generate pages for non-bash scripts using LLM
@@ -353,9 +359,5 @@ fi
 mdfmt "${WIKI_DIR}" &>/dev/null
 
 echo ""
-logSuccess "Wiki generation complete!"
-echo "  Total scripts: ${total}"
-echo "  Created: ${created}"
-echo "  Skipped: ${skipped}"
-echo ""
-echo "Wiki location: ${WIKI_DIR}"
+log-success "Wiki generation complete!"
+echo "  Wiki location: ${WIKI_DIR}"
