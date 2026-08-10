@@ -31,7 +31,7 @@ checkDeps "$0"
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "q" "quiet" "Supress output"
-cmdarg "j" "jobs" "How many threads to use in parallel?" "$(nproc)"
+cmdarg "j?" "jobs" "How many threads to use in parallel?" "$(nproc)"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 # Check if the correct number of arguments is passed

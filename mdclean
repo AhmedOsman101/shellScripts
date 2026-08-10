@@ -30,11 +30,12 @@ checkDeps "$0"
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "q" "quiet" "Supress output"
-cmdarg "j" "jobs" "How many threads to use in parallel?" "$(nproc)"
+cmdarg "j?" "jobs" "How many threads to use in parallel?" "$(nproc)"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 isQuiet="${cmdarg_cfg['quiet']}"
 jobs="${cmdarg_cfg['jobs']}"
+isPositive "${jobs}" || log-error "Number of threads must be positive"
 
 main() {
   local file

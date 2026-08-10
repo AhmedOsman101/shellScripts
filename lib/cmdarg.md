@@ -165,7 +165,7 @@ cmdarg_parse "$@"
 cmdarg takes the pain out of creating your --help messages. For example, consider you had this script:
 
 ```bash
-#!/bin/bash
+#!/usr/bin/env bash
 source /usr/lib/cmdarg.sh
 declare -a myarray
 

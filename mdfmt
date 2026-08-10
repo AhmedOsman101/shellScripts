@@ -27,7 +27,7 @@ source "$(include "check-deps")"
 checkDeps "$0"
 
 cmdarg_info "header" "$(get-desc "$0")"
-cmdarg "j" "jobs" "How many threads to use in parallel?" "$(nproc)"
+cmdarg "j?" "jobs" "How many threads to use in parallel?" "$(nproc)"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 jobs="${cmdarg_cfg['jobs']}"
