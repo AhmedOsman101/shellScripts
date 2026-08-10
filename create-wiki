@@ -62,6 +62,39 @@ REPO_URL="${remote/git@github.com:/https://github.com/}"
 
 # --- Helper Functions --- #
 
+# Initialize cache directories
+initCache() {
+  CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/${BASH_SOURCE[0]##*/}"
+  HELP_CACHE_DIR="${CACHE_DIR}/help"
+  WIKI_CACHE_DIR="${CACHE_DIR}/wiki"
+  mkdir -p "${HELP_CACHE_DIR}" "${WIKI_CACHE_DIR}"
+}
+
+# Check if a wiki page can be skipped (unchanged since last run)
+# Returns 0 if should skip, 1 if should generate
+shouldSkipIfUnchanged() {
+  local file="$1"
+  local outputFile="$2"
+  local hashCache="$3"
+  local label="$4"
+
+  if ! "${FORCE}" && [[ -f "${outputFile}" ]] && [[ -f "${hashCache}" ]]; then
+    local currentHash
+    currentHash=$(hasher "${file}" | awk '{ print $1 }')
+    if [[ "${currentHash}" == "$(<"${hashCache}")" ]]; then
+      logVerbose "Skipping ${label} (unchanged)"
+      return 0
+    fi
+  fi
+
+  if [[ -f "${outputFile}" ]] && "${FORCE}"; then
+    logVerbose "Regenerating ${label} (--force)"
+  else
+    logVerbose "Generating page for ${label}..."
+  fi
+  return 1
+}
+
 logVerbose() {
   "${VERBOSE}" && log-info "$@" || true
 }
@@ -80,7 +113,19 @@ getHelpOutput() {
     return
   fi
 
-  timeout 2 "${file}" --help 2>&1 || true
+  # Cache hit: skip the fork entirely
+  local fileHash="$(hasher "${file}" | awk '{ print $1 }')"
+  local cacheFile="${HELP_CACHE_DIR}/${fileHash}"
+  if [[ -s "${cacheFile}" ]]; then
+    cat "${cacheFile}"
+    return
+  fi
+
+  # Cache miss: run --help and store output
+  local output
+  output="$(timeout 2 "${file}" --help 2>&1 || true)"
+  printf '%s\n' "${output}" >"${cacheFile}"
+  printf '%s\n' "${output}"
 }
 
 # Parse cmdarg flags from script
@@ -127,13 +172,10 @@ generateScriptPage() {
 
   mkdir -p "${WIKI_DIR}/${relDir}"
   outputFile="${WIKI_DIR}/${relDir}/${scriptName}.md"
+  local hashCache="${WIKI_CACHE_DIR}/${scriptName}.hash"
 
-  if [[ -f "${outputFile}" ]] && ! "${FORCE}"; then
-    logVerbose "Skipping ${scriptName} (exists, use -f to overwrite)"
-    return 0
-  fi
-
-  logVerbose "Generating page for ${scriptName}..."
+  # Skip if wiki exists and script content hasn't changed (unless --force)
+  shouldSkipIfUnchanged "${file}" "${outputFile}" "${hashCache}" "${scriptName}" && return 0
 
   local desc deps helpOutput
   desc="$(get-desc "${file}" | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')"
@@ -201,6 +243,8 @@ generateScriptPage() {
 
   } >"${outputFile}"
 
+  # Record the hash so we can skip on next run if unchanged
+  hasher "${file}" | awk '{ print $1 }' >"${hashCache}"
   log-success "Created: ${relDir}/${scriptName}.md"
 }
 
@@ -212,13 +256,10 @@ generateLibPage() {
 
   mkdir -p "${WIKI_DIR}/bash/lib"
   outputFile="${WIKI_DIR}/bash/lib/${libName}.md"
+  local hashCache="${WIKI_CACHE_DIR}/lib-${libName}.hash"
 
-  if [[ -f "${outputFile}" ]] && ! "${FORCE}"; then
-    logVerbose "Skipping lib/${libName} (exists, use -f to overwrite)"
-    return 0
-  fi
-
-  logVerbose "Generating page for lib/${libName}..."
+  # Skip if wiki exists and script content hasn't changed (unless --force)
+  shouldSkipIfUnchanged "${file}" "${outputFile}" "${hashCache}" "lib/${libName}" && return 0
 
   local desc
   desc="$(get-desc "${file}" | sed -e 's/  */ /g' -e 's/^ //' -e' s/ $//')"
@@ -249,11 +290,13 @@ generateLibPage() {
     echo ""
   } >"${outputFile}"
 
+  # Record the hash so we can skip on next run if unchanged
+  hasher "${file}" | awk '{ print $1 }' >"${hashCache}"
   log-success "Created: bash/lib/${libName}.md"
 }
 
 # --- Main --- #
-
+initCache
 mkdir -p "${WIKI_DIR}/bash"
 
 # Process script files (called by parallel)
@@ -263,7 +306,7 @@ main() {
   local ignoredScripts=()
   while IFS= read -r ignoredScript; do
     ignoredScripts+=("${ignoredScript}")
-  done <<< "${IGNORED_SCRIPTS_LIST}"
+  done <<<"${IGNORED_SCRIPTS_LIST}"
 
   for file in "$@"; do
     [[ -f "${file}" ]] || continue
@@ -296,14 +339,8 @@ main() {
   done
 }
 
-export -f main
-export -f logVerbose
-export -f generateScriptPage
-export -f generateLibPage
-export -f usesCmdarg
-export -f getHelpOutput
-export -f parseCmdargFlags
-export WIKI_DIR FORCE VERBOSE SCRIPTS_DIR REPO_URL
+export -f main logVerbose generateScriptPage generateLibPage usesCmdarg getHelpOutput parseCmdargFlags hasher
+export WIKI_DIR FORCE VERBOSE SCRIPTS_DIR REPO_URL HELP_CACHE_DIR WIKI_CACHE_DIR
 # Bash cannot export arrays through the environment — serialize to a plain string
 export IGNORED_SCRIPTS_LIST="$(printf '%s\n' "${IGNORED_SCRIPTS[@]}")"
 
