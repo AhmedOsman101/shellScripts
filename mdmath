@@ -31,6 +31,7 @@ checkDeps "$0"
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "q" "quiet" "Supress output"
+cmdarg "j" "jobs" "How many threads to use in parallel?" "$(nproc)"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 # Check if the correct number of arguments is passed
@@ -40,6 +41,7 @@ if ! ((argc)); then
 fi
 
 isQuiet="${cmdarg_cfg['quiet']}"
+jobs="${cmdarg_cfg['jobs']}"
 
 # Count occurrences of all delimiters to be replaced
 get_total_count() {
@@ -79,8 +81,8 @@ main() {
 }
 
 export -f main
-export isQuiet
+export isQuiet jobs
 
-printf '%s\0' "${argv[@]}" | parallel -0 -j "$(nproc)" -k -m --tty main
+printf '%s\0' "${argv[@]}" | parallel -0 -j "${jobs}" -k -m --tty main
 
 "${isQuiet}" || log-success "${total_count} Replacements made"
