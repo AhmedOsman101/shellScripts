@@ -15,13 +15,6 @@ generate_cache_key() {
   local -n _gen_key_cmd="$1"
   local -n _gen_key_files="$2"
 
-  local hasher_spec
-  hasher_spec="$(findHasher)"
-
-  # split hasher_spec into array (to handle "xxhsum -H3")
-  local -a hasher_cmd=()
-  read -r -a hasher_cmd <<<"${hasher_spec}"
-
   # include compiler version (if possible) to avoid stale cache when compiler changes
   local compiler_ver=""
   if [[ -n "${_gen_key_cmd[0]:-}" ]] && command -v "${_gen_key_cmd[0]}" >/dev/null 2>&1; then
@@ -49,7 +42,7 @@ generate_cache_key() {
         printf '\0'
       fi
     done
-  } | "${hasher_cmd[@]}" | awk '{print $1}'
+  } | hasher | awk '{print $1}'
 }
 
 # get_cache <cache_name_prefix> <cmd_array_name> <files_array_name>

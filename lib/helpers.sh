@@ -408,13 +408,13 @@ yesNo() {
 }
 
 # Detect a hashing command and return it as an array for safe exec
-findHasher() {
-  if command -v xxh3sum >/dev/null 2>&1; then
-    echo "xxh3sum"
-  elif command -v xxhsum >/dev/null 2>&1; then
+hasher() {
+  if command -v xxh3sum &>/dev/null; then
+    xxh3sum "$@"
+  elif command -v xxhsum &>/dev/null; then
     # xxhsum expects -H3 to select xxh3; keep as separate token
-    echo "xxhsum -H3"
+    xxhsum -H3 "$@"
   else
-    echo "sha1sum"
+    sha1sum "$@"
   fi
 }

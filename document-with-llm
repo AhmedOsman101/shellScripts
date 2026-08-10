@@ -187,9 +187,7 @@ projectHash() {
     files=("${project_path}")
   fi
 
-  local -a hasher
-  read -ra hasher <<<"$(findHasher)"
-  cat "${files[@]}" 2>/dev/null | "${hasher[@]}" | awk '{print $1}'
+  cat "${files[@]}" 2>/dev/null | hasher | awk '{print $1}'
 }
 
 # Generate wiki page using LLM
