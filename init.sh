@@ -28,8 +28,7 @@ export PATH="${PATH}:${INIT_DIR}"
 checkDepsFile="${INIT_DIR}/check-deps"
 declare -a scripts
 
-if [[ -s "${checkDepsFile}" ]]; then
-  source "${checkDepsFile}"
+if source "$(include "check-deps")"; then
   checkDeps "${BASH_SOURCE[0]}"
 else
   echo "Dependency check script not found at ${checkDepsFile}" 1>&2
