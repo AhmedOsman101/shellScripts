@@ -18,7 +18,6 @@
 # --- END SIGNATURE --- #
 
 set -eo pipefail
-
 trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #

@@ -20,7 +20,7 @@
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
-eval "$(include "check-deps")"
+source "$(include "check-deps")"
 checkDeps "$0"
 
 # ---  Main script logic --- #

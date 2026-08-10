@@ -21,9 +21,9 @@
 trap 'exit 1' SIGUSR1
 SCRIPTS_DIR="${SCRIPTS_DIR:-${HOME}/scripts}"
 
-eval "$(include "lib/cmdarg.sh")"
-eval "$(include "lib/helpers.sh")"
-eval "$(include "check-deps")"
+source "$(include "lib/cmdarg.sh")"
+source "$(include "lib/helpers.sh")"
+source "$(include "check-deps")"
 checkDeps "$0"
 
 # --- cmdarg setup --- #

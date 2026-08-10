@@ -86,7 +86,7 @@ log-debug "Debug message"
 
 **Important**: Never use raw ANSI escape codes (e.g., `\e[33m`) for colored output. Always use the log-\* functions above or functions available in `./lib/loggers.sh` if you need more colors.
 
-- **Includes**: Use `eval "$(include "lib/library.sh")"` for including libraries
+- **Includes**: Use `source "$(include "lib/library.sh")"` for including libraries
 - **Script Signature**: Include ASCII art signature with description and dependencies using `./make-signature` script
 - **Exit Codes**: Use appropriate exit codes (0 for success, 1 for errors)
 - **Creating New Scripts**: Use `./mkscript` script to create new bash scripts. When creating as an agent, set `EDITOR=cat` before running:
@@ -349,8 +349,8 @@ Don't ever remove any comment from this template.
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/cmdarg.sh")"
-eval "$(include "lib/helpers.sh")"
+source "$(include "lib/cmdarg.sh")"
+source "$(include "lib/helpers.sh")"
 
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
@@ -375,7 +375,7 @@ cd "${SCRIPTS_DIR:-"$HOME/scripts"}"
 EDITOR=cat mkscript -q -f lib/testing.sh
 
 # Include the library in other scripts
-eval "$(include "lib/my-library.sh")"
+source "$(include "lib/my-library.sh")"
 ```
 
 **Available Reusable Libraries**:

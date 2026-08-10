@@ -15,7 +15,7 @@
 # A collection of helper functions
 # --- END SIGNATURE --- #
 
-eval "$(include "lib/loggers.sh")"
+source "$(include "lib/loggers.sh")"
 # ---  Main script logic --- #
 
 input() {

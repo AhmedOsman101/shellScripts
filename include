@@ -23,4 +23,4 @@ scripts_dir="${SCRIPTS_DIR}"
 script_dir="$(cd -- "${scripts_dir}" && pwd)"
 file="$(realpath -m "${script_dir}/$1")"
 
-[[ -f "${file}" ]] && echo "source '${file}'"
+[[ -f "${file}" ]] && echo "${file}"

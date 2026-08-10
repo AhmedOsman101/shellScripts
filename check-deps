@@ -15,7 +15,7 @@
 # Checks a script's dependencies and installs them
 # --- END SIGNATURE --- #
 
-eval "$(include "lib/helpers.sh")"
+source "$(include "lib/helpers.sh")"
 
 # ---  Main script logic --- #
 

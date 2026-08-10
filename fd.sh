@@ -16,7 +16,7 @@
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/helpers.sh")"
+source "$(include "lib/helpers.sh")"
 # ---  Main script logic --- #
 cmdArray=(
   '/usr/bin/fd'

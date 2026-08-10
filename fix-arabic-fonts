@@ -19,7 +19,7 @@
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/cmdarg.sh")"
+source "$(include "lib/cmdarg.sh")"
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg_parse "$@"
 # ---  Main script logic --- #

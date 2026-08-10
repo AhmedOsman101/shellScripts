@@ -22,9 +22,9 @@ shopt checkwinsize &>/dev/null
 
 trap 'exit 1' SIGUSR1
 
-eval "$(include "lib/cmdarg.sh")"
-eval "$(include "lib/helpers.sh")"
-eval "$(include "check-deps")"
+source "$(include "lib/cmdarg.sh")"
+source "$(include "lib/helpers.sh")"
+source "$(include "check-deps")"
 
 checkDeps "$0"
 cmdarg "c?" "color" "Color of the spinner (black, red, green, yellow, blue, magenta, cyan, white, gray)" "green"

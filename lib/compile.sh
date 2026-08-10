@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-eval "$(include 'lib/helpers.sh')"
+source "$(include 'lib/helpers.sh')"
 
 # ---  Main script logic --- #
 # Common compiler helpers for cppc and clangc
