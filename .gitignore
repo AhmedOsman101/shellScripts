@@ -9,3 +9,6 @@ wiki/
 # User-specefic files
 askpass
 config.bash
+
+# Worktrees
+.worktrees
