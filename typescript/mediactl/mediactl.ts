@@ -1,4 +1,3 @@
-#!/usr/bin/env -S deno run -A
 import type { MessageBus } from "dbus-next";
 import { Message, MessageType, sessionBus, type Variant } from "dbus-next";
 
