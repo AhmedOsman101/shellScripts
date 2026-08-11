@@ -1,7 +1,11 @@
+# Binaries and dependencies
 *.out
 *.exe
-target
-askpass
-node_modules
-md/
+**/bin
+rust/**/target
+**/node_modules
 wiki/
+
+# User-specefic files
+askpass
+config.bash
