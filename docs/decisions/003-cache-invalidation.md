@@ -39,7 +39,7 @@ cacheFile="/tmp/path-hook.cache"
 scan() {
   (
     cd "${SCRIPTS_DIR}"
-    fd.sh -t x . | sed 's|^|./|'
+    fd -t x . "${fdExcludes[@]}" | sed 's|^|./|'
   ) > "${cacheFile}"
 }
 

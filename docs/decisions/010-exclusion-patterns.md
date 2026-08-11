@@ -22,8 +22,9 @@ Hardcoded defaults in the hook:
 Plus an env var `SCRIPTS_HOOK_EXCLUDE` (space-separated) for user
 additions. The defaults cannot be overridden — only extended.
 
-The hook uses `find` with `-prune` or path matching to skip excluded
-directories during the scan.
+The hook calls `fd -t x` directly (not `fd.sh`) so it owns the exclude
+logic. At scan time, the hook merges defaults + `SCRIPTS_HOOK_EXCLUDE`
+into `fd`'s `--exclude` flags.
 
 ## Consequences
 

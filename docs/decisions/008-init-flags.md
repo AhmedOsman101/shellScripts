@@ -31,4 +31,6 @@ install), and the user is not expected to need more granularity.
   real need emerges.
 - The `-s` flag's array semantics (repeated) match `cmdarg`'s `[]` array
   pattern used elsewhere in the repo.
-- Need to measure whether if we use `cmdarg` or not.
+- Flag parsing uses `cmdarg` (with `?[]` for the `-s` array flag),
+  consistent with every other script in the repo. The setup cost is
+  negligible for a script that runs once.
