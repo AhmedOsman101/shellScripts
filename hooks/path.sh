@@ -28,6 +28,7 @@ __defaultExcludes=(
   ".venv"
   "venv"
   "node_modules"
+  "release.sh"
 )
 
 __userExcludes=()
@@ -48,7 +49,7 @@ __needsRescan() {
 __scan() {
   (
     cd "${SCRIPTS_DIR}" || return 1
-    fd -t x . "${__fdExcludes[@]}" | sed 's|^|./|'
+    fd --strip-cwd-prefix=always -t x . "${__fdExcludes[@]}"
   ) >"${__cacheFile}" 2>/dev/null
 }
 
