@@ -49,7 +49,7 @@ __needsRescan() {
 __scan() {
   (
     cd "${SCRIPTS_DIR}" || return 1
-    fd --strip-cwd-prefix=always -t x . "${__fdExcludes[@]}"
+    fd --strip-cwd-prefix=always --no-ignore-vcs -t x . "${__fdExcludes[@]}"
   ) >"${__cacheFile}" 2>/dev/null
 }
 
