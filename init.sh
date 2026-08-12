@@ -41,6 +41,7 @@ cmdarg_info "header" "$(get-desc "$0")"
 # shellcheck disable=SC2034 # It's used by cmdarg
 cmdarg "s?[]" "shells" 'Shell config(s) to install into'
 
+# shellcheck disable=2218
 usageMsg="$(cmdarg_usage)"
 unset -f 'cmdarg_usage'
 
@@ -66,7 +67,7 @@ sourceLine='[[ -s "${SCRIPTS_DIR}/hooks/path.sh" ]] && source "${SCRIPTS_DIR}/ho
 # --- Verify dependencies --- #
 
 if [[ ! -d "${SCRIPTS_DIR}" ]]; then
-  logError "SCRIPTS_DIR is set to a non-existant directory: ${SCRIPTS_DIR}"
+  logError "SCRIPTS_DIR is set to a nonexistent directory: ${SCRIPTS_DIR}"
 fi
 
 if ! command -v fd &>/dev/null; then

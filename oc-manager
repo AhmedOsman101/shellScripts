@@ -41,6 +41,7 @@ cmdarg "s?" "password" "Add a password to your server"
 cmdarg "u?" "username" "Which username to use (default: opencode)"
 
 # --- Setup the usage function --- #
+# shellcheck disable=2218
 usageMsg="$(cmdarg_usage)"
 unset -f 'cmdarg_usage'
 
