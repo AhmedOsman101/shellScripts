@@ -1,7 +1,6 @@
 # Binaries and dependencies
 *.out
 *.exe
-**/bin
 rust/**/target
 **/node_modules
 wiki/
