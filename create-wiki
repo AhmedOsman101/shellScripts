@@ -339,7 +339,7 @@ main() {
   done
 }
 
-export -f main logVerbose generateScriptPage generateLibPage usesCmdarg getHelpOutput parseCmdargFlags hasher
+export -f main logVerbose generateScriptPage generateLibPage usesCmdarg getHelpOutput parseCmdargFlags hasher shouldSkipIfUnchanged
 export WIKI_DIR FORCE VERBOSE SCRIPTS_DIR REPO_URL HELP_CACHE_DIR WIKI_CACHE_DIR
 # Bash cannot export arrays through the environment — serialize to a plain string
 export IGNORED_SCRIPTS_LIST="$(printf '%s\n' "${IGNORED_SCRIPTS[@]}")"
