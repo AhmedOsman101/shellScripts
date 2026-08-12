@@ -4,11 +4,11 @@ A curated collection of utility scripts for developers, sysadmins, and power use
 
 ## Documentation
 
-Full per-script reference lives in the [`wiki/`](wiki/Home.md) — auto-generated pages for every executable in the repo (and its libraries).
+Full per-script reference lives in the [wiki](https://github.com/AhmedOsman101/shellScripts/wiki) — auto-generated pages for every executable in the repo (and its libraries).
 
 ## Repository Purpose
 
-A grab-bag of scripts that automate the repetitive, simplify the common, and compose with each other. See the [Highlights](#highlights) below for categories and examples — the [wiki](wiki/Home.md) has the full list.
+A grab-bag of scripts that automate the repetitive, simplify the common, and compose with each other. See the [Highlights](#highlights) below for categories and examples — the [wiki](https://github.com/AhmedOsman101/shellScripts/wiki) has the full list.
 
 ## Installation
 
@@ -61,7 +61,7 @@ A few categories to give you the shape of the repo:
 - `no-orphans` — remove orphan AUR packages
 - `aur-install` — interactive AUR installer (fzf + paru)
 - `cpu-usage` — current CPU usage percentage
-- `system-stats` — cpu, ram, disk at a glance
+- `system-stats` — CPU, RAM, disk at a glance
 
 ### CLI Affordances
 
@@ -86,7 +86,7 @@ Lives in `lib/` and is sourced by other scripts:
 - `net-speed` — live download/upload monitoring
 - `vercel-status` — latest deployments on Vercel
 
-For every script's flags, parameters, and full usage, see the [wiki](wiki/Home.md).
+For every script's flags, parameters, and full usage, see the [wiki](https://github.com/AhmedOsman101/shellScripts/wiki).
 
 ## Feedback
 
