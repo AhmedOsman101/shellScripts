@@ -34,5 +34,5 @@ into `fd`'s `--exclude` flags.
 - Users with project-specific needs (e.g., `build/`, `dist/`) can add
   them via the env var.
 - The env var name is documented in the help output (ADR 009).
-- If someone needs to *remove* a default exclusion, they can override
+- If someone needs to _remove_ a default exclusion, they can override
   the hook itself — the defaults are not configurable downward.

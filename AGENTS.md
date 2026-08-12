@@ -183,6 +183,7 @@ fi
 ```
 
 You can also use them as commands directly:
+
 ```bash
 ${cmdarg_cfg['backup']} && echo "flag is set" || echo "flag is not set"
 ```

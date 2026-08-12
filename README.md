@@ -27,6 +27,34 @@ cd "$SCRIPTS_DIR" && ./init.sh # You can run ./init.sh --help first to know the 
 
 `init.sh` verifies dependencies (needs `fd`), prompts to confirm, and adds the hook source line to `~/.bashrc` or `~/.zshrc`. Restart your shell (or `source` the config) to activate.
 
+### Manual Installation
+
+Prefer to wire it up yourself? Follow these steps:
+
+0. Set `SCRIPTS_DIR` (and optionally `SCRIPTS_HOOK_EXCLUDE`) in your environment as needed.
+
+1. Install `fd` from [sharkdp/fd](https://github.com/sharkdp/fd#installation).
+
+2. If the binary is installed as `fdfind` (common on Debian), link it to `fd` inside a `PATH`-visible directory:
+
+```bash
+ln -s "$(command -v fdfind)" ~/.local/bin/fd
+```
+
+3. Add the hook source line to your `~/.bashrc` or `~/.zshrc`:
+
+```bash
+[[ -s "${SCRIPTS_DIR}/hooks/path.sh" ]] && source "${SCRIPTS_DIR}/hooks/path.sh"
+```
+
+4. Restart your shell to apply the changes.
+
+5. Test it:
+
+```bash
+banner -c green -f '#' 'It Works!'
+```
+
 ## Highlights
 
 A few categories to give you the shape of the repo:

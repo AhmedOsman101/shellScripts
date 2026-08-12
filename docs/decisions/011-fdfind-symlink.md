@@ -1,4 +1,4 @@
-# ADR 011: fdfind→fd Symlink (Retained with Prompt)
+# ADR 011: fdfind->fd Symlink (Retained with Prompt)
 
 ## Status
 
