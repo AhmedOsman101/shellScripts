@@ -1,5 +1,3 @@
-#!/usr/bin/env -S deno run --allow-env --allow-net
-
 // featherless - CLI tool to query the Featherless AI API
 //
 // Usage:

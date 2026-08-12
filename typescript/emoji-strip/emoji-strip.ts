@@ -1,5 +1,3 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write
-
 import emojiRegex from "emoji-regex";
 import { wrapAsync } from "lib-result";
 
