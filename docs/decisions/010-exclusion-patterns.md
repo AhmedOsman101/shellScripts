@@ -18,6 +18,7 @@ Hardcoded defaults in the hook:
 - `.venv`
 - `venv`
 - `node_modules`
+- `release.sh`
 
 Plus an env var `SCRIPTS_HOOK_EXCLUDE` (space-separated) for user
 additions. The defaults cannot be overridden — only extended.
@@ -28,8 +29,8 @@ into `fd`'s `--exclude` flags.
 
 ## Consequences
 
-- The four defaults are universally correct — no one wants `.git/` on
-  PATH.
+- The five defaults are universally correct — no one wants `.git/`,
+  virtualenvs, `node_modules`, or `release.sh` files on PATH.
 - Users with project-specific needs (e.g., `build/`, `dist/`) can add
   them via the env var.
 - The env var name is documented in the help output (ADR 009).

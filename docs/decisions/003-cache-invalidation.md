@@ -29,7 +29,12 @@ directory's mtime changing at all.
 
 On each run, `fd` walks `$SCRIPTS_DIR` for any directory newer than
 the cache file, exiting on the first match instead of scanning every
-directory:
+directory. The hook calls `fd` directly (not `fd.sh`) to keep its
+exclude logic local and self-contained. `--strip-cwd-prefix=always`
+keeps cached paths relative to `SCRIPTS_DIR` (surviving moves), and
+`--no-ignore-vcs` ensures `.gitignore` rules don't silently exclude
+files the hook should include (the repo's ignore rules and the hook's
+include rules are separate concerns):
 
 ```bash
 #!/usr/bin/env bash
@@ -38,19 +43,22 @@ cacheFile="/tmp/path-hook.cache"
 
 scan() {
   (
-    cd "${SCRIPTS_DIR}"
-    fd -t x . "${fdExcludes[@]}" | sed 's|^|./|'
-  ) > "${cacheFile}"
+    cd "${SCRIPTS_DIR}" || return 1
+    fd --strip-cwd-prefix=always --no-ignore-vcs -t x . "${fdExcludes[@]}"
+  ) >"${cacheFile}" 2>/dev/null
 }
 
 needsRescan() {
-  [[ -s "${cache_file}" ]] || return 0
-  [[ -n "$(find "${SCRIPTS_DIR}" -type d -newer "${cacheFile}" -print -quit)" ]]
+  [[ -s "${cacheFile}" ]] || return 0
+  [[ -n "$(find "${SCRIPTS_DIR}" -type d -newer "${cacheFile}" -print -quit 2>/dev/null)" ]]
 }
 
 needsRescan && scan
 
-mapfile -t executables < "${cacheFile}"
+declare -a entries=()
+while IFS= read -r line; do
+  entries+=("${line}")
+done < "${cacheFile}"
 ```
 
 The cache lives in `/tmp` rather than `$XDG_CACHE_HOME`. It only needs
@@ -71,9 +79,14 @@ instead of trusting a cache from a previous boot.
 - The cache doesn't survive a reboot, since `/tmp` is cleared. This is
   intentional: the cache is a session optimization, not a persistent
   store.
-- Cached paths are relative (`./somedir/somefile`), so the cache stays
-  valid even if the absolute location of `$SCRIPTS_DIR` changes.
-- `.gitignore`'d files never appear in the cache, since `fd` honors it
-  by default.
+- Cached paths are relative to `SCRIPTS_DIR` (via
+  `--strip-cwd-prefix=always`), so the cache stays valid even if the
+  absolute location of `$SCRIPTS_DIR` changes.
+- `.gitignore` rules do not filter the cache. The hook uses
+  `--no-ignore-vcs` because the repo's ignore rules and the hook's
+  include rules are separate concerns: a script in `bin/` might be
+  gitignored but still belongs on PATH.
+- The cache is read with a `while IFS= read` loop rather than `mapfile`,
+  since `mapfile` is a bashism that zsh does not provide natively.
 - Users can force a rescan by deleting the cache file:
   `rm /tmp/path-hook.cache`.
