@@ -27,9 +27,17 @@ source "$(include "check-deps")"
 
 checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "i" "interactive" "Interactively choose which extensions to install"
+cmdarg "t?" "tries" "Maximum number of install attempts per extension"
 cmdarg_parse "$@"
+
 # ---  Main script logic --- #
 origin="${argv[0]}"
+interactive="${cmdarg_cfg['interactive']}"
+tries="${cmdarg_cfg['tries']}"
+if [[ -n "${tries}" ]]; then
+  isPositiveInt "${tries}" || log-error "Tries must be a positive integer"
+fi
 
 file="$(mktemp -t "XXXXXX.json")"
 trap 'rm -f $file' EXIT
@@ -38,24 +46,30 @@ get-ext --overwrite "${file}" &>/dev/null
 
 # NOTE: Returns True if file exists and is not empty.
 if [[ ! -s "${origin}" ]]; then
-  log-warning "No entries found in ${origin}"
-  exit 0
+  terminate "No entries found in ${origin}"
 fi
 
 declare -a extensions
 if [[ -s "${file}" ]]; then
   # Combine JSON files with only unique enteries as an array
-  mapfile -t < <(jq -s '[.[][]] | unique | .[]' -r "${origin}" "${file}") || log-error "Failed to parse '${file}'"
+  mapfile -t extensions < <(jq -s '[.[][]] | unique | .[]' -r "${origin}" "${file}") || log-error "Failed to parse '${file}'"
 else
-  log-warning "No new entries found in ${file}"
-  exit 0
+  terminate "No new entries found in ${file}"
+fi
+
+# Interactive selection of which extensions to install
+if "${interactive}"; then
+  selected="$(gum choose --no-limit --header="Select extensions to install:" "${extensions[@]}")" || terminate "Selection cancelled."
+  [[ -z "${selected}" ]] && terminate "No extensions selected."
+  unset extensions
+  mapfile -t extensions <<<"${selected}"
 fi
 
 for extension in "${extensions[@]}"; do
-  extensionName="$(echo "${extension}" | awk -F '.' '{print $2}')"
+  extensionName="$(awk -F '.' '{print $2}' <<<"${extension}")"
 
   log-info "Installing ${extensionName}..."
-  if repeat-it --preserve "code --install-extension ${extension} --force"; then
+  if repeat-it "${tries:+--tries "${tries}"}" --preserve "code --install-extension ${extension} --force"; then
     log-info "Installed ${extensionName}"
   fi
 done
