@@ -9,12 +9,17 @@ sanitizedPrint() {
   printf '%s' "${str}"
 }
 
+isHex() {
+  local hex="$1"
+  [[ "${hex}" =~ ^#[0-9A-Fa-f]{3}$ || "${hex}" =~ ^#[0-9A-Fa-f]{6}$ ]]
+}
+
 # Convert hex to RGB
 hex_to_rgb() {
   local hex r g b
-  hex=$1
+  hex="$1"
 
-  if [[ ! "${hex}" =~ ^#[0-9A-Fa-f]{3}$ && ! "${hex}" =~ ^#[0-9A-Fa-f]{6}$ ]]; then
+  if ! isHex "${hex}"; then
     log-error "Invalid hex color"
     return 1
   fi

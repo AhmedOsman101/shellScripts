@@ -14,7 +14,7 @@
 # --- DESCRIPTION --- #
 # Prints warning messages in yellow with a '[WARNING] ' prefix; reads from stdin or arguments
 # --- DEPENDENCIES --- #
-# - tput
+#
 # --- END SIGNATURE --- #
 
 set -eo pipefail

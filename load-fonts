@@ -34,8 +34,8 @@ declare -a dirs ttfDirs otfDirs
 ttfDir="/usr/local/share/fonts/TTF"
 otfDir="/usr/local/share/fonts/OTF"
 
-[[ ! -d "${ttfDir}" ]] && sudo mkdir -p "${ttfDir}"
-[[ ! -d "${otfDir}" ]] && sudo mkdir -p "${otfDir}"
+[[ ! -d "${ttfDir}" ]] && sudo mkdir -pv "${ttfDir}"
+[[ ! -d "${otfDir}" ]] && sudo mkdir -pv "${otfDir}"
 
 sudo mv -i ./*.ttf "${ttfDir}" &>/dev/null || true
 sudo mv -i ./*.otf "${otfDir}" &>/dev/null || true
@@ -43,13 +43,12 @@ sudo mv -i ./*.otf "${otfDir}" &>/dev/null || true
 mapfile -t dirs < <(fd.sh . -t d -d 1)
 
 for dir in "${dirs[@]}"; do
-  mapfile -t ttfDirs < <(fd.sh . -e ttf "${dir}" -x dirname {} | no-dups -a)
+  mapfile -t ttfDirs < <(fd.sh . -e ttf "${dir}" -x dirname {} | no-dups)
   if ((${#ttfDirs} > 0)); then
     sudo mv "${ttfDirs[@]}" -t "${ttfDir}" && log-info "Moved ${ttfDirs[*]}"
-    continue # to avoid searching again
   fi
 
-  mapfile -t otfDirs < <(fd.sh . -e otf "${dir}" -x dirname {} | no-dups -a)
+  mapfile -t otfDirs < <(fd.sh . -e otf "${dir}" -x dirname {} | no-dups)
   if ((${#otfDirs} > 0)); then
     sudo mv "${otfDirs[@]}" -t "${otfDir}" && log-info "Moved ${otfDirs[*]}"
   fi
@@ -57,4 +56,4 @@ done
 
 gum spin --title "Caching fonts..." -- sudo fc-cache -r
 
-log-success "Fonts reloaded succefully!"
+log-success "Fonts reloaded successfully!"

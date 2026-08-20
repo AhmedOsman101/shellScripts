@@ -18,8 +18,14 @@ trap 'exit 1' SIGUSR1
 
 source "$(include "lib/helpers.sh")"
 # ---  Main script logic --- #
+resolveFd() {
+  command -v fd 2>/dev/null ||
+    command -v fdfind 2>/dev/null ||
+    return 1
+}
+
 cmdArray=(
-  '/usr/bin/fd'
+  "$(resolveFd)"
   '--hidden'
 )
 

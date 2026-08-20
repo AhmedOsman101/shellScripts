@@ -46,18 +46,20 @@ declare -A LEVEL_OUTPUT=(
 LEVEL="${1:-INFO}"
 shift || true
 
+isNewLine=true
+
 if [[ "$1" =~ ^-n$ ]]; then
   isNewLine=false
   shift || true
 fi
 
-COLOR_FUNC="${LEVEL_COLORS[${LEVEL}]:-printPurple}"
+COLOR_FUNC="${LEVEL_COLORS[${LEVEL}]:-printCyan}"
 OUTPUT_FD="${LEVEL_OUTPUT[${LEVEL}]:-1}"
 
 # --- Read message --- #
 message="$(input "$@")"
 
-if "${isNewLine:-true}"; then
+if "${isNewLine}"; then
   colorOnlyPrefix "${COLOR_FUNC}" "${LEVEL}" "${message}" "${OUTPUT_FD}"
 else
   colorOnlyPrefix -n "${COLOR_FUNC}" "${LEVEL}" "${message}" "${OUTPUT_FD}"

@@ -15,13 +15,12 @@
 # Parses exported color variables from a Zsh config and displays their names with the corresponding color
 # --- DEPENDENCIES --- #
 # - rg (ripgrep)
-# - awk
-# - tr
 # --- END SIGNATURE --- #
 
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+source "$(include "lib/helpers.sh")"
 source "$(include "lib/cmdarg.sh")"
 source "$(include "check-deps")"
 
@@ -34,7 +33,7 @@ declare -a colors
 findColors() {
   {
     if [[ -f "${ZDOTDIR}/variables.sh" ]]; then
-      cut -d' ' -f2- "${ZDOTDIR}/variables.sh" | tr -d '"'
+      rg -o 'U_[A-Za-z0-9_]*=.*' "${ZDOTDIR}/variables.sh" | tr -d '"'
     fi
     printenv
   } | no-dups | rg --color=never '^U_'
@@ -46,5 +45,6 @@ mapfile -t colors < <(findColors)
 for line in "${colors[@]}"; do
   varname="${line%%=*}"
   color="${line#*=}"
+  isHex "${color}" || continue
   printHex "${color}" "${varname} ${color}"
 done

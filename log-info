@@ -12,10 +12,13 @@
 #                      ▀████▀▀
 #
 # --- DESCRIPTION --- #
-# Prints info messages in purple with a '[SUCCESS] ' prefix; reads from stdin or arguments
+# Prints info messages in purple with a '[INFO] ' prefix; reads from stdin or arguments
 # --- DEPENDENCIES --- #
 #
 # --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
 
 source "$(include "lib/helpers.sh")"
 source "$(include "check-deps")"
