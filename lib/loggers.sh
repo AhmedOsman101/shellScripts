@@ -251,9 +251,36 @@ printBrightWhite() {
   fi
 }
 
-printPurple() {
-  printHex "${U_PURPLE}" "$@"
+stylePrint() {
+  local style="$1"
+  shift
+  local newLine='\n'
+
+  if [[ "$1" == "-n" ]]; then
+    shift
+    newLine=''
+  fi
+
+  local message
+  message="$(sanitizedPrint "$(input "$@")")"
+
+  if supportsColor; then
+    printf '\e[%sm%s\e[0m%b' "${style}" "${message}" "${newLine}"
+  else
+    printf '%s%b' "${message}" "${newLine}"
+  fi
 }
+
+printBold() { stylePrint 1 "$@"; }
+printDim() { stylePrint 2 "$@"; }
+printItalic() { stylePrint 3 "$@"; }
+printUnderline() { stylePrint 4 "$@"; }
+printBlink() { stylePrint 5 "$@"; }
+printInverse() { stylePrint 7 "$@"; }
+printHidden() { stylePrint 8 "$@"; }
+printStrikethrough() { stylePrint 9 "$@"; }
+
+printPurple() { printHex "${U_PURPLE}" "$@"; }
 
 printRGB() {
   local rgb r g b message
