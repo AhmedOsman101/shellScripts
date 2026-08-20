@@ -134,9 +134,9 @@ parseCmdargFlags() {
   while IFS= read -r line; do
     local flag longopt descText
     # Extract values using sed with simple patterns
-    flag=$(echo "${line}" | sed 's/.*cmdarg "\([^"]*\)".*/\1/' | head -1)
-    longopt=$(echo "${line}" | sed 's/.*cmdarg "[^"]*" "\([^"]*\)".*/\1/' | head -1)
-    descText=$(echo "${line}" | sed 's/.*cmdarg "[^"]*" "[^"]*" "\([^"]*\)".*/\1/' | head -1)
+    flag="$(echo "${line}" | sed 's/.*cmdarg "\([^"]*\)".*/\1/' | head -1)"
+    longopt="$(echo "${line}" | sed 's/.*cmdarg "[^"]*" "\([^"]*\)".*/\1/' | head -1)"
+    descText="$(echo "${line}" | sed 's/.*cmdarg "[^"]*" "[^"]*" "\([^"]*\)".*/\1/' | head -1)"
 
     if [[ -n "${flag}" ]]; then
       local flagType="String"
@@ -147,7 +147,12 @@ parseCmdargFlags() {
       elif [[ "${flag}" == *"{}"* ]]; then
         flagType="Hash Map"
       fi
-      echo "| -${flag%%:*} | --${longopt} | ${flagType} | ${descText:-No description} |"
+      local required="Optional"
+      if [[ "${flag}" == *":"* ]]; then
+        required="Required"
+      fi
+      local cleanFlag="${flag:0:1}"
+      echo "| -${cleanFlag} | --${longopt} | ${flagType} | ${required} | ${descText:-No description} |"
     fi
   done < <(grep -E '^\s*cmdarg\s+"' "${file}")
 }
@@ -156,11 +161,11 @@ parseCmdargFlags() {
 generateScriptPage() {
   local file="$1"
   local scriptName outputFile relDir
-  scriptName=$(basename "${file}")
+  scriptName="$(basename "${file}")"
 
   # Determine relative directory
   local origRelDir
-  origRelDir=$(dirname "${file}" | sed -e "s|^${SCRIPTS_DIR}||" -e " s|^/||")
+  origRelDir="$(dirname "${file}" | sed -e "s|^${SCRIPTS_DIR}||" -e " s|^/||")"
   relDir="${origRelDir}"
   case "${relDir}" in
   "") relDir="bash" ;;
@@ -180,7 +185,7 @@ generateScriptPage() {
   local desc deps helpOutput
   desc="$(get-desc "${file}" | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')"
   deps="$(get-deps "${file}")"
-  helpOutput=$(getHelpOutput "${file}")
+  helpOutput="$(getHelpOutput "${file}")"
 
   {
     echo "# ${scriptName}"
@@ -206,12 +211,12 @@ generateScriptPage() {
 
     # Document flags if script uses cmdarg
     if usesCmdarg "${file}"; then
-      flagsTable=$(parseCmdargFlags "${file}")
+      flagsTable="$(parseCmdargFlags "${file}")"
       if [[ -n "${flagsTable}" ]]; then
         echo "## Flags & Options"
         echo ""
-        echo "| Short | Long | Type | Description |"
-        echo "|-------|------|------|-------------|"
+        echo "| Short | Long | Type | Required | Description |"
+        echo "|-------|------|------|----------|-------------|"
         echo "${flagsTable}"
         echo ""
       fi
@@ -252,7 +257,7 @@ generateScriptPage() {
 generateLibPage() {
   local file="$1"
   local libName outputFile
-  libName=$(basename "${file}" .sh)
+  libName="$(basename "${file}" .sh)"
 
   mkdir -p "${WIKI_DIR}/bash/lib"
   outputFile="${WIKI_DIR}/bash/lib/${libName}.md"
@@ -280,7 +285,6 @@ generateLibPage() {
     echo "Include this library in your script:"
     echo ""
     echo '```bash'
-    # shellcheck disable=SC2016
     echo 'source "$(include "lib/'"${libName}"'.sh")"'
     echo '```'
     echo ""
@@ -315,11 +319,11 @@ main() {
     [[ "${file}" == *.rasi ]] && continue
 
     local firstLine
-    firstLine=$(head -1 "${file}" 2>/dev/null || true)
+    firstLine="$(head -1 "${file}" 2>/dev/null || true)"
     [[ "${firstLine}" == *"bash"* ]] || continue
 
     local scriptName
-    scriptName=$(basename "${file}")
+    scriptName="$(basename "${file}")"
 
     # Skip ignored scripts
     local ignoredScript
@@ -366,8 +370,8 @@ if [[ ! -f "${homeFile}" ]] || "${FORCE}"; then
     # Libraries
     for file in "${SCRIPTS_DIR}/lib"/*.sh; do
       [[ -f "${file}" ]] || continue
-      libName=$(basename "${file}" .sh)
-      desc=$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')
+      libName="$(basename "${file}" .sh)"
+      desc="$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')"
       echo "| [lib/${libName}](bash/lib/${libName}.md) | ${desc:-No description} |"
     done
     echo ""
@@ -380,8 +384,8 @@ if [[ ! -f "${homeFile}" ]] || "${FORCE}"; then
       [[ -f "${file}" ]] || continue
       firstLine=$(head -1 "${file}" 2>/dev/null || true)
       [[ "${firstLine}" == *"bash"* ]] || continue
-      scriptName=$(basename "${file}")
-      desc=$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')
+      scriptName="$(basename "${file}")"
+      desc="$(get-desc "${file}" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/^ //' -e 's/ $//')"
       echo "| [${scriptName}](bash/${scriptName}.md) | ${desc:-No description} |"
     done
     echo ""
