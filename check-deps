@@ -18,6 +18,13 @@
 source "$(include "lib/helpers.sh")"
 # ---  Main script logic --- #
 
+# shellcheck disable=SC2120
+trim() {
+  local str="$(input "$@")"
+  [[ -z ${str} ]] && printf '' && exit 0
+  echo "${str}" | sed -e "s|^[[:space:]]*||" -e "s|[[:space:]]*$||"
+}
+
 checkDep() {
   local line exeName pkgName i
   line=$1
@@ -26,22 +33,18 @@ checkDep() {
 
   # Check for multi-packages enetries, if one is installed then skip
   while
-    exeName=$(echo "${line}" | awk -F "|" "{print \$${i}}" | Trim | awk '{print $1}')
+    exeName="$(awk -F "|" "{print \$${i}}" <<<"${line}" | trim | awk '{print $1}')"
     [[ -n "${exeName}" ]]
   do
-    if command -v "${exeName}" >/dev/null 2>&1; then
-      return 0
-    fi
+    command -v "${exeName}" &>/dev/null && return 0
 
     ((i++))
   done
 
-  exeName=$(echo "${line}" | awk -F "|" '{print $1}' | Trim | awk '{print $1}')
+  exeName="$(awk -F "|" '{print $1}' <<<"${line}" | trim | awk '{print $1}')"
+  pkgName="$(sed -n 's/.*(\([^)]*\)).*/\1/p' <<<"${line}")"
 
-  if echo "${line}" | grep -oP '\(\K[^)]*(?=\))' -q; then
-    pkgName=$(echo "${line}" | grep -oP '\(\K[^)]*(?=\))')
-  fi
-
+  # Check if the line contains something inside parentheses
   if [[ -n ${pkgName} ]]; then
     echo "${pkgName}"
   else
@@ -51,85 +54,19 @@ checkDep() {
   return 0
 }
 
-checkTerminal() {
-  # Non-graphical environment (terminal)
-  # Check for whiptail
-  if command -v whiptail >/dev/null 2>&1; then
-    echo "/bin/sh -c 'whiptail --passwordbox \"Authentication Required\" 8 40 2>&1 >/dev/tty; echo \$?'"
-  # Check for dialog
-  elif command -v dialog >/dev/null 2>&1; then
-    echo "/bin/sh -c 'dialog --passwordbox \"Authentication Required\" 8 40 2>&1 >/dev/tty; echo \$?'"
-  else
-    # Fallback for terminal prompt
-    echo "/bin/sh -c 'stty -echo; printf \"Password: \"; read password; stty echo; echo \"\$password\"'"
-  fi
-}
-
-getAskPass() {
-  local cmd path
-
-  # Check if running in a graphical environment
-  if [[ -n "${DISPLAY}" || -n "${WAYLAND_DISPLAY}" ]]; then
-    # Check for zenity
-    if command -v zenity >/dev/null 2>&1; then
-      cmd="zenity --password --title='Authentication Required' --timeout=30 2>/dev/null"
-    # Check for kdialog
-    elif command -v kdialog >/dev/null 2>&1; then
-      cmd="kdialog --password 'Authentication Required'"
-    # Check for yad (zenity fork)
-    elif command -v yad >/dev/null 2>&1; then
-      cmd="yad --entry --hide-text --title='Authentication Required' --button=OK:0 --timeout=30 --width=300 --height=150 --center"
-    # Check for whiptail (alternative text-based UI for terminals)
-    elif command -v whiptail >/dev/null 2>&1; then
-      cmd="/bin/sh -c 'whiptail --passwordbox \"Authentication Required\" 8 40 2>&1 >/dev/tty; echo \$?'"
-    # Check for dialog (text-based UI for terminals)
-    elif command -v dialog >/dev/null 2>&1; then
-      cmd="/bin/sh -c 'dialog --passwordbox \"Authentication Required\" 8 40 2>&1 >/dev/tty; echo \$?'"
-    # Check for ssh-askpass (common in some X11 setups)
-    elif command -v ssh-askpass >/dev/null 2>&1; then
-      cmd="$(command -v ssh-askpass)"
-    # Check for x11-ssh-askpass (alternative askpass tool)
-    elif command -v x11-ssh-askpass >/dev/null 2>&1; then
-      cmd="$(command -v x11-ssh-askpass)"
-    else
-      cmd="$(checkTerminal)"
-    fi
-  else
-    cmd="$(checkTerminal)"
-  fi
-
-  path="$(dirname "${BASH_SOURCE[0]}")/askpass"
-
-  # create if not present
-  command -v askpass &>/dev/null && path="$(command -v askpass)"
-
-  cat >"${path}" <<EOF
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-# ---  Main script logic --- #
-${cmd}
-EOF
-
-  chmod +x "${path}" &>/dev/null
-
-  printf '%s' "${path}"
-}
-
 installDep() {
   local pkg pkgManager installCmd
   local -a cmdArray
 
   pkg=$1
 
-  pkgManager=$(getPackageManager)
-  installCmd=$(echo "${pkgManager}" | awk -F ':' '{print $NF}')
+  pkgManager="$(get-package-manager)"
+  installCmd="$(echo "${pkgManager}" | awk -F ':' '{print $NF}')"
   read -ra cmdArray <<<"${installCmd} ${pkg}"
 
   logInfo "Attempting to install package: ${pkg}"
 
-  if SUDO_ASKPASS="$(getAskPass)" "${cmdArray[@]}"; then
+  if SUDO_ASKPASS="$(get-askpass)" "${cmdArray[@]}"; then
     sleep 1 && clear
     logInfo "Installed ${pkg}"
     return 0
@@ -141,28 +78,30 @@ installDep() {
 }
 
 checkDeps() {
-  local file completed item line
+  local file completed item line deps
   local -a depsArray failed
 
-  if [[ $# -ne 1 ]]; then
+  if (("$#" != 1)); then
     logError "Invalid arguments, only a script name is accepted"
   else
     if [[ -f $1 ]]; then
-      file=$1
+      file="$1"
     else
-      file=$(command -v "$1")
+      file="$(command -v "$1")"
     fi
 
     [[ ! -f ${file} ]] && logError "Script '${file}' was not found"
   fi
 
-  [[ "$(getDeps "${file}")" == "x-none" ]] && return 0
+  deps="$(get-deps "${file}")"
 
-  mapfile -t depsArray < <(getDeps "${file}")
+  [[ "${deps}" == "x-none" ]] && return 0
+
+  mapfile -t depsArray <<<"${deps}"
 
   completed=0
   for line in "${depsArray[@]}"; do
-    item=$(checkDep "${line}")
+    item="$(checkDep "${line}")"
     if [[ -n "${item}" ]]; then
       installDep "${item}" || {
         completed=1
@@ -173,3 +112,7 @@ checkDeps() {
   [[ ${completed} == 1 ]] && logError "Failed to install all dependencies ($(joinarr ', ' "${failed[@]}"))"
   return 0
 }
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]] && (("$#" == 1)); then
+  checkDeps "$1"
+fi

@@ -22,7 +22,7 @@ trap 'exit 1' SIGUSR1
 
 # ---  Main script logic --- #
 
-if (($# != 1)); then
+if (("$#" != 1)); then
   log-error "Invalid arguments, only a script name is accepted"
 else
   if [[ -f "$1" ]]; then
@@ -35,5 +35,5 @@ else
 fi
 
 sed -n '/# --- DEPENDENCIES --- #/,/# --- END SIGNATURE --- #/{/\# - /p;/# --- END SIGNATURE --- #/q}' "${file}" |
-  replace.sh '# - ' '' |
+  sed 's|# - ||g' |
   grep -v " --- " || echo "x-none"
