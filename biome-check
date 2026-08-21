@@ -38,8 +38,6 @@ summary="${cmdarg_cfg["summary"]}"
 unsafe="${cmdarg_cfg["unsafe"]}"
 maxDiagnostics="${cmdarg_cfg["max-diagnostics"]}"
 
-configFile="${BIOME_CONFIG_PATH:-${HOME}/.config/biome/biome.json}"
-
 declare result
 
 # Take the one at top-level
