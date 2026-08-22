@@ -113,6 +113,6 @@ checkDeps() {
   return 0
 }
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]] && (("$#" == 1)); then
+if [[ "${BASH_SOURCE[0]##*/}" == "${0##*/}" ]] && (("$#" == 1)); then
   checkDeps "$1"
 fi
