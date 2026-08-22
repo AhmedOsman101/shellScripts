@@ -60,14 +60,14 @@ opensuse* | sled | sles)
   pkgManager="zypper"
   installCmd="sudo -A zypper install"
   ;;
-arch | manjaro | endeavouros | archcraft)
+arch | manjaro | endeavouros | archcraft | cachyos)
   # For Arch-based distros, check for AUR helpers
   if command -v paru &>/dev/null; then
     pkgManager="paru"
-    installCmd="paru --sudoflags '-A' -S --noconfirm"
+    installCmd="paru --sudoflags -A -S --noconfirm"
   elif command -v yay &>/dev/null; then
     pkgManager="yay"
-    installCmd="yay --sudoflags '-A' -S --noconfirm"
+    installCmd="yay --sudoflags -A -S --noconfirm"
   else
     pkgManager="pacman"
     installCmd="sudo -A pacman -S --noconfirm"
@@ -123,7 +123,7 @@ gentoo)
     # For Arch-based distros, check for AUR helpers
     if command -v paru &>/dev/null; then
       pkgManager="paru"
-      installCmd="paru -S --noconfirm"
+      installCmd="paru --sudoflags -A -S --noconfirm"
     elif command -v yay &>/dev/null; then
       pkgManager="yay"
       installCmd="yay -S --noconfirm"
