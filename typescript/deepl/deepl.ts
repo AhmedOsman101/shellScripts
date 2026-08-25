@@ -13,11 +13,13 @@ const HELP = `deepl - DeepL translation CLI (agent-friendly)
 Usage:
   deepl translate <text...> --to <LANG> [--from <LANG>] [--context <text>] [--formality <level>] [--input-file <path>] [--output-file <path>] [--json] [--verbose] [--api-key <key>]
   deepl list [--json] [--api-key <key>]
-  deepl --help | deepl translate --help | deepl list --help
+  deepl usage [--json] [--api-key <key>]
+  deepl --help | deepl translate --help | deepl list --help | deepl usage --help
 
 Commands:
   translate   Translate text (default: plain stdout, one line per input)
-  list        List supported languages (from GET /v3/languages)
+  list        List supported languages (via deepl-node)
+  usage       Show billing period character usage (character_count / character_limit)
 
 Options (translate):
   --to <LANG>          Target language (required, e.g. DE, FR, JA, EN-US)
@@ -80,6 +82,24 @@ Output:
   JSON:  Raw API response from GET /v3/languages
 `;
 
+const USAGE_HELP = `deepl usage - show billing period usage
+
+Usage:
+  deepl usage [--json] [--api-key <key>]
+
+Options:
+  --json               Machine-readable JSON output
+  --api-key <key>      Override DEEPL_API_KEY env var
+  --help, -h           Show this help
+
+Env:
+  DEEPL_API_KEY  API key (or set in typescript/deepl/.env). Key ending :fx uses api-free.deepl.com
+
+Output:
+  Plain: character_count / character_limit and usage details to stdout
+  JSON:  Raw Usage object from deepl-node (character/document/teamDocument)
+`;
+
 const FORMALITIES = new Set([
   "default",
   "more",
@@ -95,6 +115,11 @@ function printTranslateHelp(): never {
 
 function printListHelp(): never {
   console.log(LIST_HELP);
+  Deno.exit(0);
+}
+
+function printUsageHelp(): never {
+  console.log(USAGE_HELP);
   Deno.exit(0);
 }
 
@@ -618,6 +643,48 @@ async function listLanguages(
   }
 }
 
+async function showUsage(apiKey: string, _baseUrl: string, jsonMode: boolean) {
+  const translator = new Translator(apiKey);
+  try {
+    const usage = await translator.getUsage();
+    if (jsonMode) {
+      // Raw JSON for agent: expose character/document/teamDocument
+      const out: Record<string, unknown> = {};
+      if (usage.character) out.character = { count: usage.character.count, limit: usage.character.limit };
+      if (usage.document) out.document = { count: usage.document.count, limit: usage.document.limit };
+      if (usage.teamDocument) out.teamDocument = { count: usage.teamDocument.count, limit: usage.teamDocument.limit };
+      // Also include top-level for compatibility with /v2/usage raw shape
+      console.log(JSON.stringify(out, null, 2));
+      return;
+    }
+    // Plain LLM-friendly: character 1423/1000000 (0.14%)
+    if (usage.character) {
+      const pct = usage.character.limit ? ((usage.character.count / usage.character.limit) * 100).toFixed(2) : "0";
+      console.log(`character: ${usage.character.count}/${usage.character.limit} (${pct}%)`);
+    }
+    if (usage.document) {
+      const pct = usage.document.limit ? ((usage.document.count / usage.document.limit) * 100).toFixed(2) : "0";
+      console.log(`document: ${usage.document.count}/${usage.document.limit} (${pct}%)`);
+    }
+    if (usage.teamDocument) {
+      const pct = usage.teamDocument.limit ? ((usage.teamDocument.count / usage.teamDocument.limit) * 100).toFixed(2) : "0";
+      console.log(`teamDocument: ${usage.teamDocument.count}/${usage.teamDocument.limit} (${pct}%)`);
+    }
+    if (!usage.character && !usage.document && !usage.teamDocument) {
+      console.log("No usage data");
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const lower = msg.toLowerCase();
+    if (lower.includes("quota") || lower.includes("456")) {
+      console.error(`ERROR: quota exceeded — ${msg}`);
+      Deno.exit(3);
+    }
+    console.error(`ERROR: failed to get usage: ${msg}`);
+    Deno.exit(2);
+  }
+}
+
 async function main(): Promise<void> {
   if (Deno.args.length === 0) {
     console.log(HELP);
@@ -639,6 +706,12 @@ async function main(): Promise<void> {
     (Deno.args.includes("--help") || Deno.args.includes("-h"))
   ) {
     printListHelp();
+  }
+  if (
+    sub === "usage" &&
+    (Deno.args.includes("--help") || Deno.args.includes("-h"))
+  ) {
+    printUsageHelp();
   }
   // generic --help for no subcommand (e.g. `deepl --help`)
   if (Deno.args.includes("--help") || Deno.args.includes("-h")) {
@@ -725,6 +798,51 @@ async function main(): Promise<void> {
     const apiKey = resolveApiKey(flagKey);
     const baseUrl = resolveBaseUrl(apiKey);
     await listLanguages(apiKey, baseUrl, jsonMode);
+    return;
+  }
+
+  if (sub === "usage") {
+    const args = Deno.args.slice(1);
+    if (args.includes("--help") || args.includes("-h")) {
+      printUsageHelp();
+    }
+    let jsonMode = false;
+    let flagKey: string | undefined;
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i];
+      if (arg === "--json") {
+        jsonMode = true;
+      } else if (arg === "--api-key") {
+        const nxt = args[i + 1];
+        if (!nxt || nxt.startsWith("-")) {
+          console.error("ERROR: --api-key requires a value");
+          console.log(USAGE_HELP);
+          Deno.exit(1);
+        }
+        flagKey = nxt;
+        i++;
+      } else if (arg.startsWith("--api-key=")) {
+        const val = arg.slice("--api-key=".length);
+        if (!val) {
+          console.error("ERROR: --api-key requires a value");
+          console.log(USAGE_HELP);
+          Deno.exit(1);
+        }
+        flagKey = val;
+      } else if (arg.startsWith("-")) {
+        console.error(`ERROR: unknown flag "${arg}"`);
+        console.log(USAGE_HELP);
+        Deno.exit(1);
+      } else {
+        console.error(`ERROR: unknown argument "${arg}"`);
+        console.log(USAGE_HELP);
+        Deno.exit(1);
+      }
+    }
+    await loadDotEnv();
+    const apiKey = resolveApiKey(flagKey);
+    const baseUrl = resolveBaseUrl(apiKey);
+    await showUsage(apiKey, baseUrl, jsonMode);
     return;
   }
 
