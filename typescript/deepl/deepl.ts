@@ -247,8 +247,7 @@ async function translateTexts(
   for (const chunk of chunks) {
     try {
       const input = chunk.length === 1 ? chunk[0] : chunk;
-      const sourceLang = (opts.sourceLang ??
-        null) as deepl.SourceLanguageCode | null;
+      const sourceLang = (opts.sourceLang ?? null) as deepl.SourceLanguageCode | null;
       const targetLang = opts.targetLang as deepl.TargetLanguageCode;
       const res = await translator.translateText(
         input as string & string[],
@@ -579,51 +578,36 @@ async function renderOutput(
 
 async function listLanguages(
   apiKey: string,
-  baseUrl: string,
+  _baseUrl: string,
   jsonMode: boolean
 ) {
-  // Use only v3 — /v2/languages is deprecated (see migration guide)
-  const url = `${baseUrl}/v3/languages?resource=translate_text`;
-  let data: unknown = null;
-  let lastErr = "";
+  // Use deepl-node where possible — library handles auth and endpoint.
+  // Note: deepl-node@1.28 still uses GET /v2/languages internally (deprecated,
+  // will migrate to /v3/languages by Q2 2026 per migration guide). Keeping
+  // library usage here removes raw fetch; raw v3 fetch is kept only where
+  // library cannot do it (none currently for languages).
+  const translator = new deepl.Translator(apiKey);
   try {
-    const res = await fetch(url, {
-      headers: { Authorization: `DeepL-Auth-Key ${apiKey}` },
-    });
-    if (res.ok) {
-      data = await res.json();
-    } else {
-      lastErr = `${res.status} ${await res.text().catch(() => "")}`;
+    const [source, target] = await Promise.all([
+      translator.getSourceLanguages(),
+      translator.getTargetLanguages(),
+    ]);
+    const map = new Map<string, deepl.Language>();
+    for (const l of [...source, ...target]) {
+      if (!map.has(l.code)) map.set(l.code, l);
     }
+    const rows = [...map.values()].sort((a, b) => a.code.localeCompare(b.code));
+    if (jsonMode) {
+      console.log(JSON.stringify(rows, null, 2));
+      return;
+    }
+    for (const r of rows) console.log(`${r.code}\t${r.name}`);
+    console.error(`[${rows.length} languages]`);
   } catch (e) {
-    lastErr = e instanceof Error ? e.message : String(e);
-  }
-  if (!data) {
-    console.error(`ERROR: failed to list languages: ${lastErr}`);
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`ERROR: failed to list languages: ${msg}`);
     Deno.exit(2);
   }
-
-  if (jsonMode) {
-    console.log(JSON.stringify(data, null, 2));
-    return;
-  }
-  // data is array of {language, name, supports_formality?} or v3 shape — handle both
-  type LangRow = {
-    code?: string;
-    language?: string;
-    lang?: string;
-    name?: string;
-  };
-  const rows = Array.isArray(data)
-    ? (data as LangRow[])
-    : ((data as { languages?: LangRow[] }).languages ?? []);
-  // LLM-friendly table: CODE  NAME
-  for (const r of rows) {
-    const code = r.code ?? r.language ?? r.lang ?? "";
-    const name = r.name ?? code;
-    console.log(`${code}\t${name}`);
-  }
-  console.error(`[${rows.length} languages]`);
 }
 
 async function main(): Promise<void> {
