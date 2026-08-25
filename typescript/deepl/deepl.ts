@@ -36,8 +36,8 @@ async function loadDotEnv(): Promise<void> {
       const eq = trimmed.indexOf("=");
       if (eq === -1) continue;
       const k = trimmed.slice(0, eq).trim();
-      const v = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
-      if (k === "DEEPL_API_KEY" && !Deno.env.get(k)) {
+      const v = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, "").trim();
+      if (k === "DEEPL_API_KEY" && Deno.env.get(k) === undefined) {
         Deno.env.set(k, v);
       }
     }
@@ -47,9 +47,16 @@ async function loadDotEnv(): Promise<void> {
 }
 
 function resolveApiKey(flagKey?: string): string {
-  if (flagKey) return flagKey;
-  const envKey = Deno.env.get("DEEPL_API_KEY");
-  if (envKey) return envKey.trim();
+  if (flagKey !== undefined) {
+    const t = flagKey.trim();
+    if (t) return t;
+  } else {
+    const envKey = Deno.env.get("DEEPL_API_KEY");
+    if (envKey !== undefined) {
+      const t = envKey.trim();
+      if (t) return t;
+    }
+  }
   console.error("ERROR: DEEPL_API_KEY not set. Use --api-key <key> or set DEEPL_API_KEY env var or typescript/deepl/.env");
   Deno.exit(2);
 }
