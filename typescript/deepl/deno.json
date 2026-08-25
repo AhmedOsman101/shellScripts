@@ -1,7 +1,7 @@
 {
   "tasks": {
-    "dev": "deno run --allow-env --allow-net --allow-read --allow-write deepl.ts",
-    "dev:watch": "deno run --watch --allow-env --allow-net --allow-read --allow-write deepl.ts",
-    "compile": "deno compile -o ../../bin/deepl --allow-env --allow-net --allow-read --allow-write deepl.ts"
+    "dev": "deno run -A deepl.ts",
+    "dev:watch": "deno run --watch -A deepl.ts",
+    "compile": "deno compile -o ../../bin/deepl -A deepl.ts"
   }
 }
