@@ -230,6 +230,7 @@ function parseTranslateArgs(argv: string[]): { texts: string[]; opts: TranslateO
         case "--help": {
           console.log(HELP);
           Deno.exit(0);
+          break;
         }
         default:
           fail(`unknown flag "${key}"`);
@@ -279,6 +280,7 @@ async function main(): Promise<void> {
     }
     if (parsed.texts.length > 0 && parsed.inputFile) {
       console.error("ERROR: <text> args and --input-file are mutually exclusive");
+      console.log(HELP);
       Deno.exit(1);
     }
 
