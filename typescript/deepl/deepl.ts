@@ -1,4 +1,12 @@
-import * as deepl from "deepl-node";
+import {
+  type Formality,
+  type Language,
+  type SourceLanguageCode,
+  type TargetLanguageCode,
+  type TextResult,
+  type TranslateTextOptions,
+  Translator,
+} from "deepl-node";
 
 const HELP = `deepl - DeepL translation CLI (agent-friendly)
 
@@ -242,24 +250,24 @@ async function translateTexts(
   }
   if (current.length) chunks.push(current);
 
-  const translator = new deepl.Translator(apiKey);
+  const translator = new Translator(apiKey);
   const all: Translation[] = [];
   for (const chunk of chunks) {
     try {
       const input = chunk.length === 1 ? chunk[0] : chunk;
-      const sourceLang = (opts.sourceLang ?? null) as deepl.SourceLanguageCode | null;
-      const targetLang = opts.targetLang as deepl.TargetLanguageCode;
+      const sourceLang = (opts.sourceLang ?? null) as SourceLanguageCode | null;
+      const targetLang = opts.targetLang as TargetLanguageCode;
       const res = await translator.translateText(
         input as string & string[],
         sourceLang,
         targetLang,
         {
-          formality: opts.formality as deepl.Formality | undefined,
+          formality: opts.formality as Formality | undefined,
           context: opts.context,
-        } as deepl.TranslateTextOptions
+        } as TranslateTextOptions
       );
       const arr = Array.isArray(res) ? res : [res];
-      for (const r of arr as deepl.TextResult[]) {
+      for (const r of arr as TextResult[]) {
         all.push({
           text: r.text,
           detected_source_language: r.detectedSourceLang.toUpperCase(),
@@ -586,13 +594,13 @@ async function listLanguages(
   // will migrate to /v3/languages by Q2 2026 per migration guide). Keeping
   // library usage here removes raw fetch; raw v3 fetch is kept only where
   // library cannot do it (none currently for languages).
-  const translator = new deepl.Translator(apiKey);
+  const translator = new Translator(apiKey);
   try {
     const [source, target] = await Promise.all([
       translator.getSourceLanguages(),
       translator.getTargetLanguages(),
     ]);
-    const map = new Map<string, deepl.Language>();
+    const map = new Map<string, Language>();
     for (const l of [...source, ...target]) {
       if (!map.has(l.code)) map.set(l.code, l);
     }
