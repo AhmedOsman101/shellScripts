@@ -339,6 +339,30 @@ async function resolveInputTexts(positional: string[], inputFile?: string): Prom
   Deno.exit(1);
 }
 
+async function renderOutput(translations: Translation[], opts: { json: boolean; verbose: boolean; outputFile?: string }): Promise<void> {
+  let out: string;
+  if (opts.json) {
+    out = JSON.stringify({ translations }, null, 2) + "\n";
+  } else {
+    out = translations.map((t) => t.text).join("\n") + "\n";
+    if (opts.verbose) {
+      const meta = translations.map((t) =>
+        `[detected:${t.detected_source_language}${t.billed_characters ? ` billed:${t.billed_characters}` : ""}${t.model_type_used ? ` model:${t.model_type_used}` : ""}]`
+      ).join(" ");
+      console.error(meta);
+    } else {
+      // always emit concise detected lang to stderr for LLM info without polluting stdout
+      const detected = translations.map((t) => t.detected_source_language).join(",");
+      console.error(`[detected: ${detected}]`);
+    }
+  }
+  if (opts.outputFile) {
+    await Deno.writeTextFile(opts.outputFile, out);
+  } else {
+    await Deno.stdout.write(new TextEncoder().encode(out));
+  }
+}
+
 async function main(): Promise<void> {
   if (Deno.args.includes("--help") || Deno.args.includes("-h") || Deno.args.length === 0) {
     console.log(HELP);
@@ -367,21 +391,7 @@ async function main(): Promise<void> {
 
     const translations = await translateTexts(texts, parsed.opts, apiKey, baseUrl);
 
-    if (parsed.json) {
-      const out = JSON.stringify({ translations }, null, 2);
-      if (parsed.outputFile) {
-        await Deno.writeTextFile(parsed.outputFile, out + "\n");
-      } else {
-        console.log(out);
-      }
-    } else {
-      const out = translations.map((t) => t.text).join("\n");
-      if (parsed.outputFile) {
-        await Deno.writeTextFile(parsed.outputFile, out + "\n");
-      } else {
-        console.log(out);
-      }
-    }
+    await renderOutput(translations, { json: parsed.json, verbose: parsed.verbose, outputFile: parsed.outputFile });
     return;
   }
 
