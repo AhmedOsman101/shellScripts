@@ -68,6 +68,7 @@ function resolveBaseUrl(key: string): string {
   return key.endsWith(":fx") ? "https://api-free.deepl.com" : "https://api.deepl.com";
 }
 
+// deno-lint-ignore no-unused-vars
 function parseApiKeyFlag(argv: string[]): string | undefined {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -363,6 +364,42 @@ async function renderOutput(translations: Translation[], opts: { json: boolean; 
   }
 }
 
+async function listLanguages(apiKey: string, baseUrl: string, jsonMode: boolean) {
+  const endpoints = [
+    `${baseUrl}/v3/languages?resource=translate_text`,
+    `${baseUrl}/v2/languages`,
+  ];
+  let data: unknown = null;
+  let lastErr = "";
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url, { headers: { "Authorization": `DeepL-Auth-Key ${apiKey}` } });
+      if (res.ok) { data = await res.json(); break; }
+      lastErr = `${res.status} ${await res.text().catch(() => "")}`;
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : String(e);
+    }
+  }
+  if (!data) { console.error(`ERROR: failed to list languages: ${lastErr}`); Deno.exit(2); }
+
+  if (jsonMode) {
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+  // data is array of {language, name, supports_formality?} or v3 shape — handle both
+  type LangRow = { code?: string; language?: string; lang?: string; name?: string };
+  const rows = Array.isArray(data)
+    ? data as LangRow[]
+    : (data as { languages?: LangRow[] }).languages ?? [];
+  // LLM-friendly table: CODE  NAME
+  for (const r of rows) {
+    const code = r.code ?? r.language ?? r.lang ?? "";
+    const name = r.name ?? code;
+    console.log(`${code}\t${name}`);
+  }
+  console.error(`[${rows.length} languages]`);
+}
+
 async function main(): Promise<void> {
   if (Deno.args.includes("--help") || Deno.args.includes("-h") || Deno.args.length === 0) {
     console.log(HELP);
@@ -396,13 +433,48 @@ async function main(): Promise<void> {
   }
 
   if (sub === "list") {
-    // Task 6 will implement listLanguages; stub keeps auth check for now
-    const flagKey = parseApiKeyFlag(Deno.args);
+    const args = Deno.args.slice(1);
+    if (args.includes("--help") || args.includes("-h")) {
+      console.log(HELP);
+      Deno.exit(0);
+    }
+    let jsonMode = false;
+    let flagKey: string | undefined;
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i];
+      if (arg === "--json") {
+        jsonMode = true;
+      } else if (arg === "--api-key") {
+        const nxt = args[i + 1];
+        if (!nxt || nxt.startsWith("-")) {
+          console.error("ERROR: --api-key requires a value");
+          console.log(HELP);
+          Deno.exit(1);
+        }
+        flagKey = nxt;
+        i++;
+      } else if (arg.startsWith("--api-key=")) {
+        const val = arg.slice("--api-key=".length);
+        if (!val) {
+          console.error("ERROR: --api-key requires a value");
+          console.log(HELP);
+          Deno.exit(1);
+        }
+        flagKey = val;
+      } else if (arg.startsWith("-")) {
+        console.error(`ERROR: unknown flag "${arg}"`);
+        console.log(HELP);
+        Deno.exit(1);
+      } else {
+        console.error(`ERROR: unknown argument "${arg}"`);
+        console.log(HELP);
+        Deno.exit(1);
+      }
+    }
     await loadDotEnv();
     const apiKey = resolveApiKey(flagKey);
     const baseUrl = resolveBaseUrl(apiKey);
-    void baseUrl;
-    console.log(HELP);
+    await listLanguages(apiKey, baseUrl, jsonMode);
     return;
   }
 
