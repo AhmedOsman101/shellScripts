@@ -252,6 +252,93 @@ function parseTranslateArgs(argv: string[]): { texts: string[]; opts: TranslateO
   return { texts, opts, inputFile, outputFile, json, verbose, apiKeyFlag };
 }
 
+async function readPipedStdin(): Promise<string | null> {
+  if (Deno.stdin.isTerminal()) return null;
+  const reader = Deno.stdin.readable.getReader();
+  try {
+    const readPromise = reader.read().then((r) => ({ ...r, timeout: false as const }));
+    const timeoutPromise = new Promise<{ timeout: true }>((res) => setTimeout(() => res({ timeout: true }), 50));
+    const result = await Promise.race([readPromise, timeoutPromise]) as { done?: boolean; value?: Uint8Array; timeout?: boolean };
+    if (result.timeout) {
+      try { await reader.cancel(); } catch { /* ignore */ }
+      return null;
+    }
+    if (result.done) {
+      try { reader.releaseLock(); } catch { /* ignore */ }
+      return null;
+    }
+    const chunks: Uint8Array[] = [result.value!];
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    try { reader.releaseLock(); } catch { /* ignore */ }
+    const total = chunks.reduce((a, b) => a + b.length, 0);
+    const all = new Uint8Array(total);
+    let off = 0;
+    for (const c of chunks) { all.set(c, off); off += c.length; }
+    return new TextDecoder().decode(all);
+  } catch {
+    try { reader.releaseLock(); } catch { /* ignore */ }
+    return null;
+  }
+}
+
+async function resolveInputTexts(positional: string[], inputFile?: string): Promise<string[]> {
+  const hasPositional = positional.length > 0;
+  const hasFile = !!inputFile;
+  // ponytail: robust pipe detection — brief uses !isTerminal() but that is true for /dev/null in CI; peek distinguishes actual pipe/file redirect
+  const pipedBuf = await readPipedStdin();
+  const isPipe = pipedBuf !== null;
+
+  if (hasPositional && hasFile) {
+    console.error("ERROR: <text> args and --input-file are mutually exclusive");
+    Deno.exit(1);
+  }
+  if (hasFile && isPipe) {
+    console.error("ERROR: --input-file and piped stdin are mutually exclusive");
+    Deno.exit(1);
+  }
+  if (hasPositional && isPipe) {
+    console.error("ERROR: <text> args and piped stdin are mutually exclusive");
+    Deno.exit(1);
+  }
+  if (hasFile) {
+    try {
+      const content = await Deno.readTextFile(inputFile!);
+      const texts = [content]; // one unit, preserve newlines
+      if (new TextEncoder().encode(texts.join("\n")).length > 128 * 1024) {
+        console.error("WARN: request near 128KiB limit — DeepL may reject");
+      }
+      return texts;
+    } catch (e) {
+      console.error(`ERROR: failed to read --input-file "${inputFile}": ${e}`);
+      Deno.exit(1);
+    }
+  }
+  if (hasPositional) {
+    if (new TextEncoder().encode(positional.join("\n")).length > 128 * 1024) {
+      console.error("WARN: request near 128KiB limit — DeepL may reject");
+    }
+    return positional;
+  }
+  if (isPipe) {
+    const buf = pipedBuf!;
+    const trimmed = buf.trim();
+    if (!trimmed) {
+      console.error("ERROR: no input from stdin");
+      Deno.exit(1);
+    }
+    if (new TextEncoder().encode(buf).length > 128 * 1024) {
+      console.error("WARN: request near 128KiB limit — DeepL may reject");
+    }
+    return [buf];
+  }
+  console.error("ERROR: no input — provide <text> args, --input-file <path>, or pipe stdin");
+  Deno.exit(1);
+}
+
 async function main(): Promise<void> {
   if (Deno.args.includes("--help") || Deno.args.includes("-h") || Deno.args.length === 0) {
     console.log(HELP);
@@ -272,32 +359,11 @@ async function main(): Promise<void> {
       Deno.exit(1);
     }
 
-    // Task 4 will add exclusive stdin handling; for now require texts or input-file
-    if (parsed.texts.length === 0 && !parsed.inputFile) {
-      console.error("ERROR: no input — provide <text> args or --input-file <path>");
-      console.log(HELP);
-      Deno.exit(1);
-    }
-    if (parsed.texts.length > 0 && parsed.inputFile) {
-      console.error("ERROR: <text> args and --input-file are mutually exclusive");
-      console.log(HELP);
-      Deno.exit(1);
-    }
+    const texts = await resolveInputTexts(parsed.texts, parsed.inputFile);
 
     await loadDotEnv();
     const apiKey = resolveApiKey(parsed.apiKeyFlag);
     const baseUrl = resolveBaseUrl(apiKey);
-
-    let texts = parsed.texts;
-    if (parsed.inputFile) {
-      try {
-        const content = await Deno.readTextFile(parsed.inputFile);
-        texts = [content];
-      } catch (e) {
-        console.error(`ERROR: failed to read --input-file "${parsed.inputFile}": ${e}`);
-        Deno.exit(1);
-      }
-    }
 
     const translations = await translateTexts(texts, parsed.opts, apiKey, baseUrl);
 
