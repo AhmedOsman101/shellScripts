@@ -34,7 +34,7 @@ cmdarg_parse "$@"
 # ---  Main script logic --- #
 isTemp="${cmdarg_cfg['temp']}"
 filename="${cmdarg_cfg['file']}"
-quiet="${cmdarg_cfg['quiet']}"
+isQuiet="${cmdarg_cfg['quiet']}"
 no_flags='false'
 file=""
 
@@ -61,14 +61,13 @@ validateAndCreateFile() {
 }
 
 if "${isTemp}"; then
-  file=$(mktemp -t XXXXX-script.sh)
+  file="$(mktemp -t XXXXX-script.sh)"
 
   chmod u+x "${file}" || log-error "Failed to make '$(basename "${file}")' executable"
 
   name="${file}"
   clipcopy "${file}"
   scriptContent >"${file}"
-  log-info "The script name was copied to clipboard"
 
 elif "${no_flags}"; then
   if [[ -n ${argv[0]} ]]; then
@@ -122,6 +121,6 @@ elif [[ -n "${filename}" ]]; then
   scriptContent >"${file}"
 fi
 
-"${EDITOR}" "${file}"
+"${isQuiet}" || log-success "Script '$(basename "${file}")' created successfully — the script name was copied to your clipboard."
 
-"${quiet}" || log-success "Script '$(basename "${file}")' created succefully!"
+"${EDITOR}" "${file}"
