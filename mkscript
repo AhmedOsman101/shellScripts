@@ -121,6 +121,6 @@ elif [[ -n "${filename}" ]]; then
   scriptContent >"${file}"
 fi
 
-"${isQuiet}" || log-success "Script '$(basename "${file}")' created successfully — the script name was copied to your clipboard."
+"${isQuiet}" || log-success "Script '$(basename "${file}")' created and its name was copied to your clipboard."
 
 "${EDITOR}" "${file}"
