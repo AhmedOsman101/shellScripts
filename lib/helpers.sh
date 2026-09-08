@@ -188,8 +188,15 @@ supportsColor() {
   # CI environments usually want plain logs
   [[ -n "${CI}" ]] && return 1
 
-  # Must be a TTY
-  [[ ! -t 1 && ! -t 2 ]] && return 1
+  # Must be a TTY. Callers that format inside $(...) — where stdout is a
+  # pipe by construction — evaluate beforehand with real fds and pass the
+  # verdict via _TTY_OK instead.
+  if [[ -n "${_TTY_OK:-}" ]]; then
+    [[ "${_TTY_OK}" == "1" ]] || return 1
+  else
+    test -t 1 || return 1
+    test -t 2 || return 1
+  fi
 
   # TERM must support color
   case "${TERM:-}" in

@@ -338,9 +338,19 @@ colorOnlyPrefix() {
   message="$3"
   fd="${4:-1}"
 
-  if "${isNewLine}"; then
-    printf '%b %s\n' "$(${colorFunc} -n "[${level}]")" "$(sanitizedPrint "${message}")" >&"${fd}"
+  # Decide color here, with real fds: inside the $(...) below stdout is a
+  # pipe by construction, so supportsColor's `test -t 1` would always fail
+  # there. _TTY_OK carries this verdict past the capture.
+  local prefix
+  if supportsColor; then
+    prefix="$(_TTY_OK=1 ${colorFunc} -n "[${level}]")"
   else
-    printf '%b %s' "$(${colorFunc} -n "[${level}]")" "$(sanitizedPrint "${message}")" >&"${fd}"
+    prefix="$(${colorFunc} -n "[${level}]")"
+  fi
+
+  if "${isNewLine}"; then
+    printf '%b %s\n' "${prefix}" "$(sanitizedPrint "${message}")" >&"${fd}"
+  else
+    printf '%b %s' "${prefix}" "$(sanitizedPrint "${message}")" >&"${fd}"
   fi
 }
