@@ -1,4 +1,22 @@
 #!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄▄▄                                                                                      ▄▄
+#  ▀▀██                                                                                      ██
+#    ██       ▄████▄    ▄███▄██   ▄███▄██   ▄████▄    ██▄████  ▄▄█████▄            ▄▄█████▄  ██▄████▄
+#    ██      ██▀  ▀██  ██▀  ▀██  ██▀  ▀██  ██▄▄▄▄██   ██▀      ██▄▄▄▄ ▀            ██▄▄▄▄ ▀  ██▀   ██
+#    ██      ██    ██  ██    ██  ██    ██  ██▀▀▀▀▀▀   ██        ▀▀▀▀██▄             ▀▀▀▀██▄  ██    ██
+#    ██▄▄▄   ▀██▄▄██▀  ▀██▄▄███  ▀██▄▄███  ▀██▄▄▄▄█   ██       █▄▄▄▄▄██     ██     █▄▄▄▄▄██  ██    ██
+#     ▀▀▀▀     ▀▀▀▀     ▄▀▀▀ ██   ▄▀▀▀ ██    ▀▀▀▀▀    ▀▀        ▀▀▀▀▀▀      ▀▀      ▀▀▀▀▀▀   ▀▀    ▀▀
+#                       ▀████▀▀   ▀████▀▀
+#
+# --- DESCRIPTION --- #
+# ANSI color and style printing library
+# - print<Color> helpers incl. printHex/printRGB, plus bold/dim/italic/underline/strikethrough styles
+# - colorOnlyPrefix: leveled log prefixes ([INFO], [ERROR], ...) colored without re-wrapping the message
+# - sanitizedPrint: strips ANSI escapes and control chars from input
+# --- END SIGNATURE --- #
 
 # ---  Main script logic --- #
 sanitizedPrint() {

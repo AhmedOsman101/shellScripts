@@ -13,6 +13,11 @@
 #
 # --- DESCRIPTION --- #
 # A collection of helper functions
+# - logging shims (logDebug/.../logError), yesNo prompt, terminal line erasing
+# - validation: isInt/isPositiveInt/isFloat/... and has-bash-version guard
+# - random: randStr (urandom), randRange (unbiased), randWords (dict or gibberish)
+# - quoting: shellQuote/humanQuote and array-join variants; hasher (xxh3 -> sha1 fallback)
+# - touch wrapper creating parent dirs; supportsColor honoring NO_COLOR/CI/_TTY_OK
 # --- END SIGNATURE --- #
 
 source "$(include "lib/loggers.sh")"
