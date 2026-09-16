@@ -27,6 +27,8 @@ source "$(include "check-deps")"
 
 checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
+declare -a chosenExts
+cmdarg "e?[]" "chosenExts" "Choose predefined set of extensions"
 cmdarg "i" "interactive" "Interactively choose which extensions to install"
 cmdarg "t?" "tries" "Maximum number of install attempts per extension"
 cmdarg_parse "$@"
@@ -45,7 +47,7 @@ trap 'rm -f $file' EXIT
 get-ext --overwrite "${file}" &>/dev/null
 
 # NOTE: Returns True if file exists and is not empty.
-if [[ ! -s "${origin}" ]]; then
+if ! [[ -s "${origin}" ]]; then
   terminate "No entries found in ${origin}"
 fi
 
@@ -59,18 +61,31 @@ fi
 
 # Interactive selection of which extensions to install
 if "${interactive}"; then
-  selected="$(gum choose --no-limit --header="Select extensions to install:" "${extensions[@]}")" || terminate "Selection cancelled."
+  cmd=(
+    'gum'
+    'choose'
+    '--select-if-one'
+    '--no-limit'
+    '--header="Select extensions to install:"'
+  )
+  if ((${#chosenExts[@]})); then
+    cmd+=("--selected='$(joinarr ',' "${chosenExts[@]}")'")
+  fi
+
+  selected="$("${cmd[@]}" "${extensions[@]}")" || terminate "Selection cancelled."
   [[ -z "${selected}" ]] && terminate "No extensions selected."
-  unset extensions
-  mapfile -t extensions <<<"${selected}"
+  unset chosenExts
+  mapfile -t chosenExts <<<"${selected}"
+elif ! ((${#chosenExts[@]})); then
+  chosenExts=("${extensions[@]}")
 fi
 
-for extension in "${extensions[@]}"; do
+for extension in "${chosenExts[@]}"; do
   extensionName="$(awk -F '.' '{print $2}' <<<"${extension}")"
 
   log-info "Installing ${extensionName}..."
-  if repeat-it "${tries:+--tries "${tries}"}" --preserve "code --install-extension ${extension} --force"; then
-    log-info "Installed ${extensionName}"
+  if repeat-it ${tries:+--tries "${tries}"} --preserve "code --install-extension ${extension} --force"; then
+    log-success "Installed ${extensionName}"
   fi
 done
 
