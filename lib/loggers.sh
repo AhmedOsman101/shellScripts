@@ -303,7 +303,7 @@ printInverse() { stylePrint 7 "$@"; }
 printHidden() { stylePrint 8 "$@"; }
 printStrikethrough() { stylePrint 9 "$@"; }
 
-printPurple() { printHex "${U_PURPLE}" "$@"; }
+printPurple() { printHex "${U_PURPLE:-#7AA2F7}" "$@"; }
 
 printRGB() {
   local rgb r g b message
