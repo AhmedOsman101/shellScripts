@@ -41,5 +41,3 @@ enabledExtensions() {
     <(allExtensions) \
     <(disabledExtensions)
 }
-
-unset __stateDb __extensionsJson &>/dev/null
