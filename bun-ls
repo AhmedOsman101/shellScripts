@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄                                      ▄▄▄▄
+#  ██                                      ▀▀██
+#  ██▄███▄   ██    ██  ██▄████▄              ██      ▄▄█████▄
+#  ██▀  ▀██  ██    ██  ██▀   ██              ██      ██▄▄▄▄ ▀
+#  ██    ██  ██    ██  ██    ██   █████      ██       ▀▀▀▀██▄
+#  ███▄▄██▀  ██▄▄▄███  ██    ██              ██▄▄▄   █▄▄▄▄▄██
+#  ▀▀ ▀▀▀     ▀▀▀▀ ▀▀  ▀▀    ▀▀               ▀▀▀▀    ▀▀▀▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Lists all global packages installed with Bun
+# --- DEPENDENCIES --- #
+# - jq
+# - bun
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+source "$(include "lib/cmdarg.sh")"
+source "$(include "lib/helpers.sh")"
+source "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "v" "versions" "Whether to display the package versions or not"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+BUN_INSTALL="${BUN_INSTALL:-${HOME}/.bun}"
+versionsVisible="${cmdarg_cfg['versions']}"
+
+[[ -d "${BUN_INSTALL}" ]] || log-error "BUN_INSTALL doesn't exist at ${BUN_INSTALL}, set it correctly"
+
+pkgFile="${BUN_INSTALL}/install/global/package.json"
+if ! [[ -f "${pkgFile}" ]]; then
+  log-error "The global package.json file was not found at ${pkgFile}"
+fi
+
+mapfile -t deps < <(jq -r '.dependencies // {} | keys | sort | .[]' "${pkgFile}")
+mapfile -t versions < <(jq -r '.dependencies // {} | .[]' "${pkgFile}" | sed -E 's|^[v=~<>@^]+||')
+
+for ((i = 0; i < ${#deps[@]}; ++i)); do
+  printf '%s' "${deps[i]}"
+  ${versionsVisible} && printDim -n " ${versions[i]}"
+  printf '\n'
+done

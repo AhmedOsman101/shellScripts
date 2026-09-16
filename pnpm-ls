@@ -21,10 +21,23 @@ set -eo pipefail
 trap 'exit 1' SIGUSR1
 
 source "$(include "lib/cmdarg.sh")"
+source "$(include "lib/helpers.sh")"
 source "$(include "check-deps")"
-
 checkDeps "$0"
+
+# --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "v" "versions" "Whether to display the package versions or not"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
-pnpm ls -g --no-color --json | jq -r '.[0].dependencies | keys | sort | .[]'
+json="$(pnpm ls -g --no-color --json)"
+versionsVisible="${cmdarg_cfg['versions']}"
+
+mapfile -t deps < <(jq -r '.[0].dependencies | keys | sort | .[]' <<<"${json}")
+mapfile -t versions < <(jq -r '.[0].dependencies[].version' <<<"${json}")
+
+for ((i = 0; i < ${#deps[@]}; ++i)); do
+  printf '%s' "${deps[i]}"
+  ${versionsVisible} && printDim -n " ${versions[i]}"
+  printf '\n'
+done
