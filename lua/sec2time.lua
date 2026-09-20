@@ -1,6 +1,8 @@
 #!/usr/bin/env lua
 
-if arg[1] == nil then os.execute("log-error 'Seconds must be provided'") end
+if arg[1] == nil then
+  os.execute("log-error 'Seconds must be provided'")
+end
 local isShort = arg[2] ~= nil and (arg[2] == '-s' or arg[2] == '--short')
 
 local ONE_DAY = 86400
@@ -9,7 +11,9 @@ local ONE_MINUTE = 60
 
 local result = ""
 local seconds = tonumber(arg[1])
-if seconds == nil then os.execute("log-error 'seconds must be a number'") end
+if seconds == nil then
+  os.execute("log-error 'seconds must be a number'")
+end
 
 seconds = math.floor(seconds or 0)
 
@@ -74,9 +78,9 @@ local temp = { days, hours, minutes, secondsFormatted }
 ---@type string[]
 local output = {}
 
-for _, value in ipairs(temp) do
-  if value ~= nil then
-    table.insert(output, value)
+for i = 1, 4 do
+  if temp[i] ~= nil then
+    table.insert(output, temp[i])
   end
 end
 
