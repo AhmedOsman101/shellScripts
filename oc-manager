@@ -139,7 +139,7 @@ watch() {
 # --- Actions --- #
 start() {
   isRunning && terminate "OpenCode is already running with pid: $(pid), check '${scriptName} status'."
-  local args=(web)
+  local args=('web')
 
   [[ -n "${port}" ]] && args+=("--port" "${port}")
   [[ -n "${hostname}" ]] && args+=("--hostname" "${hostname}")
@@ -211,7 +211,7 @@ status() {
   pid
 
   printYellow -n "Local Access: "
-  viewlines 2 "${lockFile}"
+  viewlines "${lockFile}" 2
 
   local -a net
   mapfile -t net < <(tail -n +3 "${lockFile}")
@@ -229,7 +229,7 @@ status() {
 
 pid() {
   isRunning || log-error "OpenCode is not running!"
-  viewlines 1 "${lockFile}"
+  viewlines "${lockFile}" 1
 }
 
 # Evaluate the action

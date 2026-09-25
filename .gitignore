@@ -5,6 +5,10 @@ rust/**/target
 **/node_modules
 wiki/
 
+# Secrets — never commit real keys
+typescript/deepl/.env
+**/.env
+
 # User-specefic files
 askpass
 config.bash

@@ -1,14 +1,27 @@
 #!/usr/bin/env bash
-
-source "$(include 'lib/helpers.sh')"
-
-# ---  Main script logic --- #
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#                                             ██     ▄▄▄▄                                    ▄▄
+#                                             ▀▀     ▀▀██                                    ██
+#   ▄█████▄   ▄████▄   ████▄██▄  ██▄███▄    ████       ██       ▄████▄             ▄▄█████▄  ██▄████▄
+#  ██▀    ▀  ██▀  ▀██  ██ ██ ██  ██▀  ▀██     ██       ██      ██▄▄▄▄██            ██▄▄▄▄ ▀  ██▀   ██
+#  ██        ██    ██  ██ ██ ██  ██    ██     ██       ██      ██▀▀▀▀▀▀             ▀▀▀▀██▄  ██    ██
+#  ▀██▄▄▄▄█  ▀██▄▄██▀  ██ ██ ██  ███▄▄██▀  ▄▄▄██▄▄▄    ██▄▄▄   ▀██▄▄▄▄█     ██     █▄▄▄▄▄██  ██    ██
+#    ▀▀▀▀▀     ▀▀▀▀    ▀▀ ▀▀ ▀▀  ██ ▀▀▀    ▀▀▀▀▀▀▀▀     ▀▀▀▀     ▀▀▀▀▀      ▀▀      ▀▀▀▀▀▀   ▀▀    ▀▀
+#                                ██
+#
+# --- DESCRIPTION --- #
 # Common compiler helpers for cppc and clangc
 # - safe array passing via namerefs
 # - cache key includes compiler version
 # - optional NO_CACHE to disable caching
 # - writes stderr of failed builds to cache dir (stderr.log)
+# --- END SIGNATURE --- #
 
+source "$(include 'lib/helpers.sh')"
+
+# ---  Main script logic --- #
 # generate_cache_key <cmd_array_name> <files_array_name>
 # Uses namerefs so caller passes an array name (not a joined string).
 generate_cache_key() {

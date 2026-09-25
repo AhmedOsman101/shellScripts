@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#        ▄▄     ██        ▄▄▄▄      ▄▄▄▄             ▄▄                                  ▄▄  ▄▄▄▄                                              ▄▄
+#        ██     ▀▀       ██▀▀▀     ██▀▀▀             ██                                  ██  ▀▀██                                              ██
+#   ▄███▄██   ████     ███████   ███████             ██▄████▄   ▄█████▄  ██▄████▄   ▄███▄██    ██       ▄████▄    ██▄████            ▄▄█████▄  ██▄████▄
+#  ██▀  ▀██     ██       ██        ██                ██▀   ██   ▀ ▄▄▄██  ██▀   ██  ██▀  ▀██    ██      ██▄▄▄▄██   ██▀                ██▄▄▄▄ ▀  ██▀   ██
+#  ██    ██     ██       ██        ██       █████    ██    ██  ▄██▀▀▀██  ██    ██  ██    ██    ██      ██▀▀▀▀▀▀   ██                  ▀▀▀▀██▄  ██    ██
+#  ▀██▄▄███  ▄▄▄██▄▄▄    ██        ██                ██    ██  ██▄▄▄███  ██    ██  ▀██▄▄███    ██▄▄▄   ▀██▄▄▄▄█   ██          ██     █▄▄▄▄▄██  ██    ██
+#    ▀▀▀ ▀▀  ▀▀▀▀▀▀▀▀    ▀▀        ▀▀                ▀▀    ▀▀   ▀▀▀▀ ▀▀  ▀▀    ▀▀    ▀▀▀ ▀▀     ▀▀▀▀     ▀▀▀▀▀    ▀▀          ▀▀      ▀▀▀▀▀▀   ▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Utility library for handling file diffs and conflicts
+# - DIFF_TOOLS registry of diff commands (code, cursor, meld, vimdiff, colordiff, diff, ...)
+# - selectDiffTool: interactive tool choice (gum menu when available), cached in ~/.cache/diff-handler
+# - showDiff <orig> <new>: run/pipe the chosen tool on two files
+# - handleExistingFile <dest> <temp>: prompt Merge / Overwrite / Keep original
+# --- END SIGNATURE --- #
 
+# ---  Main script logic --- #
 declare -A DIFF_TOOLS=(
   ["code"]="code --diff"
   ["cursor"]="cursor --diff"

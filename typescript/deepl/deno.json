@@ -1,0 +1,10 @@
+{
+  "tasks": {
+    "dev": "deno run -A deepl.ts",
+    "compile": "deno compile -o deepl -A deepl.ts"
+  },
+  "imports": {
+    "deepl-node": "npm:deepl-node@^1.28.0"
+  },
+  "nodeModulesDir": "auto"
+}

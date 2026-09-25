@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#  ▄▄                            ▄▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄ ▄▄▄    ▄▄▄
+#  ██                            ▀▀▀██▀▀▀  ▀▀▀██▀▀▀  ██▄  ▄██
+#  ██▄████▄   ▄█████▄  ▄▄█████▄     ██        ██      ██▄▄██
+#  ██▀   ██   ▀ ▄▄▄██  ██▄▄▄▄ ▀     ██        ██       ▀██▀
+#  ██    ██  ▄██▀▀▀██   ▀▀▀▀██▄     ██        ██        ██
+#  ██    ██  ██▄▄▄███  █▄▄▄▄▄██     ██        ██        ██
+#  ▀▀    ▀▀   ▀▀▀▀ ▀▀   ▀▀▀▀▀▀      ▀▀        ▀▀        ▀▀
+#
+#
+# --- DESCRIPTION --- #
+#
+# --- DEPENDENCIES --- #
+#
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+source "$(include "lib/cmdarg.sh")"
+source "$(include "lib/helpers.sh")"
+source "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+# Exit 0 if colors should be enabled, 1 otherwise
+# Explicit opt-out (standard)
+log-debug "NO_COLOR=${NO_COLOR:-not set}"
+
+echo '============='
+# CI environments usually want plain logs
+log-debug "CI=${CI:-not set}"
+
+echo '============='
+# Must be a TTY
+if [[ -t 1 ]]; then
+  log-debug "has -t 1"
+else
+  log-debug "no -t 1"
+fi
+
+echo '============='
+if [[ -t 2 ]]; then
+  log-debug "has -t 2"
+else
+  log-debug "no -t 2"
+fi
+
+echo '============='
+if [[ -t 1 ]] && [[ -t 2 ]]; then
+  log-debug "Is TTY"
+else
+  log-debug "Not TTY"
+fi
+
+echo '============='
+# TERM must support color
+case "${TERM:-}" in
+dumb | "") log-debug "Dumb or empty TERM=${TERM:-}" ;;
+*) log-debug "TERM=${TERM:-}" ;;
+esac

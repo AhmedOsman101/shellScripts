@@ -13,6 +13,11 @@
 #
 # --- DESCRIPTION --- #
 # A collection of helper functions
+# - logging shims (logDebug/.../logError), yesNo prompt, terminal line erasing
+# - validation: isInt/isPositiveInt/isFloat/... and has-bash-version guard
+# - random: randStr (urandom), randRange (unbiased), randWords (dict or gibberish)
+# - quoting: shellQuote/humanQuote and array-join variants; hasher (xxh3 -> sha1 fallback)
+# - touch wrapper creating parent dirs; supportsColor honoring NO_COLOR/CI/_TTY_OK
 # --- END SIGNATURE --- #
 
 source "$(include "lib/loggers.sh")"
@@ -111,21 +116,6 @@ mapColor() {
   fi
 }
 
-touch() {
-  for file in "$@"; do
-    if [[ ! -f "${file}" ]]; then
-      local dir="$(dirname "${file}")"
-      if [[ ! -d "${dir}" ]]; then
-        if ! mkdir -p "${dir}"; then
-          log-warning "Couldn't create parent directory, skipping file: ${file}"
-          continue
-        fi
-      fi
-    fi
-    command touch "${file}"
-  done
-}
-
 randStr() {
   local len="${1:-16}"
   isPositiveInt "${len}" || return 1
@@ -188,8 +178,15 @@ supportsColor() {
   # CI environments usually want plain logs
   [[ -n "${CI}" ]] && return 1
 
-  # Must be a TTY
-  [[ ! -t 1 && ! -t 2 ]] && return 1
+  # Must be a TTY. Callers that format inside $(...) — where stdout is a
+  # pipe by construction — evaluate beforehand with real fds and pass the
+  # verdict via _TTY_OK instead.
+  if [[ -n "${_TTY_OK:-}" ]]; then
+    [[ "${_TTY_OK}" == "1" ]] || return 1
+  else
+    test -t 1 || return 1
+    test -t 2 || return 1
+  fi
 
   # TERM must support color
   case "${TERM:-}" in
