@@ -32,7 +32,7 @@ source "$(include "check-deps")"
 
 checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
-cmdarg "b?" "biome-version" "Biome version to install" "${BIOME_VERSION:-2.3.0}"
+cmdarg "b?" "biome-version" "Biome version to install" "${BIOME_VERSION:-latest}"
 cmdarg_parse "$@"
 
 biomeVersion="${cmdarg_cfg['biome-version']}"
