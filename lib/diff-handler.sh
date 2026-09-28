@@ -112,13 +112,13 @@ showDiff() {
 
   if [[ ${tool} == "diff" ]]; then
     log-info "Difference between original and new:"
-    ${tool_cmd} "${original}" "${new}" | less -R -F -X || true
+    sudo "${tool_cmd}" "${original}" "${new}" | less -R -F -X || true
   elif [[ ${tool} == "colordiff" ]]; then
     log-info "Difference between original and new:"
-    ${tool_cmd} "${original}" "${new}" | less -R -F -X || true
+    sudo "${tool_cmd}" "${original}" "${new}" | less -R -F -X || true
   else
     log-info "Opening diff tool: ${tool_cmd}"
-    ${tool_cmd} "${original}" "${new}"
+    sudo "${tool_cmd}" "${original}" "${new}"
   fi
 }
 

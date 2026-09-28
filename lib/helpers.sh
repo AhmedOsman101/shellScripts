@@ -183,9 +183,6 @@ supportsColor() {
   # verdict via _TTY_OK instead.
   if [[ -n "${_TTY_OK:-}" ]]; then
     [[ "${_TTY_OK}" == "1" ]] || return 1
-  else
-    test -t 1 || return 1
-    test -t 2 || return 1
   fi
 
   # TERM must support color

@@ -35,7 +35,7 @@ cmdarg_parse "$@"
 isQuiet="${cmdarg_cfg['quiet']}"
 backup="${cmdarg_cfg['backup']}"
 
-cmd=(phpcbf -n -p --parallel=$(($(nproc) / 2 + 1)))
+cmd=(phpcbf --standard="${XDG_CONFIG_HOME}/php-codesniffer/phpcs.xml" -n -p --parallel=$(($(nproc) / 2 + 1)))
 
 "${isQuiet}" && cmd+=(-q)
 "${backup}" && cmd+=("--suffix=.bak")
