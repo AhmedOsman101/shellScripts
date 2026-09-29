@@ -20,6 +20,7 @@
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+# shellcheck source=check-deps
 source "$(include "check-deps")"
 checkDeps "$0"
 

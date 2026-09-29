@@ -24,8 +24,11 @@
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+# shellcheck source=lib/cmdarg.sh
 source "$(include "lib/cmdarg.sh")"
+# shellcheck source=check-deps
 source "$(include "check-deps")"
+# shellcheck source=lib/vscode.sh
 source "$(include "lib/vscode.sh")"
 
 checkDeps "$0"

@@ -25,9 +25,13 @@
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+# shellcheck source=lib/helpers.sh
 source "$(include "lib/helpers.sh")"
+# shellcheck source=lib/diff-handler.sh
 source "$(include "lib/diff-handler.sh")"
+# shellcheck source=lib/cmdarg.sh
 source "$(include "lib/cmdarg.sh")"
+# shellcheck source=check-deps
 source "$(include "check-deps")"
 
 checkDeps "$0"

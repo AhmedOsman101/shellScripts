@@ -32,7 +32,9 @@ else
   exit 1
 fi
 
+# shellcheck source=lib/cmdarg.sh
 source "$(include "lib/cmdarg.sh")"
+# shellcheck source=lib/helpers.sh
 source "$(include "lib/helpers.sh")"
 
 # --- cmdarg setup --- #

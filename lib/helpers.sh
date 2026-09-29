@@ -20,6 +20,7 @@
 # - touch wrapper creating parent dirs; supportsColor honoring NO_COLOR/CI/_TTY_OK
 # --- END SIGNATURE --- #
 
+# shellcheck source=lib/loggers.sh
 source "$(include "lib/loggers.sh")"
 # ---  Main script logic --- #
 

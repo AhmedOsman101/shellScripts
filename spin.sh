@@ -18,6 +18,7 @@
 set -eo pipefail
 trap 'exit 1' SIGUSR1
 
+# shellcheck source=lib/helpers.sh
 source "$(include "lib/helpers.sh")"
 # ---  Main script logic --- #
 # ---- internal state ----
