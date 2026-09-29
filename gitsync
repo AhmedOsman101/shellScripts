@@ -65,7 +65,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
   if "${hasMsg}"; then
     msg=$(gum write --placeholder "Write the commit message...")
     gum confirm "Add timestamps?" && msg="${msg} $(now)"
-  elif command -v commit-sage; then
+  elif command -v commit-sage &>/dev/null; then
     msg="$(commit-sage generate --offline | tr -d '\n') $(now)"
   else
     # Set default message if unset or empty
