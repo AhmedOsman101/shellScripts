@@ -1,11 +1,12 @@
-import sys
-import dbus
-import os
-from operator import itemgetter
 import argparse
+import os
 import re
-from urllib.parse import unquote
+import sys
 import time
+from operator import itemgetter
+from urllib.parse import unquote
+
+import dbus
 from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import GLib
 
@@ -14,7 +15,7 @@ DBusGMainLoop(set_as_default=True)
 
 FORMAT_STRING = "{icon} {artist} - {title}"
 FORMAT_REGEX = re.compile(
-    r"(\{:(?P<tag>.*?)(:(?P<format>[wt])(?P<formatlen>\d+))?:(?P<text>.*?):\})", re.I
+    r"(\{:(?P<tag>.*?)(:(?P<format>[wt])(?P<formatlen>\d+))?:(?P<text>.*?):\})", re.IGNORECASE
 )
 FORMAT_TAG_REGEX = re.compile(r"(?P<format>[wt])(?P<formatlen>\d+)")
 SAFE_TAG_REGEX = re.compile(r"[{}]")
@@ -159,7 +160,7 @@ class PlayerManager:
         ]
         return [
             info["owner"]
-            for info in reversed(sorted(players, key=itemgetter("status", "number")))
+            for info in sorted(players, key=itemgetter("status", "number"), reverse=True)
         ]
 
     # Get latest player that's currently playing
@@ -548,21 +549,13 @@ def _dbusValueToPython(value):
     elif isinstance(value, dbus.Boolean):
         return int(value) == 1
     elif (
-        isinstance(value, dbus.Byte)
-        or isinstance(value, dbus.Int16)
-        or isinstance(value, dbus.UInt16)
-        or isinstance(value, dbus.Int32)
-        or isinstance(value, dbus.UInt32)
-        or isinstance(value, dbus.Int64)
-        or isinstance(value, dbus.UInt64)
+        isinstance(value, (dbus.Byte, dbus.Int16, dbus.UInt16, dbus.Int32, dbus.UInt32, dbus.Int64, dbus.UInt64))
     ):
         return int(value)
     elif isinstance(value, dbus.Double):
         return float(value)
     elif (
-        isinstance(value, dbus.ObjectPath)
-        or isinstance(value, dbus.Signature)
-        or isinstance(value, dbus.String)
+        isinstance(value, (dbus.ObjectPath, dbus.Signature, dbus.String))
     ):
         return unquote(str(value))
 
@@ -595,7 +588,7 @@ def _metadataGetFirstItem(_value):
 
 class CleanSafeDict(dict):
     def __missing__(self, key):
-        return "{{{}}}".format(key)
+        return f"{{{key}}}"
 
 
 """
@@ -708,7 +701,7 @@ else:
             )
         )
     elif args.command == "current" and current_player:
-        print("{}".format(current_player.status))
+        print(current_player.status)
     elif args.command == "current" and current_player is None:
         print("Offline")
     elif args.command == "metadata" and current_player:
