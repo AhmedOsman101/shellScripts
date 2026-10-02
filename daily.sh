@@ -20,6 +20,8 @@
 
 set -eo pipefail
 trap 'exit 1' SIGUSR1
+# BASH_SOURCE contains the full pathname
+shopt -s bash_source_fullpath
 
 # ---  Main script logic --- #
 SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"

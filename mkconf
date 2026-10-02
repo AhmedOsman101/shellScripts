@@ -15,7 +15,7 @@
 # Creates or moves configuration directories for an app; interacts with the user to confirm actions and manage directories
 # --- DEPENDENCIES --- #
 # - gum
-# - tuckr
+# - stow
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -68,4 +68,4 @@ fi
 
 log-success "Created config directory for ${app}!"
 
-tuckr add "${app}" # Populate the config after making it
+stow "${app}" # Populate the config after making it
