@@ -65,7 +65,7 @@ logSafeError() {
 }
 
 terminate() {
-  local msg="${1:-'Program terminated!'}"
+  local msg="${1:-Program terminated!}"
   logInfo "${msg}"
   exit 0
 }
