@@ -16,6 +16,7 @@
 # --- DEPENDENCIES --- #
 # - git
 # - gum
+# - commit-sage (commit-sage-bin)
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -65,13 +66,11 @@ fi
 if [[ -n "$(git status --porcelain)" ]]; then
 
   if "${hasMsg}"; then
-    msg=$(gum write --placeholder "Write the commit message...")
+    msg="$(gum write --placeholder "Write the commit message...")"
     gum confirm "Add timestamps?" && msg="${msg} $(now)"
-  elif command -v commit-sage &>/dev/null; then
-    msg="$(commit-sage generate --offline | tr -d '\n') $(now)"
   else
-    # Set default message if unset or empty
-    msg="Updated Files $(now)"
+    msg="$(commit-sage generate --offline 2>/dev/null || echo "Updated Files")"
+    msg="$(tr -d '\n' <<<"${msg}") $(now)"
   fi
 
   # There are changes, so attempt the commit
