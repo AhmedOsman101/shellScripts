@@ -16,8 +16,8 @@
 # - git
 # - rg (ripgrep)
 # - gum
-# - mdcat | lowdown
-# - commit-sage
+# - mdcat | glow | lowdown
+# - commit-sage (commit-sage-bin)
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -160,14 +160,21 @@ if "${edit}"; then
   fi
 else
 
+  message=""
+  printf -v message "%s\n\n%s\n\n" "${summary}" "${details}"
+
   if command -v mdcat &>/dev/null; then
-    printf "%s\n\n%s\n\n" "${summary}" "${details}" | mdcat
+    mdcat <<<"${message}"
+  elif command -v glow &>/dev/null; then
+    glow <<<"${message}"
   elif command -v lowdown &>/dev/null; then
-    printf " %s\n\n%s\n\n" "${summary}" "${details}" | lowdown -t term
+    lowdown -t term <<<"${message}"
+  else
+    printf " %s\n\n%s\n\n" "${summary}" "${details}"
   fi
 
   if ! "${noConfirm}"; then
-    gum confirm "Commit changes?" || terminate
+    gum confirm "Commit changes?" || terminate "Commit Aborted!"
   fi
 
   if git commit -m "${summary}" -m "${details}"; then
@@ -180,7 +187,7 @@ fi
 
 if ! "${local}" && [[ -n "$(git remote -v)" ]]; then
   if ! "${noConfirm}"; then
-    gum confirm "Push changes?" || terminate
+    gum confirm "Push changes?" || terminate "Push Aborted!"
   fi
 
   branch="$(git_current_branch)"
