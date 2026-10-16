@@ -16,7 +16,7 @@
 # - DIFF_TOOLS registry of diff commands (code, cursor, meld, vimdiff, colordiff, diff, ...)
 # - selectDiffTool: interactive tool choice (gum menu when available), cached in ~/.cache/diff-handler
 # - showDiff <orig> <new>: run/pipe the chosen tool on two files
-# - handleExistingFile <dest> <temp>: prompt Merge / Overwrite / Keep original
+# - handleExistingFile <dest> <temp>: prompt Merge / Overwrite / Keep original / Delete
 # --- END SIGNATURE --- #
 
 # ---  Main script logic --- #
@@ -129,11 +129,11 @@ handleExistingFile() {
   log-warning "File '${dest}' already exists."
 
   if command -v gum >/dev/null 2>&1; then
-    choice=$(gum choose --header="What would you like to do?" "Merge" "Overwrite" "Keep original")
+    choice=$(gum choose --header="What would you like to do?" "Merge" "Overwrite" "Keep original" "Delete")
   else
     local PS3=$'\nWhat would you like to do: '
 
-    select choice in "Merge" "Overwrite" "Keep original"; do
+    select choice in "Merge" "Overwrite" "Keep original" "Delete"; do
       if [[ -n ${choice} ]]; then
         break
       fi
@@ -145,12 +145,17 @@ handleExistingFile() {
     log-info "Showing diff between files..."
     showDiff "${dest}" "${tempFile}"
     log-info "Please merge manually. Press Enter when done."
-    read -r
+    read -r || true
     rm -f "${tempFile}"
     ;;
   "Overwrite")
     log-info "Overwriting ${dest}"
     mv "${tempFile}" "${dest}"
+    ;;
+  "Delete")
+    log-info "Deleting ${dest}"
+    rm -f -- "${dest}"
+    rm -f "${tempFile}"
     ;;
   "Keep original")
     log-info "Keeping original ${dest}"

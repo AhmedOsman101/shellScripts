@@ -15,6 +15,7 @@
 # Launch the rust book using vite
 # --- DEPENDENCIES --- #
 # - vite
+# - rustup
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -29,6 +30,5 @@ checkDeps "$0"
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
-cd "${HOME}/.local/share/rustup/toolchains/stable-x86_64-unknown-linux-gnu/share/doc/rust/html/book" || log-error "Cannot find the book"
-
-vite --config "${HOME}/.config/vite/vite.config.js" --port 9001 --open
+cd "$(dirname "$(rustup doc --path)")/book" || log-error "Cannot find the Rust book"
+vite --config "${XDG_CONFIG_HOME}/vite/vite.config.mjs" --port 9001 --open
