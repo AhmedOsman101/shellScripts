@@ -12,9 +12,10 @@
 #  ██                  ██
 #
 # --- DESCRIPTION --- #
-# Formats PHP files using phpcbf; accepts files, directories, or reads from stdin
+# Formats PHP files using phpcbf and php-cs-fixer; accepts files, directories, or reads from stdin
 # --- DEPENDENCIES --- #
 # - phpcbf (php-codesniffer)
+# - php-cs-fixer
 # --- END SIGNATURE --- #
 
 trap 'exit 1' SIGUSR1
@@ -34,24 +35,87 @@ cmdarg "q" "quiet" "Supress output"
 cmdarg "b" "backup" "Create backup with suffix"
 cmdarg_parse "$@"
 # ---  Main script logic --- #
-
 isQuiet="${cmdarg_cfg['quiet']}"
 backup="${cmdarg_cfg['backup']}"
 
-cmd=(phpcbf --standard="${XDG_CONFIG_HOME}/php-codesniffer/phpcs.xml" -n -p --parallel=$(($(nproc) / 2 + 1)))
+tmpDir="$(mktemp -d)" || logError "Failed to create temp directory"
+trap 'rm -rf "${tmpDir}"' EXIT
 
-"${isQuiet}" && cmd+=(-q)
-"${backup}" && cmd+=("--suffix=.bak")
+# php-cs-fixer's @auto/@auto:risky rulesets resolve the target PHP version
+# from a composer.json in the working directory and fail without one, so we
+# stage a minimal dummy and always run the fixer from tmpDir.
+cat >"${tmpDir}/composer.json" <<'EOF'
+{
+  "name": "othman/php",
+  "require": {
+    "php": "^8.5"
+  }
+}
+EOF
 
-if ((argc == 0)); then
-  if [[ ! -t 0 ]]; then
-    cmd+=(--stdin-path=file.php -)
-    "${cmd[@]}"
-    exit 0
+cbf_cmd=(phpcbf --standard="${XDG_CONFIG_HOME}/php-codesniffer/phpcs.xml" -n -p --parallel=$(($(nproc) / 2 + 1)))
+csfix_cmd=(php-cs-fixer fix --config="${XDG_CONFIG_HOME}/php-cs-fixer/.php-cs-fixer.php" --allow-unsupported-php-version=yes)
+
+"${isQuiet}" && cbf_cmd+=(-q)
+"${isQuiet}" && csfix_cmd+=(--quiet)
+
+# --- stdin: stage piped code in a temp file, format it, print the result --- #
+if ((argc == 0)) && ! test -t 0; then
+  tmpFile="$(mktemp -p "${tmpDir}" -t "XXXXXXX.php")"
+  cat >"${tmpFile}"
+  # tool reports go to stderr so stdout carries only the formatted code
+  if "${isQuiet}"; then
+    "${cbf_cmd[@]}" "${tmpFile}" >/dev/null 2>&1
+    (cd "${tmpDir}" && "${csfix_cmd[@]}" --using-cache=no "${tmpFile}") >/dev/null 2>&1 || logWarning "php-cs-fixer failed, returning phpcbf result"
+  else
+    "${cbf_cmd[@]}" "${tmpFile}" >&2
+    (cd "${tmpDir}" && "${csfix_cmd[@]}" --using-cache=no "${tmpFile}") >&2 || logWarning "php-cs-fixer failed, returning phpcbf result"
   fi
-  cmd+=(.)
-else
-  cmd+=("${argv[@]}")
+  cat "${tmpFile}"
+  exit 0
 fi
 
-"${cmd[@]}"
+# --- files/dirs: stage copies in tmpDir, format them in batch, copy back --- #
+declare -a origFiles=()
+((argc == 0)) && argv=(.)
+for target in "${argv[@]}"; do
+  if [[ -d ${target} ]]; then
+    while IFS= read -r -d '' phpFile; do
+      origFiles+=("${phpFile}")
+    done < <(find "${target}" -type d \( -name vendor -o -name node_modules -o -name storage -o -path '*/bootstrap/cache' -o -path '*/resources/views' \) -prune -o -type f -name '*.php' -print0)
+  elif [[ -f ${target} ]]; then
+    origFiles+=("${target}")
+  else
+    logWarning "Skipping '${target}': not a file or directory"
+  fi
+done
+
+((${#origFiles[@]} == 0)) && exit 0
+
+declare -A tmpFor=()
+for origFile in "${origFiles[@]}"; do
+  absPath="$(realpath -- "${origFile}")"
+  fileHash="$(hasher <<<"${absPath}")"
+  tmpFile="${tmpDir}/${fileHash%% *}.php"
+  if [[ -z ${tmpFor["${tmpFile}"]+x} ]]; then
+    cp -- "${origFile}" "${tmpFile}"
+    tmpFor["${tmpFile}"]="${origFile}"
+  fi
+done
+declare -a tmpFiles=("${!tmpFor[@]}")
+
+if "${isQuiet}"; then
+  # -q only drops phpcbf's progress bar, the result summary still needs redirecting
+  "${cbf_cmd[@]}" "${tmpFiles[@]}" >/dev/null
+else
+  "${cbf_cmd[@]}" "${tmpFiles[@]}"
+fi
+(cd "${tmpDir}" && "${csfix_cmd[@]}" "${tmpFiles[@]}") || logWarning "php-cs-fixer failed, keeping phpcbf result"
+
+for tmpFile in "${tmpFiles[@]}"; do
+  origFile="${tmpFor["${tmpFile}"]}"
+  if ! cmp -s -- "${tmpFile}" "${origFile}"; then
+    "${backup}" && cp -p -- "${origFile}" "${origFile}.bak"
+    cat -- "${tmpFile}" >"${origFile}"
+  fi
+done
