@@ -1,0 +1,20 @@
+{
+  "name": "emoji-strip",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "typecheck": "bun check",
+    "dev": "bun run --watch index.ts",
+    "compile": "bun build --compile index.ts --outfile=emoji-strip"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^7"
+  },
+  "dependencies": {
+    "emoji-regex": "^11.0.0",
+    "lib-result": "^6.1.0"
+  }
+}

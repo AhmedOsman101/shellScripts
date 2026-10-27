@@ -1,24 +1,26 @@
+import { statSync } from "node:fs";
 import emojiRegex from "emoji-regex";
-import { wrapAsync } from "lib-result";
+import { wrap, wrapAsync } from "lib-result";
 
 const encoder = new TextEncoder();
 
 // Function to print to stderr in red
-function printRed(message: string): never {
-  console.error(`\x1b[31m${message}\x1b[0m`);
-  Deno.exit(1);
+function logError(message: string): never {
+  process.stderr.write("\x1b[31m[ERROR]\x1b[0m");
+  process.stderr.write(` ${message}\n`);
+  process.exit(1);
 }
 
 async function print(...args: string[]) {
-  await Deno.stdout.write(encoder.encode(args.join(" ")));
+  process.stdout.write(encoder.encode(args.join(" ")));
 }
 
 const stripEmojies = (str: string) => str.replaceAll(emojiRegex(), "");
 
 async function processFile(path: string) {
-  const text = await wrapAsync(() => Deno.readTextFile(path));
+  const text = await wrapAsync(async () => await Bun.file(path).text());
   if (text.isError()) {
-    printRed(`An error occured while reading file ${path}: ${text.error}`);
+    logError(`An error occured while reading file ${path}: ${text.error}`);
   }
 
   const cleaned = stripEmojies(text.ok);
@@ -27,20 +29,20 @@ async function processFile(path: string) {
     return;
   }
 
-  const writeResult = await wrapAsync(() =>
-    Deno.writeTextFile(path, cleaned, { create: false })
+  const writeResult = await wrapAsync(
+    async () => await Bun.write(path, cleaned, { createPath: false })
   );
   if (writeResult.isError()) {
-    printRed(
+    logError(
       `An error occured while writing to file ${path}: ${writeResult.error}`
     );
   } else await print(`Processed file '${path}' successfully!\n`);
 }
 
 async function processArg(arg: string) {
-  const statResult = await wrapAsync(() => Deno.stat(arg));
+  const statResult = wrap(() => statSync(arg));
 
-  if (statResult.isOk() && statResult.ok.isFile) {
+  if (statResult.isOk() && statResult.ok.isFile()) {
     await print("\n");
     await processFile(arg);
   } else {
@@ -51,7 +53,7 @@ async function processArg(arg: string) {
 
 async function main(argv: string[], argc: number) {
   if (argc === 0) {
-    printRed("Usage: emoji-strip <file1|text> [more files or text...]");
+    logError("Usage: emoji-strip <file1|text> [more files or text...]");
   }
 
   for (const arg of argv) await processArg(arg);
@@ -59,5 +61,5 @@ async function main(argv: string[], argc: number) {
 }
 
 if (import.meta.main) {
-  await main(Deno.args, Deno.args.length);
+  await main(process.argv.slice(2), process.argv.length - 2);
 }
