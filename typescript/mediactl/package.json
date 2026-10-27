@@ -1,0 +1,25 @@
+{
+  "name": "test",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "typecheck": "bun check",
+    "compile": "bun build --compile index.ts --outfile=mediactl",
+    "dev": "bun run --watch index.ts",
+    "debug-dev": "DEBUG=1 bun dev",
+    "start": "bun run index.ts",
+    "debug": "DEBUG=1 bun start"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^7"
+  },
+  "dependencies": {
+    "dbus-next": "^0.10.2"
+  },
+  "trustedDependencies": [
+    "usocket"
+  ]
+}

@@ -2,7 +2,7 @@ import type { MessageBus } from "dbus-next";
 import { Message, MessageType, sessionBus, type Variant } from "dbus-next";
 
 const MAX_TRACK_LENGTH = 35;
-const DEBUG = Deno.env.get("DEBUG") === "1";
+const DEBUG = process.env.DEBUG === "1";
 
 interface Metadata {
   "xesam:artist"?: string[];
@@ -19,6 +19,12 @@ interface PlayerState {
 
 const players = new Map<string, PlayerState>();
 let pollInterval: number | null = null;
+
+function logDebug(...data: any[]) {
+  if (DEBUG) {
+    console.debug("[DEBUG]", ...data);
+  }
+}
 
 function callDbusMethod(
   bus: MessageBus,
@@ -68,9 +74,7 @@ function formatTrackInfo(metadata: Metadata): string {
 
   const track = `${artist} - ${title}`;
 
-  if (DEBUG) {
-    console.log(`[DEBUG] Format track: "${track}" (${track.length} chars)`);
-  }
+  logDebug(`Format track: "${track}" (${track.length} chars)`);
 
   if (track.length <= MAX_TRACK_LENGTH) {
     return track;
@@ -84,24 +88,22 @@ function sendPolybarMessage(
   hook: number,
   content?: string
 ): void {
-  if (DEBUG) {
-    console.log(
-      `[DEBUG] Sending polybar message: #${module}.${hook}${content ? ` "${content}"` : ""}`
-    );
-  }
+  logDebug(
+    `Sending polybar message: #${module}.${hook}${content ? ` "${content}"` : ""}`
+  );
   const args = content
     ? ["action", `#${module}.${hook}`, content]
     : ["action", `#${module}.${hook}`];
 
-  const command = new Deno.Command("polybar-msg", {
-    args,
-    stdout: "null",
-    stderr: "null",
+  const command = Bun.spawn({
+    cmd: ["polybar-msg", ...args],
+    stdout: null,
+    stderr: null,
   });
 
-  command.spawn();
+  command.exitCode;
   if (DEBUG) {
-    Deno.stdout.writeSync(new TextEncoder().encode("\n"));
+    process.stdout.write("\n");
   }
 }
 
@@ -110,20 +112,16 @@ function updateMediaHook(): void {
     p => p.playbackStatus !== "Stopped"
   );
 
-  if (DEBUG) {
-    console.log(
-      `[DEBUG] Total players: ${players.size}, Active: ${activePlayers.length}`
-    );
-  }
+  logDebug(`Total players: ${players.size}, Active: ${activePlayers.length}`);
 
   if (activePlayers.length === 0) {
     sendPolybarMessage("media", 0);
     sendPolybarMessage("playpause", 0);
     sendPolybarMessage("previous", 0);
     sendPolybarMessage("next", 0);
-    if (DEBUG) {
-      console.log("[DEBUG] No active players - hiding all controls");
-    }
+
+    logDebug("No active players - hiding all controls");
+
     stopPolling();
     return;
   }
@@ -137,11 +135,9 @@ function updateMediaHook(): void {
   sendPolybarMessage("previous", 1);
   sendPolybarMessage("next", 1);
 
-  if (DEBUG) {
-    console.log(`[DEBUG] Active player: ${player.busName}`);
-    console.log(`[DEBUG] Status: ${player.playbackStatus}`);
-    console.log(`[DEBUG] Track: ${trackInfo}`);
-  }
+  logDebug(`Active player: ${player.busName}`);
+  logDebug(`Status: ${player.playbackStatus}`);
+  logDebug(`Track: ${trackInfo}`);
 }
 
 function isMPRISPlayer(busName: string): boolean {
@@ -160,9 +156,7 @@ async function handlePlayerAdded(
     return;
   }
 
-  if (DEBUG) {
-    console.log(`[DEBUG] Player added: ${busName}`);
-  }
+  logDebug(`Player added: ${busName}`);
 
   try {
     let proxy: Awaited<ReturnType<MessageBus["getProxyObject"]>> | undefined;
@@ -170,11 +164,7 @@ async function handlePlayerAdded(
     try {
       proxy = await bus.getProxyObject(busName, "/org/mpris/MediaPlayer2");
     } catch (_introspectionError) {
-      if (DEBUG) {
-        console.log(
-          `[DEBUG] Introspection failed for ${busName}, trying direct DBus calls`
-        );
-      }
+      logDebug(`Introspection failed for ${busName}, trying direct DBus calls`);
     }
 
     let propertiesInterface: unknown;
@@ -202,7 +192,7 @@ async function handlePlayerAdded(
         ).value as Metadata;
       playbackStatus =
         (
-        // @ts-expect-error - dbus-next types are incomplete
+          // @ts-expect-error - dbus-next types are incomplete
           await propertiesInterface.Get(
             "org.mpris.MediaPlayer2.Player",
             "PlaybackStatus"
@@ -246,11 +236,7 @@ async function handlePlayerAdded(
     // Ensure polling is active
     startPolling(bus);
 
-    if (DEBUG) {
-      console.log(
-        `[DEBUG] Player ${busName} initialized - Status: ${playbackStatus}`
-      );
-    }
+    logDebug(`Player ${busName} initialized - Status: ${playbackStatus}`);
 
     updateMediaHook();
   } catch (error) {
@@ -264,9 +250,7 @@ function handlePlayerRemoved(busName: string): void {
   }
 
   if (players.delete(busName)) {
-    if (DEBUG) {
-      console.log(`[DEBUG] Player removed: ${busName}`);
-    }
+    logDebug(`Player removed: ${busName}`);
     updateMediaHook();
   }
 }
@@ -282,11 +266,9 @@ async function listActivePlayers(bus: MessageBus): Promise<void> {
     const names = (await dbusInterface.ListNames()) as string[];
     const mprisNames = names.filter(isMPRISPlayer);
 
-    if (DEBUG) {
-      console.log(
-        `[DEBUG] Found ${mprisNames.length} MPRIS players: ${mprisNames.join(", ")}`
-      );
-    }
+    logDebug(
+      `Found ${mprisNames.length} MPRIS players: ${mprisNames.join(", ")}`
+    );
 
     for (const name of names) {
       await handlePlayerAdded(bus, name);
@@ -298,9 +280,7 @@ async function listActivePlayers(bus: MessageBus): Promise<void> {
 
 function main(): void {
   console.log("Starting MPRIS Media Control for Polybar...");
-  if (DEBUG) {
-    console.log("[DEBUG] Debug mode enabled");
-  }
+  logDebug("Debug mode enabled");
 
   const bus = sessionBus();
 
@@ -335,13 +315,9 @@ function main(): void {
           ],
         })
       );
-      if (DEBUG) {
-        console.log("[DEBUG] Added DBus match rules for signals");
-      }
+      logDebug("Added DBus match rules for signals");
     } catch (e) {
-      if (DEBUG) {
-        console.log(`[DEBUG] Failed to add match rules: ${e}`);
-      }
+      logDebug(`Failed to add match rules: ${e}`);
     }
 
     await listActivePlayers(bus);
@@ -351,11 +327,9 @@ function main(): void {
   });
 
   bus.on("message", async (msg: Message) => {
-    if (DEBUG) {
-      console.log(
-        `[DEBUG] Raw message: type=${msg.type}, iface=${msg.interface}, member=${msg.member}, sender=${msg.sender}, path=${msg.path}`
-      );
-    }
+    logDebug(
+      `Raw message: type=${msg.type}, iface=${msg.interface}, member=${msg.member}, sender=${msg.sender}, path=${msg.path}`
+    );
 
     // Handle NameOwnerChanged signals for player appearance/disappearance
     if (
@@ -364,9 +338,9 @@ function main(): void {
     ) {
       const [name, oldOwner, newOwner] = msg.body as [string, string, string];
 
-      if (isMPRISPlayer(name) && DEBUG) {
-        console.log(
-          `[DEBUG] NameOwnerChanged: ${name} (old: ${oldOwner ? "yes" : "no"}, new: ${newOwner ? "yes" : "no"})`
+      if (isMPRISPlayer(name)) {
+        logDebug(
+          `NameOwnerChanged: ${name} (old: ${oldOwner ? "yes" : "no"}, new: ${newOwner ? "yes" : "no"})`
         );
       }
 
@@ -385,9 +359,7 @@ function main(): void {
       msg.type === MessageType.SIGNAL &&
       msg.path === "/org/mpris/MediaPlayer2"
     ) {
-      if (DEBUG) {
-        console.log(`[DEBUG] Signal from ${msg.sender} with body:`, msg.body);
-      }
+      logDebug(`Signal from ${msg.sender} with body:`, msg.body);
 
       // Try to parse as PropertiesChanged
       if (msg.body && Array.isArray(msg.body) && msg.body.length >= 2) {
@@ -396,11 +368,9 @@ function main(): void {
           Record<string, Variant<unknown>>,
         ];
 
-        if (DEBUG) {
-          console.log(
-            `[DEBUG] Parsed signal: iface=${iface}, changes=${Object.keys(changed).length}`
-          );
-        }
+        logDebug(
+          `Parsed signal: iface=${iface}, changes=${Object.keys(changed).length}`
+        );
 
         if (
           iface === "org.mpris.MediaPlayer2.Player" &&
@@ -415,9 +385,7 @@ function main(): void {
           if (changed.Metadata) {
             state.metadata = changed.Metadata.value as Metadata;
             hasChanges = true;
-            if (DEBUG) {
-              console.log(`[DEBUG] ${msg.sender}: Metadata changed via signal`);
-            }
+            logDebug(`${msg.sender}: Metadata changed via signal`);
           }
           if (changed.PlaybackStatus) {
             state.playbackStatus = changed.PlaybackStatus.value as
@@ -425,11 +393,9 @@ function main(): void {
               | "Paused"
               | "Stopped";
             hasChanges = true;
-            if (DEBUG) {
-              console.log(
-                `[DEBUG] ${msg.sender}: PlaybackStatus -> ${state.playbackStatus} via signal`
-              );
-            }
+            logDebug(
+              `${msg.sender}: PlaybackStatus -> ${state.playbackStatus} via signal`
+            );
           }
 
           if (hasChanges) {
@@ -452,12 +418,12 @@ function main(): void {
       ];
 
       if (DEBUG) {
-        console.log(
-          `[DEBUG] PropertiesChanged from ${msg.sender}: ${iface} with ${Object.keys(changed).length} changes`
+        logDebug(
+          `PropertiesChanged from ${msg.sender}: ${iface} with ${Object.keys(changed).length} changes`
         );
         for (const [key, variant] of Object.entries(changed)) {
-          console.log(
-            `[DEBUG]   ${key}: ${JSON.stringify((variant as Variant<unknown>).value)}`
+          logDebug(
+            `  ${key}: ${JSON.stringify((variant as Variant<unknown>).value)}`
           );
         }
       }
@@ -472,20 +438,14 @@ function main(): void {
 
         if (changed.Metadata) {
           state.metadata = changed.Metadata.value as Metadata;
-          if (DEBUG) {
-            console.log(`[DEBUG] ${msg.sender}: Metadata changed`);
-          }
+          logDebug(`${msg.sender}: Metadata changed`);
         }
         if (changed.PlaybackStatus) {
           state.playbackStatus = changed.PlaybackStatus.value as
             | "Playing"
             | "Paused"
             | "Stopped";
-          if (DEBUG) {
-            console.log(
-              `[DEBUG] ${msg.sender}: PlaybackStatus -> ${state.playbackStatus}`
-            );
-          }
+          logDebug(`${msg.sender}: PlaybackStatus -> ${state.playbackStatus}`);
         }
 
         updateMediaHook();
@@ -507,16 +467,12 @@ function keepAlive(): Promise<never> {
 
 // Force refresh every 5 seconds as a fallback
 async function forceRefresh(bus: MessageBus): Promise<void> {
-  if (DEBUG) {
-    console.log("[DEBUG] Forced refresh of all players");
-  }
+  logDebug("Forced refresh of all players");
   await listActivePlayers(bus);
 }
 
 async function pollPlayerState(bus: MessageBus): Promise<void> {
-  if (DEBUG) {
-    console.log(`[DEBUG] Poll: checking ${players.size} players...`);
-  }
+  logDebug(`Poll: checking ${players.size} players...`);
 
   for (const [busName, state] of players) {
     try {
@@ -543,27 +499,21 @@ async function pollPlayerState(bus: MessageBus): Promise<void> {
         JSON.stringify(newMetadata.value) !== JSON.stringify(state.metadata);
       const statusChanged = newPlaybackStatus.value !== state.playbackStatus;
 
-      if (DEBUG) {
-        console.log(
-          `[DEBUG] Poll: ${busName} - status=${newPlaybackStatus.value}, metadata_changed=${metadataChanged}, status_changed=${statusChanged}`
-        );
-        console.log(
-          `[DEBUG] Poll: ${busName} - current status=${state.playbackStatus}`
-        );
-        console.log(
-          `[DEBUG] Poll: ${busName} - current metadata keys=${Object.keys(state.metadata).join(",")}`
-        );
-        console.log(
-          `[DEBUG] Poll: ${busName} - new metadata keys=${Object.keys(newMetadata.value).join(",")}`
-        );
-      }
+      logDebug(
+        `Poll: ${busName} - status=${newPlaybackStatus.value}, metadata_changed=${metadataChanged}, status_changed=${statusChanged}`
+      );
+      logDebug(`Poll: ${busName} - current status=${state.playbackStatus}`);
+      logDebug(
+        `Poll: ${busName} - current metadata keys=${Object.keys(state.metadata).join(",")}`
+      );
+      logDebug(
+        `Poll: ${busName} - new metadata keys=${Object.keys(newMetadata.value).join(",")}`
+      );
 
       if (metadataChanged) {
         state.metadata = newMetadata.value;
         changed = true;
-        if (DEBUG) {
-          console.log(`[DEBUG] Poll: ${busName} metadata changed`);
-        }
+        logDebug(`Poll: ${busName} metadata changed`);
       }
 
       if (statusChanged) {
@@ -572,11 +522,7 @@ async function pollPlayerState(bus: MessageBus): Promise<void> {
           | "Paused"
           | "Stopped";
         changed = true;
-        if (DEBUG) {
-          console.log(
-            `[DEBUG] Poll: ${busName} status -> ${state.playbackStatus}`
-          );
-        }
+        logDebug(`Poll: ${busName} status -> ${state.playbackStatus}`);
       }
 
       if (changed) {
@@ -591,9 +537,7 @@ async function pollPlayerState(bus: MessageBus): Promise<void> {
 function startPolling(bus: MessageBus): void {
   if (pollInterval !== null) return;
 
-  if (DEBUG) {
-    console.log("[DEBUG] Starting poll-based state monitoring (fallback)");
-  }
+  logDebug("Starting poll-based state monitoring (fallback)");
 
   pollInterval = setInterval(() => {
     pollPlayerState(bus);
@@ -604,9 +548,7 @@ function stopPolling(): void {
   if (pollInterval !== null) {
     clearInterval(pollInterval);
     pollInterval = null;
-    if (DEBUG) {
-      console.log("[DEBUG] Stopping poll-based state monitoring");
-    }
+    logDebug("Stopping poll-based state monitoring");
   }
 }
 
