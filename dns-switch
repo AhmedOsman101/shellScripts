@@ -1,0 +1,409 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#        ▄▄                                                       ██                         ▄▄
+#        ██                                                       ▀▀       ██                ██
+#   ▄███▄██  ██▄████▄  ▄▄█████▄            ▄▄█████▄ ██      ██  ████     ███████    ▄█████▄  ██▄████▄
+#  ██▀  ▀██  ██▀   ██  ██▄▄▄▄ ▀            ██▄▄▄▄ ▀ ▀█  ██  █▀    ██       ██      ██▀    ▀  ██▀   ██
+#  ██    ██  ██    ██   ▀▀▀▀██▄   █████     ▀▀▀▀██▄  ██▄██▄██     ██       ██      ██        ██    ██
+#  ▀██▄▄███  ██    ██  █▄▄▄▄▄██            █▄▄▄▄▄██  ▀██  ██▀  ▄▄▄██▄▄▄    ██▄▄▄   ▀██▄▄▄▄█  ██    ██
+#    ▀▀▀ ▀▀  ▀▀    ▀▀   ▀▀▀▀▀▀              ▀▀▀▀▀▀    ▀▀  ▀▀   ▀▀▀▀▀▀▀▀     ▀▀▀▀     ▀▀▀▀▀   ▀▀    ▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Switches the active link's DNS between NextDNS, Cloudflare, Google, Quad9, and AdGuard, with saved-state rollback
+# --- DEPENDENCIES --- #
+# - resolvectl | systemctl (systemd)
+# - nmcli (networkmanager)
+# - ip (iproute2)
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+# shellcheck source=lib/cmdarg.sh
+source "$(include "lib/cmdarg.sh")"
+# shellcheck source=lib/helpers.sh
+source "$(include "lib/helpers.sh")"
+# shellcheck source=check-deps
+source "$(include "check-deps")"
+
+if ((EUID == 0)); then
+  log-error "Run as your normal user; this script calls sudo for system changes."
+fi
+
+checkDeps "$0"
+
+# --- Configuration --- #
+NEXTDNS_SERVICE="nextdns.service"
+NEXTDNS_PROFILE="${NEXTDNS_PROFILE:-bc458f}"
+NEXTDNS_HOST="${NEXTDNS_USERNAME:-${USER}}-${NEXTDNS_PROFILE}.dns.nextdns.io"
+STATE_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/dns-switch"
+
+declare -a PROVIDERS=(nextdns cloudflare google quad9 adguard)
+declare -A PROVIDER_SERVERS=(
+    [nextdns]="127.0.0.1"
+    [cloudflare]="1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com"
+    [google]="8.8.8.8#dns.google 8.8.4.4#dns.google"
+    [quad9]="9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net"
+    [adguard]="94.140.14.14#dns.adguard-dns.com 94.140.15.15#dns.adguard-dns.com"
+)
+declare -A PROVIDER_NOTES=(
+    [nextdns]="NextDNS local proxy (profile ${NEXTDNS_PROFILE})"
+    [cloudflare]="Cloudflare DNS over TLS"
+    [google]="Google Public DNS over TLS"
+    [quad9]="Quad9 DNS over TLS"
+    [adguard]="AdGuard DNS over TLS"
+)
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "l" "list" "List known DNS providers"
+cmdarg "s" "status" "Show the current DNS state"
+cmdarg "r" "restore" "Restore the state saved before the first switch"
+cmdarg "n" "dry-run" "Print commands without changing anything"
+
+# shellcheck disable=SC2218
+usageMsg="$(cmdarg_usage)"
+unset -f 'cmdarg_usage'
+
+cmdarg_usage() {
+  echo "${usageMsg}"
+  cat <<EOF
+
+Positional Arguments:
+    provider     One of: ${PROVIDERS[*]}, restore
+                 Omit to list providers.
+
+Examples:
+    dns-switch nextdns
+    dns-switch cloudflare
+    dns-switch status
+    dns-switch restore
+
+This is a runtime per-link switch through systemd-resolved. NextDNS remains
+the boot default; use 'dns-switch restore' to roll back the first switch.
+EOF
+  exit "${2:-0}"
+}
+
+cmdarg_parse "$@"
+
+# ---  Main script logic --- #
+dryRun="${cmdarg_cfg['dry-run']}"
+
+sudoRun() {
+  if "${dryRun}"; then
+    printf '  + sudo'
+    printf ' %q' "$@"
+    printf '\n'
+    return 0
+  fi
+
+  sudo "$@"
+}
+
+requireResolved() {
+  systemctl is-active --quiet systemd-resolved || log-error "systemd-resolved is not active"
+  command -v resolvectl >/dev/null || log-error "resolvectl is not installed"
+}
+
+getIface() {
+  local iface
+  iface="$(net-interface 2>/dev/null || true)"
+  if [[ -z "${iface}" ]]; then
+    iface="$(ip route get 1.1.1.1 2>/dev/null |
+      awk '{for (i = 1; i <= NF; i++) if ($i == "dev") {print $(i + 1); exit}}')"
+  fi
+  [[ -n "${iface}" ]] || log-error "Could not determine the active network interface"
+  printf '%s\n' "${iface}"
+}
+
+getConnection() {
+  local iface="$1" conn=""
+  if command -v nmcli >/dev/null; then
+    conn="$(nmcli -t -f NAME,DEVICE connection show --active 2>/dev/null |
+      awk -F: -v dev="${iface}" '$2 == dev {print $1; exit}')"
+    if [[ -z "${conn}" ]]; then
+      conn="$(nmcli -t -f GENERAL.CONNECTION dev show "${iface}" 2>/dev/null |
+        sed -n 's/^GENERAL.CONNECTION://p')"
+    fi
+  fi
+  printf '%s\n' "${conn:-unknown}"
+}
+
+getLinkDns() {
+  local iface="$1"
+  resolvectl dns "${iface}" 2>/dev/null |
+    sed -n 's/^[^:]*: //p' |
+    tr '\n' ' ' |
+    sed 's/[[:space:]]*$//'
+}
+
+getLinkDot() {
+  resolvectl dnsovertls "$1" 2>/dev/null |
+    sed -n 's/^[^:]*: //p' |
+    tail -n 1
+}
+
+getGlobalDns() {
+  resolvectl dns 2>/dev/null |
+    awk '
+      /^Global:/ {
+        inGlobal = 1
+        sub(/^Global:[[:space:]]*/, "")
+        if ($0 != "") print
+        next
+      }
+      /^Link / { inGlobal = 0 }
+      inGlobal {
+        sub(/^[[:space:]]+/, "")
+        if ($0 != "") print
+      }
+    ' |
+    tr '\n' ' ' |
+    sed 's/[[:space:]]*$//'
+}
+
+isProvider() {
+  local candidate="$1" provider
+  for provider in "${PROVIDERS[@]}"; do
+    [[ "${provider}" == "${candidate}" ]] && return 0
+  done
+  return 1
+}
+
+detectProvider() {
+  local dns="$1" provider
+  for provider in "${PROVIDERS[@]}"; do
+    if [[ "${PROVIDER_SERVERS[${provider}]}" == "${dns}" ]]; then
+      printf '%s\n' "${provider}"
+      return 0
+    fi
+  done
+  if [[ "${dns}" == *"127.0.0.1"* ]]; then
+    printf '%s\n' "nextdns"
+  elif [[ -z "${dns}" ]]; then
+    printf '%s\n' "system"
+  else
+    printf '%s\n' "custom"
+  fi
+}
+
+saveState() {
+  [[ -d "${STATE_DIR}" ]] && return 0
+  "${dryRun}" && return 0
+
+  local iface conn active enabled dns dot provider
+  local tmp="${STATE_DIR}.tmp.$$"
+
+  iface="$(getIface)"
+  conn="$(getConnection "${iface}")"
+  active="$(systemctl is-active "${NEXTDNS_SERVICE}" 2>/dev/null || true)"
+  enabled="$(systemctl is-enabled "${NEXTDNS_SERVICE}" 2>/dev/null || true)"
+  dns="$(getLinkDns "${iface}")"
+  dot="$(getLinkDot "${iface}")"
+  provider="$(detectProvider "${dns}")"
+
+  rm -rf "${tmp}"
+  mkdir -p "${tmp}"
+  printf '%s\n' "${iface}" >"${tmp}/iface"
+  printf '%s\n' "${conn}" >"${tmp}/connection"
+  printf '%s\n' "${active}" >"${tmp}/nextdns-active"
+  printf '%s\n' "${enabled}" >"${tmp}/nextdns-enabled"
+  printf '%s\n' "${dot}" >"${tmp}/dnsovertls"
+  printf '%s\n' "${provider}" >"${tmp}/provider"
+  if [[ -n "${dns}" ]]; then
+    tr ' ' '\n' <<<"${dns}" >"${tmp}/link-dns"
+  else
+    : >"${tmp}/link-dns"
+  fi
+  mv "${tmp}" "${STATE_DIR}"
+}
+
+restoreState() {
+  if [[ ! -d "${STATE_DIR}" ]]; then
+    log-error "No saved DNS state. Switch to a provider first."
+  fi
+  if [[ ! -f "${STATE_DIR}/iface" || ! -f "${STATE_DIR}/link-dns" ]]; then
+    log-error "Saved state is incomplete: ${STATE_DIR}"
+  fi
+
+  local iface active enabled dot
+  local -a dns=()
+
+  iface="$(cat "${STATE_DIR}/iface")"
+  if [[ ! -d "/sys/class/net/${iface}" ]]; then
+    iface="$(getIface)"
+  fi
+  active="$(cat "${STATE_DIR}/nextdns-active" 2>/dev/null || true)"
+  enabled="$(cat "${STATE_DIR}/nextdns-enabled" 2>/dev/null || true)"
+  dot="$(cat "${STATE_DIR}/dnsovertls" 2>/dev/null || true)"
+  mapfile -t dns < <(sed '/^[[:space:]]*$/d' "${STATE_DIR}/link-dns")
+
+  if [[ "${active}" == "active" ]]; then
+    sudoRun systemctl start "${NEXTDNS_SERVICE}"
+  else
+    sudoRun systemctl stop "${NEXTDNS_SERVICE}" || log-warning "Could not stop ${NEXTDNS_SERVICE}"
+  fi
+
+  case "${enabled}" in
+    enabled) sudoRun systemctl enable "${NEXTDNS_SERVICE}" ;;
+    disabled) sudoRun systemctl disable "${NEXTDNS_SERVICE}" ;;
+    *) ;;
+  esac
+
+  if ((${#dns[@]})); then
+    sudoRun resolvectl dns "${iface}" "${dns[@]}"
+  else
+    sudoRun resolvectl revert "${iface}"
+  fi
+  if [[ -n "${dot}" ]]; then
+    sudoRun resolvectl dnsovertls "${iface}" "${dot}"
+  fi
+  sudoRun resolvectl flush-caches
+
+  if "${dryRun}"; then
+    log-info "Dry run: saved state was not removed."
+    return 0
+  fi
+
+  rm -rf "${STATE_DIR}"
+  log-success "Restored DNS state on ${iface}."
+}
+
+switchNextDns() {
+  local iface
+  iface="$(getIface)"
+  saveState
+
+  if ! grep -qE '^[[:space:]]*listen[[:space:]]+127\.0\.0\.1:53[[:space:]]*$' /etc/nextdns.conf 2>/dev/null; then
+    log-warning "NextDNS is not configured to listen on 127.0.0.1:53; DNS may not resolve."
+  fi
+
+  sudoRun systemctl enable --now --quiet "${NEXTDNS_SERVICE}"
+  sudoRun resolvectl dns "${iface}" 127.0.0.1
+  sudoRun resolvectl flush-caches
+
+  if "${dryRun}"; then
+    log-info "Dry run: NextDNS would be active on ${iface} (profile ${NEXTDNS_PROFILE})."
+  else
+    log-success "NextDNS is active on ${iface} (profile ${NEXTDNS_PROFILE})."
+  fi
+}
+
+switchProvider() {
+  local provider="$1" iface serversSpec
+  local -a servers
+
+  if ! isProvider "${provider}"; then
+    log-error "Unknown provider '${provider}'. Run 'dns-switch list'."
+  fi
+
+  iface="$(getIface)"
+  saveState
+
+  if systemctl is-active --quiet "${NEXTDNS_SERVICE}"; then
+    sudoRun systemctl stop "${NEXTDNS_SERVICE}"
+  fi
+
+  serversSpec="${PROVIDER_SERVERS[${provider}]}"
+  read -r -a servers <<<"${serversSpec}"
+  sudoRun resolvectl dns "${iface}" "${servers[@]}"
+  sudoRun resolvectl flush-caches
+
+  if "${dryRun}"; then
+    log-info "Dry run: DNS would be set to ${provider} on ${iface}."
+  else
+    log-success "DNS set to ${provider} on ${iface}."
+  fi
+}
+
+listProviders() {
+  local provider
+  printf '%-10s %-64s %s\n' "PROVIDER" "DNS SERVERS" "NOTES"
+  for provider in "${PROVIDERS[@]}"; do
+    printf '%-10s %-64s %s\n' \
+      "${provider}" \
+      "${PROVIDER_SERVERS[${provider}]}" \
+      "${PROVIDER_NOTES[${provider}]}"
+  done
+  printf '%-10s %-64s %s\n' "restore" "(saved state)" "Undo the first switch in this state directory"
+  printf '\n%s\n' "Runtime per-link switch; NextDNS remains the boot default."
+}
+
+showStatus() {
+  local iface conn dns dot active enabled global provider saved
+  iface="$(getIface)"
+  conn="$(getConnection "${iface}")"
+  dns="$(getLinkDns "${iface}")"
+  dot="$(getLinkDot "${iface}")"
+  active="$(systemctl is-active "${NEXTDNS_SERVICE}" 2>/dev/null || true)"
+  enabled="$(systemctl is-enabled "${NEXTDNS_SERVICE}" 2>/dev/null || true)"
+  global="$(getGlobalDns)"
+  provider="$(detectProvider "${dns}")"
+
+  printf 'Interface:  %s (%s)\n' "${iface}" "${conn}"
+  printf 'Provider:   %s\n' "${provider}"
+  printf 'Link DNS:   %s\n' "${dns:-<none>}"
+  printf 'DoT:        %s\n' "${dot:-<unknown>}"
+  printf 'NextDNS:    %s (%s)\n' "${active:-unknown}" "${enabled:-unknown}"
+  printf 'Profile:    %s (%s)\n' "${NEXTDNS_PROFILE}" "${NEXTDNS_HOST}"
+  printf 'Global DNS: %s\n' "${global:-<none>}"
+
+  if [[ "${provider}" != "nextdns" && "${global}" == *"nextdns"* ]]; then
+    printf 'Note:       per-link override is active; global fallback is still NextDNS.\n'
+  fi
+
+  if [[ -d "${STATE_DIR}" ]]; then
+    saved="$(cat "${STATE_DIR}/provider" 2>/dev/null || true)"
+    printf 'Saved:      yes (before: %s)\n' "${saved:-unknown}"
+  else
+    printf 'Saved:      no\n'
+  fi
+}
+
+if [[ "${cmdarg_cfg['list']}" == "true" ]]; then
+  listProviders
+  exit 0
+fi
+if [[ "${cmdarg_cfg['status']}" == "true" ]]; then
+  requireResolved
+  showStatus
+  exit 0
+fi
+if [[ "${cmdarg_cfg['restore']}" == "true" ]]; then
+  requireResolved
+  restoreState
+  exit 0
+fi
+
+provider="${argv[0]:-}"
+if [[ -z "${provider}" ]]; then
+  listProviders
+  exit 0
+fi
+if ((argc > 1)); then
+  log-error "Only one provider may be specified."
+fi
+
+case "${provider}" in
+  list) listProviders ;;
+  status)
+    requireResolved
+    showStatus
+    ;;
+  restore)
+    requireResolved
+    restoreState
+    ;;
+  nextdns)
+    requireResolved
+    switchNextDns
+    ;;
+  *)
+    requireResolved
+    switchProvider "${provider}"
+    ;;
+esac
