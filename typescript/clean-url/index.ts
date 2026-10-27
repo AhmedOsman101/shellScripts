@@ -1,5 +1,7 @@
+import { basename } from "node:path";
 import process from "node:process";
 import { createInterface } from "node:readline";
+import { $ } from "bun";
 
 type CleanedUrl = { cleanedUrl: string; furtherCleanedUrl?: string };
 
@@ -24,9 +26,10 @@ async function input(prompt: string): Promise<string> {
 }
 
 // Function to print to stderr in red
-function printRed(message: string): never {
-  console.error(`\x1b[31m${message}\x1b[0m`);
-  Deno.exit(1);
+function logError(message: string): never {
+  process.stderr.write("\x1b[31m[ERROR]\x1b[0m");
+  process.stderr.write(` ${message}\n`);
+  process.exit(1);
 }
 
 // Function to clean the URL
@@ -79,10 +82,10 @@ function cleanUrl(url: string): CleanedUrl {
     if (parts.length < 2) {
       return { cleanedUrl: url };
     }
-    return { cleanedUrl: parts[0] };
+    return { cleanedUrl: parts[0] as string };
   } catch (error) {
-    printRed(
-      `Error cleaning URL: ${error instanceof Error ? error.message : "Unknown error"}`
+    logError(
+      `Cleaning URL: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
 }
@@ -93,9 +96,9 @@ function validateUrl(url: unknown): void {
       new URL(url);
       return;
     }
-    printRed("URL must be string");
+    logError("URL must be string");
   } catch {
-    printRed("Invalid URL");
+    logError("Invalid URL");
   }
 }
 
@@ -109,44 +112,25 @@ function proccessUrl(url: string) {
     httpFtpPattern.test(cleanedUrl) &&
     !disallowedCharPattern.test(cleanedUrl)
   ) {
-    console.log(furtherCleanedUrl ?? cleanedUrl);
+    process.stdout.write(`${furtherCleanedUrl ?? cleanedUrl}\n`);
   } else {
-    printRed("Sorry, URL Clean couldn't extract the link.");
+    logError("Unable to extract the link.");
   }
 }
 
 async function main() {
   // Get command-line arguments
-  const url = Deno.args.at(0) || (await input("Enter a URL to clean: "));
+  const url = process.argv.at(2) || (await input("Enter a URL to clean: "));
+  if (!url.trim()) {
+    logError(`No URL provided. Usage: ${basename(process.argv0)} <URL>`);
+  }
 
-  if (!url.trim()) printRed("Error: No URL provided. Usage: cleanurl <URL>");
-  if (url.trim() === "--test") testUrls();
-
+  if (url.trim() === "--test") {
+    await $`bash test.sh`;
+    process.exit(0);
+  }
   validateUrl(url);
   proccessUrl(url);
-}
-
-export function testUrls(): never {
-  const urls = [
-    "http://www.google.com/search?q=test+query&oq=test&aqs=chrome.0.69i59j69i60l2.1234j0j1&sourceid=chrome&ie=UTF-8",
-    "https://www.google.com/search?q=another+query&tbm=isch",
-    "https://www.google.com/search?client=firefox-b-d&channel=entpr&q=hello+word",
-    "https://example.com/?url=https%3A%2F%2Fclean-me.com%2Fpath%3Fparam%3Dvalue",
-    "http://redirect.com/?q=https%3A%2F%2Ffinal-destination.org%2F",
-    "https://www.example.com/page?utm_source=email&utm_medium=campaign&ref=sidebar#section-1",
-    "https://www.anothersite.org/article?id=123&si=12345",
-    "https://www.fragment-only.net/page#bottom",
-    "ftp://ftp.example.com/file.txt",
-    "invalid-url-no-scheme.com",
-    "http://malicious.com/<script>alert('xss')</script>",
-    "https://www.linkedin.com/in/ahmad-ali-othman-5b503324a/?lipi=urn%3Ali%3Apage%3Ad_flagship3_feed%3BHk5GcUfuTNCs4Jnx7x6%2Bqw%3D%3D",
-    "https://www.example.com/path/to/page?param1=value1&param2=value2",
-    "https://www.example.com/just/a/path",
-    "https://example.com/path#fragment",
-    "https://example.com/path?query=value#fragment",
-  ];
-  urls.forEach(proccessUrl);
-  Deno.exit(0);
 }
 
 if (import.meta.main) main();
