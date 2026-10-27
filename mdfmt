@@ -12,11 +12,11 @@
 #
 #
 # --- DESCRIPTION --- #
-# Formats Markdown files using Prettier; auto-discovers files with fd or formats given .md/.markdown files
+# Formats Markdown files using Bun fmt; auto-discovers files with fd or formats given .md/.markdown files
 # --- DEPENDENCIES --- #
 # - fd | fdfind (fd-find)
 # - awk
-# - prettier
+# - bun
 # --- END SIGNATURE --- #
 
 set -eo pipefail
@@ -62,7 +62,7 @@ mdclean -q -j "${jobs}" "${files[@]}" || log-warning "Failed to clean ${filesCou
 
 killwait "${SPINNER_PID}"
 
-prettier --write \
+bun fmt --write \
   --ignore-path '/dev/null' \
   --ignore-unknown='false' \
   --config "${PRETTIERRC}" "${files[@]}"

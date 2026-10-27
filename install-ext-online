@@ -120,7 +120,7 @@ for extension in "${selectedExtensions[@]}"; do
   extensionName="$(awk -F '.' '{print $2}' <<<"${extension}")"
 
   log-info "Installing ${extensionName}..."
-  if repeat-it ${tries:+--tries "${tries}"} --preserve "code --install-extension ${extension} --force"; then
+  if repeat-it ${tries:+--tries "${tries}"} --preserve "code --install-extension ${extension}"; then
     log-success "Installed ${extensionName}"
   fi
 done

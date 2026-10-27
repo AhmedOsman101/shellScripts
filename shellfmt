@@ -67,7 +67,7 @@ input="$(read_input)"
 echo "${input}" >"${tmpfile}"
 
 logFile="/tmp/shellfmt.log"
-formatted="$(shfmt "${tmpfile}" 2>"${logFile}" || true)"
+formatted="$(shfmt --indent 2 --case-indent --keep-padding "${tmpfile}" 2>"${logFile}" || true)"
 
 [[ -z "${formatted}" ]] && formatted="${input}"
 
