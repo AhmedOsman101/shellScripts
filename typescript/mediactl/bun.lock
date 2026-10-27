@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "test",
+      "name": "mediactl",
       "dependencies": {
         "dbus-next": "^0.10.2",
       },

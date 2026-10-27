@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "bun check",
-    "compile": "bun build --compile index.ts --outfile=mediactl",
+    "compile": "bun build --compile index.ts --outfile=mediactl --external x11 --external debug",
     "dev": "bun run --watch index.ts",
     "debug-dev": "DEBUG=1 bun dev",
     "start": "bun run index.ts",
