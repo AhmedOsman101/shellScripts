@@ -1,7 +1,8 @@
 // Function to print to stderr in red
 function logError(message: string): never {
-  console.error(`\x1b[31m${message}\x1b[0m`);
-  Deno.exit(1);
+  process.stderr.write("\x1b[31m[ERROR]\x1b[0m");
+  process.stderr.write(` ${message}\n`);
+  process.exit(1);
 }
 
 function signalExitCode(num: number): number | null {
@@ -10,22 +11,20 @@ function signalExitCode(num: number): number | null {
   return null;
 }
 
-function getSignalMap(): Map<string, number> {
-  const command = new Deno.Command("bash", {
-    args: ["-c", "trap -l"],
+async function getSignalMap(): Promise<Map<string, number>> {
+  const command = Bun.spawn({
+    cmd: ["bash", "-c", "trap -l"],
+    stdout: "pipe",
+    stderr: "pipe",
   });
 
-  const output = command.outputSync();
-
-  const decoder = new TextDecoder();
-
-  const stdout = decoder.decode(output.stdout).trim();
-  const stderr = decoder.decode(output.stderr).trim();
-  const code = output.code;
+  const stdout = (await command.stdout.text()).trim();
+  const stderr = (await command.stderr.text()).trim();
+  const code = command.exitCode;
 
   if (code !== 0) {
     // Combine stderr and stdout for better error context if stderr is empty
-    const errorOutput = stderr || stdout || "No output";
+    const errorOutput = stderr ?? stdout ?? "No output";
     logError(`Command failed with code ${code}: ${errorOutput}`);
   }
 
@@ -40,11 +39,11 @@ function getSignalMap(): Map<string, number> {
   return map;
 }
 
-function main() {
+async function main() {
   try {
-    const argv = Deno.args;
-    const argc = Deno.args.length;
-    const signals = getSignalMap();
+    const argv = process.argv.slice(2);
+    const argc = process.argv.length - 2;
+    const signals = await getSignalMap();
 
     switch (argc) {
       case 0:
@@ -78,11 +77,9 @@ function main() {
   } catch (error) {
     let errorMessage = "An unknown error occurred";
 
-    if (error instanceof Deno.errors.NotFound) {
+    if ((error as any).code === "ENOENT") {
       errorMessage = "Command not found";
-    } else if (error instanceof Deno.errors.PermissionDenied) {
-      errorMessage = "Permission denied";
-    } else if (error instanceof Error) {
+    } else if (Error.isError(error)) {
       errorMessage = error.message;
     } else if (typeof error === "string") {
       errorMessage = error;
@@ -92,4 +89,4 @@ function main() {
   }
 }
 
-if (import.meta.main) main();
+if (import.meta.main) await main();

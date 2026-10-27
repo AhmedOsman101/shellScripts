@@ -1,0 +1,16 @@
+{
+  "name": "signal-map",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "typecheck": "bun check",
+    "dev": "bun run --watch index.ts",
+    "compile": "bun build --compile index.ts --outfile=signal-map"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^7"
+  }
+}

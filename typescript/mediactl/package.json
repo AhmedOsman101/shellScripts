@@ -1,5 +1,5 @@
 {
-  "name": "test",
+  "name": "mediactl",
   "module": "index.ts",
   "type": "module",
   "scripts": {
