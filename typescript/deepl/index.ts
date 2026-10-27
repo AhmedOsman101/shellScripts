@@ -1,3 +1,4 @@
+import { fstatSync, statSync } from "node:fs";
 import {
   type Formality,
   type Language,
@@ -110,17 +111,17 @@ const FORMALITIES = new Set([
 
 function printTranslateHelp(): never {
   console.log(TRANSLATE_HELP);
-  Deno.exit(0);
+  process.exit(0);
 }
 
 function printListHelp(): never {
   console.log(LIST_HELP);
-  Deno.exit(0);
+  process.exit(0);
 }
 
 function printUsageHelp(): never {
   console.log(USAGE_HELP);
-  Deno.exit(0);
+  process.exit(0);
 }
 
 type TranslateOpts = {
@@ -148,12 +149,12 @@ async function loadDotEnv(): Promise<void> {
     /* ignore */
   }
   try {
-    candidates.push(`${Deno.cwd()}/typescript/deepl/.env`);
+    candidates.push(`${process.cwd()}/typescript/deepl/.env`);
   } catch {
     /* ignore */
   }
   try {
-    const execPath = Deno.execPath();
+    const execPath = process.execPath;
     const slash = execPath.lastIndexOf("/");
     if (slash !== -1) {
       const execDir = execPath.slice(0, slash);
@@ -164,7 +165,7 @@ async function loadDotEnv(): Promise<void> {
     /* ignore */
   }
   try {
-    const scriptsDir = Deno.env.get("SCRIPTS_DIR");
+    const scriptsDir = process.env.SCRIPTS_DIR;
     if (scriptsDir) candidates.push(`${scriptsDir}/typescript/deepl/.env`);
   } catch {
     /* ignore */
@@ -172,7 +173,7 @@ async function loadDotEnv(): Promise<void> {
 
   for (const envPath of candidates) {
     try {
-      const text = await Deno.readTextFile(envPath);
+      const text = await Bun.file(envPath).text();
       for (const line of text.split("\n")) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith("#")) continue;
@@ -184,11 +185,11 @@ async function loadDotEnv(): Promise<void> {
           .trim()
           .replace(/^["']|["']$/g, "")
           .trim();
-        if (k === "DEEPL_API_KEY" && Deno.env.get(k) === undefined) {
-          Deno.env.set(k, v);
+        if (k === "DEEPL_API_KEY" && process.env[k] === undefined) {
+          process.env[k] = v;
         }
       }
-      if (Deno.env.get("DEEPL_API_KEY") !== undefined) return;
+      if (process.env.DEEPL_API_KEY !== undefined) return;
     } catch {
       /* try next */
     }
@@ -200,9 +201,9 @@ function resolveApiKey(flagKey?: string): string {
     const t = flagKey.trim();
     if (t) return t;
     console.error("ERROR: --api-key value is empty");
-    Deno.exit(1);
+    process.exit(1);
   }
-  const envKey = Deno.env.get("DEEPL_API_KEY");
+  const envKey = process.env["DEEPL_API_KEY"];
   if (envKey !== undefined) {
     const t = envKey.trim();
     if (t) return t;
@@ -210,7 +211,7 @@ function resolveApiKey(flagKey?: string): string {
   console.error(
     "ERROR: DEEPL_API_KEY not set. Use --api-key <key> or set DEEPL_API_KEY env var or typescript/deepl/.env"
   );
-  Deno.exit(2);
+  process.exit(2);
 }
 
 function resolveBaseUrl(key: string): string {
@@ -306,7 +307,7 @@ async function translateTexts(
       const lower = msg.toLowerCase();
       if (lower.includes("quota") || lower.includes("456")) {
         console.error(`ERROR: DeepL API quota exceeded — ${msg}`);
-        Deno.exit(3);
+        process.exit(3);
       }
       if (
         lower.includes("authorization") ||
@@ -316,11 +317,11 @@ async function translateTexts(
         console.error(
           `ERROR: DeepL API 403 Forbidden — check DEEPL_API_KEY and :fx vs pro endpoint — ${msg}`
         );
-        Deno.exit(2);
+        process.exit(2);
       }
       // DeepLError may contain status; try to extract
       console.error(`ERROR: DeepL API error — ${msg}`);
-      Deno.exit(2);
+      process.exit(2);
     }
   }
   return all;
@@ -349,7 +350,7 @@ function parseTranslateArgs(argv: string[]): {
   function fail(msg: string): never {
     console.error(`ERROR: ${msg}`);
     console.log(TRANSLATE_HELP);
-    Deno.exit(1);
+    process.exit(1);
   }
 
   function needValue(
@@ -368,7 +369,7 @@ function parseTranslateArgs(argv: string[]): {
 
   let i = 0;
   while (i < argv.length) {
-    const arg = argv[i];
+    const arg: string = argv[i] as string;
     if (arg === "--help" || arg === "-h") {
       printTranslateHelp();
     }
@@ -436,10 +437,8 @@ function parseTranslateArgs(argv: string[]): {
           verbose = true;
           break;
         }
-        case "--help": {
+        case "--help":
           printTranslateHelp();
-          break;
-        }
         default:
           fail(`unknown flag "${key}"`);
       }
@@ -461,27 +460,21 @@ function parseTranslateArgs(argv: string[]): {
 }
 
 function isPipeInput(): boolean {
-  if (Deno.stdin.isTerminal()) return false;
-  // ponytail: deterministic pipe detection — stat isFifo/isFile vs isCharDevice distinguishes pipe/file from /dev/null
+  if (process.stdin.isTTY) return false;
+  // deterministic pipe detection — stat isFifo/isFile vs isCharDevice distinguishes pipe/file from /dev/null
   try {
-    const maybeStat = (
-      Deno.stdin as unknown as { statSync?: () => Deno.FileInfo }
-    ).statSync;
-    if (typeof maybeStat === "function") {
-      const s = maybeStat.call(Deno.stdin) as Deno.FileInfo;
-      if (s.isFifo || s.isFile) return true;
-      if (s.isCharDevice) return false;
-    }
+    const s = fstatSync(0); // fd 0 = stdin
+    if (s.isFIFO() || s.isFile()) return true;
+    if (s.isCharacterDevice()) return false;
   } catch {
     /* fallback to path stat */
   }
   for (const p of ["/proc/self/fd/0", "/dev/stdin"]) {
     try {
-      const s = Deno.statSync(p);
-      if (s.isFifo || s.isFile) return true;
-      if (s.isCharDevice) return false;
-      const isSocket = (s as unknown as { isSocket: boolean }).isSocket;
-      if (isSocket) return true;
+      const s = statSync(p);
+      if (s.isFIFO() || s.isFile()) return true;
+      if (s.isCharacterDevice()) return false;
+      if (s.isSocket()) return true;
       return false;
     } catch {
       /* try next */
@@ -492,7 +485,7 @@ function isPipeInput(): boolean {
 
 async function readPipedStdin(): Promise<string | null> {
   if (!isPipeInput()) return null;
-  const reader = Deno.stdin.readable.getReader();
+  const reader = Bun.stdin.stream().getReader();
   const chunks: Uint8Array[] = [];
   try {
     while (true) {
@@ -530,19 +523,19 @@ async function resolveInputTexts(
 
   if (hasPositional && hasFile) {
     console.error("ERROR: <text> args and --input-file are mutually exclusive");
-    Deno.exit(1);
+    process.exit(1);
   }
   if (hasFile && isPipe) {
     console.error("ERROR: --input-file and piped stdin are mutually exclusive");
-    Deno.exit(1);
+    process.exit(1);
   }
   if (hasPositional && isPipe) {
     console.error("ERROR: <text> args and piped stdin are mutually exclusive");
-    Deno.exit(1);
+    process.exit(1);
   }
   if (hasFile) {
     try {
-      const content = await Deno.readTextFile(inputFile!);
+      const content = await Bun.file(inputFile).text();
       const texts = [content]; // one unit, preserve newlines
       if (new TextEncoder().encode(texts.join("\n")).length > 128 * 1024) {
         console.error("WARN: request near 128KiB limit — DeepL may reject");
@@ -550,7 +543,7 @@ async function resolveInputTexts(
       return texts;
     } catch (e) {
       console.error(`ERROR: failed to read --input-file "${inputFile}": ${e}`);
-      Deno.exit(1);
+      process.exit(1);
     }
   }
   if (hasPositional) {
@@ -564,7 +557,7 @@ async function resolveInputTexts(
     const trimmed = buf.trim();
     if (!trimmed) {
       console.error("ERROR: no input from stdin");
-      Deno.exit(1);
+      process.exit(1);
     }
     if (new TextEncoder().encode(buf).length > 128 * 1024) {
       console.error("WARN: request near 128KiB limit — DeepL may reject");
@@ -574,7 +567,7 @@ async function resolveInputTexts(
   console.error(
     "ERROR: no input — provide <text> args, --input-file <path>, or pipe stdin"
   );
-  Deno.exit(1);
+  process.exit(1);
 }
 
 async function renderOutput(
@@ -603,9 +596,9 @@ async function renderOutput(
     }
   }
   if (opts.outputFile) {
-    await Deno.writeTextFile(opts.outputFile, out);
+    await Bun.write(opts.outputFile, out);
   } else {
-    await Deno.stdout.write(new TextEncoder().encode(out));
+    process.stdout.write(out);
   }
 }
 
@@ -639,7 +632,7 @@ async function listLanguages(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error(`ERROR: failed to list languages: ${msg}`);
-    Deno.exit(2);
+    process.exit(2);
   }
 }
 
@@ -650,25 +643,51 @@ async function showUsage(apiKey: string, _baseUrl: string, jsonMode: boolean) {
     if (jsonMode) {
       // Raw JSON for agent: expose character/document/teamDocument
       const out: Record<string, unknown> = {};
-      if (usage.character) out.character = { count: usage.character.count, limit: usage.character.limit };
-      if (usage.document) out.document = { count: usage.document.count, limit: usage.document.limit };
-      if (usage.teamDocument) out.teamDocument = { count: usage.teamDocument.count, limit: usage.teamDocument.limit };
+      if (usage.character)
+        out.character = {
+          count: usage.character.count,
+          limit: usage.character.limit,
+        };
+      if (usage.document)
+        out.document = {
+          count: usage.document.count,
+          limit: usage.document.limit,
+        };
+      if (usage.teamDocument)
+        out.teamDocument = {
+          count: usage.teamDocument.count,
+          limit: usage.teamDocument.limit,
+        };
       // Also include top-level for compatibility with /v2/usage raw shape
       console.log(JSON.stringify(out, null, 2));
       return;
     }
     // Plain LLM-friendly: character 1423/1000000 (0.14%)
     if (usage.character) {
-      const pct = usage.character.limit ? ((usage.character.count / usage.character.limit) * 100).toFixed(2) : "0";
-      console.log(`character: ${usage.character.count}/${usage.character.limit} (${pct}%)`);
+      const pct = usage.character.limit
+        ? ((usage.character.count / usage.character.limit) * 100).toFixed(2)
+        : "0";
+      console.log(
+        `character: ${usage.character.count}/${usage.character.limit} (${pct}%)`
+      );
     }
     if (usage.document) {
-      const pct = usage.document.limit ? ((usage.document.count / usage.document.limit) * 100).toFixed(2) : "0";
-      console.log(`document: ${usage.document.count}/${usage.document.limit} (${pct}%)`);
+      const pct = usage.document.limit
+        ? ((usage.document.count / usage.document.limit) * 100).toFixed(2)
+        : "0";
+      console.log(
+        `document: ${usage.document.count}/${usage.document.limit} (${pct}%)`
+      );
     }
     if (usage.teamDocument) {
-      const pct = usage.teamDocument.limit ? ((usage.teamDocument.count / usage.teamDocument.limit) * 100).toFixed(2) : "0";
-      console.log(`teamDocument: ${usage.teamDocument.count}/${usage.teamDocument.limit} (${pct}%)`);
+      const pct = usage.teamDocument.limit
+        ? ((usage.teamDocument.count / usage.teamDocument.limit) * 100).toFixed(
+            2
+          )
+        : "0";
+      console.log(
+        `teamDocument: ${usage.teamDocument.count}/${usage.teamDocument.limit} (${pct}%)`
+      );
     }
     if (!usage.character && !usage.document && !usage.teamDocument) {
       console.log("No usage data");
@@ -678,61 +697,61 @@ async function showUsage(apiKey: string, _baseUrl: string, jsonMode: boolean) {
     const lower = msg.toLowerCase();
     if (lower.includes("quota") || lower.includes("456")) {
       console.error(`ERROR: quota exceeded — ${msg}`);
-      Deno.exit(3);
+      process.exit(3);
     }
     console.error(`ERROR: failed to get usage: ${msg}`);
-    Deno.exit(2);
+    process.exit(2);
   }
 }
 
 async function main(): Promise<void> {
-  if (Deno.args.length === 0) {
+  if (process.argv.length === 2) {
     console.log(HELP);
-    Deno.exit(0);
+    process.exit(0);
   }
-  const sub = Deno.args[0];
+  const sub = process.argv[2];
   if (sub === "--help" || sub === "-h") {
     console.log(HELP);
-    Deno.exit(0);
+    process.exit(0);
   }
   if (
     sub === "translate" &&
-    (Deno.args.includes("--help") || Deno.args.includes("-h"))
+    (process.argv.includes("--help") || process.argv.includes("-h"))
   ) {
     printTranslateHelp();
   }
   if (
     sub === "list" &&
-    (Deno.args.includes("--help") || Deno.args.includes("-h"))
+    (process.argv.includes("--help") || process.argv.includes("-h"))
   ) {
     printListHelp();
   }
   if (
     sub === "usage" &&
-    (Deno.args.includes("--help") || Deno.args.includes("-h"))
+    (process.argv.includes("--help") || process.argv.includes("-h"))
   ) {
     printUsageHelp();
   }
   // generic --help for no subcommand (e.g. `deepl --help`)
-  if (Deno.args.includes("--help") || Deno.args.includes("-h")) {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log(HELP);
-    Deno.exit(0);
+    process.exit(0);
   }
 
   if (sub === "translate") {
-    const parsed = parseTranslateArgs(Deno.args.slice(1));
+    const parsed = parseTranslateArgs(process.argv.slice(3));
 
     if (!parsed.opts.targetLang) {
       console.error("ERROR: --to <LANG> is required");
       console.log(TRANSLATE_HELP);
-      Deno.exit(1);
+      process.exit(1);
     }
 
     if (parsed.opts.formality && !FORMALITIES.has(parsed.opts.formality)) {
       console.error(
         `ERROR: --formality must be one of ${[...FORMALITIES].join("|")}`
       );
-      Deno.exit(1);
+      process.exit(1);
     }
 
     const texts = await resolveInputTexts(parsed.texts, parsed.inputFile);
@@ -757,7 +776,7 @@ async function main(): Promise<void> {
   }
 
   if (sub === "list") {
-    const args = Deno.args.slice(1);
+    const args = process.argv.slice(3);
     if (args.includes("--help") || args.includes("-h")) {
       printListHelp();
     }
@@ -772,7 +791,7 @@ async function main(): Promise<void> {
         if (!nxt || nxt.startsWith("-")) {
           console.error("ERROR: --api-key requires a value");
           console.log(LIST_HELP);
-          Deno.exit(1);
+          process.exit(1);
         }
         flagKey = nxt;
         i++;
@@ -781,17 +800,17 @@ async function main(): Promise<void> {
         if (!val) {
           console.error("ERROR: --api-key requires a value");
           console.log(LIST_HELP);
-          Deno.exit(1);
+          process.exit(1);
         }
         flagKey = val;
       } else if (arg.startsWith("-")) {
         console.error(`ERROR: unknown flag "${arg}"`);
         console.log(LIST_HELP);
-        Deno.exit(1);
+        process.exit(1);
       } else {
         console.error(`ERROR: unknown argument "${arg}"`);
         console.log(LIST_HELP);
-        Deno.exit(1);
+        process.exit(1);
       }
     }
     await loadDotEnv();
@@ -802,7 +821,7 @@ async function main(): Promise<void> {
   }
 
   if (sub === "usage") {
-    const args = Deno.args.slice(1);
+    const args = process.argv.slice(3);
     if (args.includes("--help") || args.includes("-h")) {
       printUsageHelp();
     }
@@ -817,7 +836,7 @@ async function main(): Promise<void> {
         if (!nxt || nxt.startsWith("-")) {
           console.error("ERROR: --api-key requires a value");
           console.log(USAGE_HELP);
-          Deno.exit(1);
+          process.exit(1);
         }
         flagKey = nxt;
         i++;
@@ -826,17 +845,17 @@ async function main(): Promise<void> {
         if (!val) {
           console.error("ERROR: --api-key requires a value");
           console.log(USAGE_HELP);
-          Deno.exit(1);
+          process.exit(1);
         }
         flagKey = val;
       } else if (arg.startsWith("-")) {
         console.error(`ERROR: unknown flag "${arg}"`);
         console.log(USAGE_HELP);
-        Deno.exit(1);
+        process.exit(1);
       } else {
         console.error(`ERROR: unknown argument "${arg}"`);
         console.log(USAGE_HELP);
-        Deno.exit(1);
+        process.exit(1);
       }
     }
     await loadDotEnv();
@@ -848,7 +867,7 @@ async function main(): Promise<void> {
 
   console.error(`ERROR: unknown command "${sub}"`);
   console.log(HELP);
-  Deno.exit(1);
+  process.exit(1);
 }
 
 await main();
