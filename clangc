@@ -32,17 +32,18 @@ checkDeps "$0"
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 
-declare -a compiler_args
 cmdarg "c" "compile" "Compile the files in the current working directory"
 cmdarg "o?" "output" "Specify the output file name" ""
-cmdarg "a?[]" "compiler_args" "Custom compiler arguments"
+cmdarg "a?" "args" "Custom compiler arguments"
 cmdarg "q" "quiet" "Supress all output"
 
 cmdarg_parse "$@"
 # ---  Main script logic --- #
+declare -a compiler_args
 compile="${cmdarg_cfg['compile']}"
 output="${cmdarg_cfg['output']}"
 quiet="${cmdarg_cfg['quiet']}"
+eval "compiler_args=(${cmdarg_cfg['args']})"
 
 ((argc < 1)) && log-error "No input files were provided."
 

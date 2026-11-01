@@ -19,6 +19,7 @@
 # - writes stderr of failed builds to cache dir (stderr.log)
 # --- END SIGNATURE --- #
 
+# shellcheck source=lib/helpers.sh
 source "$(include 'lib/helpers.sh')"
 
 # ---  Main script logic --- #
