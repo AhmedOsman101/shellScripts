@@ -88,20 +88,24 @@ function sendPolybarMessage(
   hook: number,
   content?: string
 ): void {
-  logDebug(
-    `Sending polybar message: #${module}.${hook}${content ? ` "${content}"` : ""}`
-  );
+  if (DEBUG) {
+    logDebug(
+      `Sending polybar message: #${module}.${hook}${content ? ` "${content}"` : ""}`
+    );
+  }
   const args = content
     ? ["action", `#${module}.${hook}`, content]
     : ["action", `#${module}.${hook}`];
 
-  const command = Bun.spawn({
-    cmd: ["polybar-msg", ...args],
-    stdout: null,
-    stderr: null,
-  });
-
-  command.exitCode;
+  try {
+    Bun.spawn({
+      cmd: ["polybar-msg", ...args],
+      stdout: null,
+      stderr: null,
+    });
+  } catch {
+    // fire and forget
+  }
   if (DEBUG) {
     process.stdout.write("\n");
   }
@@ -368,9 +372,11 @@ function main(): void {
           Record<string, Variant<unknown>>,
         ];
 
-        logDebug(
-          `Parsed signal: iface=${iface}, changes=${Object.keys(changed).length}`
-        );
+        if (DEBUG) {
+          logDebug(
+            `Parsed signal: iface=${iface}, changes=${Object.keys(changed).length}`
+          );
+        }
 
         if (
           iface === "org.mpris.MediaPlayer2.Player" &&
