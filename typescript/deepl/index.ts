@@ -598,7 +598,7 @@ async function renderOutput(
   if (opts.outputFile) {
     await Bun.write(opts.outputFile, out);
   } else {
-    process.stdout.write(out);
+    await Bun.stdout.write(out);
   }
 }
 
