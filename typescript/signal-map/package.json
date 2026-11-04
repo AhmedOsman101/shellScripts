@@ -12,5 +12,8 @@
   },
   "peerDependencies": {
     "typescript": "^7"
+  },
+  "dependencies": {
+    "lib-result": "^6.1.0"
   }
 }

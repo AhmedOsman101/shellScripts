@@ -1,3 +1,6 @@
+import { Ok, Err, ErrFromUnknown } from "lib-result";
+import type { Result } from "lib-result";
+
 // Function to print to stderr in red
 function logError(message: string): never {
   process.stderr.write("\x1b[31m[ERROR]\x1b[0m");
@@ -11,39 +14,51 @@ function signalExitCode(num: number): number | null {
   return null;
 }
 
-async function getSignalMap(): Promise<Map<string, number>> {
-  const command = Bun.spawn({
-    cmd: ["bash", "-c", "trap -l"],
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const stdout = (await command.stdout.text()).trim();
-  const stderr = (await command.stderr.text()).trim();
-  const code = command.exitCode;
-
-  if (code !== 0) {
-    // Combine stderr and stdout for better error context if stderr is empty
-    const errorOutput = stderr ?? stdout ?? "No output";
-    logError(`Command failed with code ${code}: ${errorOutput}`);
-  }
-
-  const map = new Map<string, number>();
-  stdout
-    .replaceAll("\t", "\n")
-    .split("\n")
-    .forEach(s => {
-      const pair = s.trim().split(") ");
-      map.set(pair[1], Number(pair[0]));
+async function getSignalMap(): Promise<Result<Map<string, number>, Error>> {
+  try {
+    const command = Bun.spawn({
+      cmd: ["bash", "-c", "trap -l"],
+      stdout: "pipe",
+      stderr: "pipe",
     });
-  return map;
+
+    const stdout = (await command.stdout.text()).trim();
+    const stderr = (await command.stderr.text()).trim();
+    const code = await command.exited;
+
+    if (code !== 0) {
+      // Combine stderr and stdout for better error context if stderr is empty
+      const errorOutput = stderr || stdout || "No output";
+      return Err(
+        new Error(`Command failed with code ${code}: ${errorOutput}`),
+      );
+    }
+
+    const map = new Map<string, number>();
+    stdout
+      .replaceAll("\t", "\n")
+      .split("\n")
+      .forEach(s => {
+        const pair = s.trim().split(") ");
+        map.set(pair[1], Number(pair[0]));
+      });
+    return Ok(map);
+  } catch (error) {
+    return ErrFromUnknown(error);
+  }
 }
 
 async function main() {
   try {
     const argv = process.argv.slice(2);
     const argc = process.argv.length - 2;
-    const signals = await getSignalMap();
+    const result = await getSignalMap();
+
+    if (result.isError()) {
+      logError(`Failed to execute command: ${result.error.message}`);
+    }
+
+    const signals = result.unwrap();
 
     switch (argc) {
       case 0:
@@ -60,8 +75,7 @@ async function main() {
       const num = Number(input);
       const signal = signals.entries().find(v => v[1] === num);
       if (!signal) logError(`Unknown signal number: ${num}`);
-      const [name, number] = signal;
-
+      const [name, number] = signal!;
       const code = signalExitCode(number);
       console.log(`${number} ${name}${code !== null ? ` ${code}` : " "}`);
     } else {
@@ -69,9 +83,8 @@ async function main() {
         ? input.toUpperCase()
         : `SIG${input.toUpperCase()}`;
       const signal = signals.get(name);
-      if (!signal) logError(`Unknown signal name: ${input}`);
-
-      const code = signalExitCode(signal);
+      if (signal === undefined) logError(`Unknown signal name: ${input}`);
+      const code = signalExitCode(signal!);
       console.log(`${signal} ${name}${code !== null ? ` ${code}` : " "}`);
     }
   } catch (error) {
@@ -79,6 +92,8 @@ async function main() {
 
     if ((error as any).code === "ENOENT") {
       errorMessage = "Command not found";
+    } else if ((error as any).code === "EACCES") {
+      errorMessage = "Permission denied";
     } else if (Error.isError(error)) {
       errorMessage = error.message;
     } else if (typeof error === "string") {
