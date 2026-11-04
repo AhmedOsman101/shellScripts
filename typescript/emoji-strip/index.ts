@@ -29,6 +29,14 @@ async function processFile(path: string) {
     return;
   }
 
+  // Guard against Bun.write always creating the file (Deno's create:false semantics)
+  const existsResult = wrap(() => Bun.file(path).exists());
+  if (!existsResult.ok) {
+    logError(
+      `An error occured while checking file ${path}: ${existsResult.error}`
+    );
+  }
+
   const writeResult = await wrapAsync(
     async () => await Bun.write(path, cleaned, { createPath: false })
   );
