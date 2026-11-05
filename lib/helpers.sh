@@ -15,12 +15,12 @@
 # A collection of helper functions
 # - logging shims (logDebug/.../logError), yesNo prompt, terminal line erasing
 # - validation: isInt/isPositiveInt/isFloat/... and has-bash-version guard
-# - random: randStr (urandom), randRange (unbiased), randWords (dict or gibberish)
-# - quoting: shellQuote/humanQuote and array-join variants; hasher (xxh3 -> sha1 fallback)
+# - quoting: shellQuote/humanQuote and array-join variants
+# - hashing: hasher over stdin, a string, or a file (xxh3 -> sha1 fallback)
 # - touch wrapper creating parent dirs; supportsColor honoring NO_COLOR/CI/_TTY_OK
 # --- END SIGNATURE --- #
 
-# shellcheck source=lib/loggers.sh
+# shellcheck source=./loggers.sh
 source "$(include "lib/loggers.sh")"
 # ---  Main script logic --- #
 
@@ -70,12 +70,13 @@ terminate() {
   exit 0
 }
 
-# NOTE: zero is considered positive
-isInt() { [[ "$1" =~ ^[+-]?[0-9]+$ ]]; }
+# NOTE: the integer/float validators accept only an optional '-' (5 and -5
+# match, +5 does not); zero counts as positive for the isPositive* variants.
+isInt() { [[ "$1" =~ ^-?[0-9]+$ ]]; }
 isPositiveInt() { [[ "$1" =~ ^[0-9]+$ ]]; }
 isNegativeInt() { [[ "$1" =~ ^- ]] && isInt "$1"; }
 
-isFloat() { [[ "$1" =~ ^[+-]?([0-9]*\.[0-9]+|[0-9]+)$ ]]; }
+isFloat() { [[ "$1" =~ ^-?([0-9]*\.[0-9]+|[0-9]+)$ ]]; }
 isPositiveFloat() { [[ "$1" =~ ^([0-9]*\.[0-9]+|[0-9]+)$ ]]; }
 isNegativeFloat() { [[ "$1" =~ ^- ]] && isFloat "$1"; }
 
@@ -117,60 +118,6 @@ mapColor() {
   fi
 }
 
-randStr() {
-  local len="${1:-16}"
-  isPositiveInt "${len}" || return 1
-  ((len > 0)) || return 1
-
-  # Secure random string using kernel RNG
-  tr -dc 'A-Za-z0-9' </dev/urandom | head -c "${len}"
-  printf '\n'
-}
-
-randRange() {
-  local min=${1:-1}
-  local max=${2:-10}
-
-  isInt "${min}" || return 1
-  isInt "${max}" || return 1
-
-  ((min <= max)) || return 1
-
-  local range=$((max - min + 1))
-  ((range <= 32768)) || return 1
-
-  local limit=$((32768 / range * range))
-  local r
-
-  while :; do
-    r=${RANDOM}
-    ((r < limit)) && break
-  done
-
-  printf '%d\n' $((min + r % range))
-}
-
-randWords() {
-  local count="$1"
-  local dict="/usr/share/dict/words"
-  isPositiveInt "${count}" || log-error "Number of words must be a positive integer"
-
-  # Generate n words and join them with spaces
-  if [[ -f "${dict}" ]]; then
-    # Use the system dictionary if available
-    shuf -n "${count}" "${dict}" | tr '\n' ' '
-  else
-    # Fallback: Efficient gibberish generation
-    # 1. Read random bytes from urandom
-    # 2. Filter to keep only lowercase letters
-    # 3. Fold into lines of 6 characters (simulating word length)
-    # 4. Take the requested number of 'words'
-    # 5. Join them with spaces
-    head -c $((count * 50)) /dev/urandom | tr -dc '[:lower:]' | fold -w 6 | head -n "${count}" | tr '\n' ' '
-  fi
-  printf '\n'
-}
-
 # Returns 0 if colors should be enabled, 1 otherwise
 supportsColor() {
   # Explicit opt-out (standard)
@@ -188,8 +135,8 @@ supportsColor() {
 
   # TERM must support color
   case "${TERM:-}" in
-  dumb | "") return 1 ;;
-  *) return 0 ;;
+    dumb | "") return 1 ;;
+    *) return 0 ;;
   esac
 }
 
@@ -253,14 +200,31 @@ yesNo() {
   [[ ! "${answer}" =~ ^[nN]$ ]]
 }
 
-# Detect a hashing command and return it as an array for safe exec
+# Hashes stdin, a string argument, or a file argument, printing
+# "<hash>  <name>" in coreutils format. Picks xxh3sum, then xxhsum -H3,
+# then sha1sum. Returns 1 on empty input.
+#   hasher "some text"
+#   hasher /path/to/file
+#   printf '%s' "some text" | hasher -
 hasher() {
+  local str="" cmd=() isFile=false
+  str="$(input "$@")"
+
+  [[ -z "${str}" ]] && return 1
+  [[ -e "${str}" && -r "${str}" && ! -d "${str}" ]] && isFile=true
+
   if command -v xxh3sum &>/dev/null; then
-    xxh3sum "$@"
+    cmd+=(xxh3sum)
   elif command -v xxhsum &>/dev/null; then
     # xxhsum expects -H3 to select xxh3; keep as separate token
-    xxhsum -H3 "$@"
+    cmd+=(xxhsum -H3)
   else
-    sha1sum "$@"
+    cmd+=(sha1sum)
+  fi
+
+  if ${isFile}; then
+    "${cmd[@]}" "${str}"
+  else
+    "${cmd[@]}" - <<<"${str}"
   fi
 }

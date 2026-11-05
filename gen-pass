@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#
+#
+#   ▄███▄██   ▄████▄   ██▄████▄            ██▄███▄    ▄█████▄  ▄▄█████▄  ▄▄█████▄
+#  ██▀  ▀██  ██▄▄▄▄██  ██▀   ██            ██▀  ▀██   ▀ ▄▄▄██  ██▄▄▄▄ ▀  ██▄▄▄▄ ▀
+#  ██    ██  ██▀▀▀▀▀▀  ██    ██   █████    ██    ██  ▄██▀▀▀██   ▀▀▀▀██▄   ▀▀▀▀██▄
+#  ▀██▄▄███  ▀██▄▄▄▄█  ██    ██            ███▄▄██▀  ██▄▄▄███  █▄▄▄▄▄██  █▄▄▄▄▄██
+#   ▄▀▀▀ ██    ▀▀▀▀▀   ▀▀    ▀▀            ██ ▀▀▀     ▀▀▀▀ ▀▀   ▀▀▀▀▀▀    ▀▀▀▀▀▀
+#   ▀████▀▀                                ██
+#
+# --- DESCRIPTION --- #
+# Generates a random password or a memorable passphrase
+# --- DEPENDENCIES --- #
+# - xkcdpass | words
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+# shellcheck source=lib/cmdarg.sh
+source "$(include "lib/cmdarg.sh")"
+# shellcheck source=lib/random.sh
+source "$(include "lib/random.sh")"
+# shellcheck source=check-deps
+source "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "l?" "length" "Length of a random password (ignored with -m|--memorable)" "16"
+cmdarg "s" "symbols" "Include symbols in a random password (ignored with -m|--memorable)"
+cmdarg "m" "memorable" "Generate a memorable passphrase instead of a random password"
+cmdarg "w?" "words" "Number of words in a memorable passphrase (ignored without -m)" "3"
+cmdarg "c?" "case" "Word case in a memorable passphrase: as-is, lower, upper, first, capitalize, alternating, random" "capitalize"
+
+# --- Setup the usage function --- #
+# The flags above cover the options; add examples and the fallback caveat.
+# shellcheck disable=2218
+usageMsg="$(cmdarg_usage)"
+unset -f 'cmdarg_usage'
+
+cmdarg_usage() {
+  echo "${usageMsg}"
+  cat <<EOF
+
+Examples:
+    gen-pass                16-character random password
+    gen-pass -l 24 -s       24 characters including symbols
+    gen-pass -m             memorable passphrase (e.g. Apple-Tiger-Moon7)
+    gen-pass -m -w 4 -c lower
+
+Memorable mode uses xkcdpass when installed; otherwise it falls back to the
+system dictionary (or gibberish) and ignores --case and the trailing digit.
+EOF
+  exit "${2:-0}"
+}
+
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+# Shortcuts for the parsed flags and their defaults.
+length="${cmdarg_cfg['length']}"
+withSymbols="${cmdarg_cfg['symbols']}"
+isMemorable="${cmdarg_cfg['memorable']}"
+words="${cmdarg_cfg['words']}"
+case="${cmdarg_cfg['case']}"
+
+# Built incrementally so the optional dictionary flag stays a separate token.
+cmd=()
+
+if ${isMemorable}; then
+  # Preferred: xkcdpass supplies a curated word list and applies --case.
+  if command -v "xkcdpass" &>/dev/null; then
+    cmd+=(xkcdpass -d '-' -v '[A-Za-z0-9]' -n "${words}" -C "${case}")
+    [[ -r '/usr/share/dict/words' ]] && cmd+=(-w /usr/share/dict/words)
+    # A trailing digit adds entropy without hurting memorability.
+    printf '%s%d' "$("${cmd[@]}")" "$(randRange 0 9)"
+  else
+    # Fallback: hyphen-joined dictionary words (or gibberish). randWords has no
+    # casing support, so --case does not apply here.
+    randWords "${words}" | tr '[:space:]' '-'
+  fi
+elif ${withSymbols}; then
+  randStr "${length}" true
+else
+  randStr "${length}"
+fi
