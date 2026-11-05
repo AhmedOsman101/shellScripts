@@ -33,7 +33,7 @@ checkDeps "$0"
 # --- cmdarg setup --- #
 cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "d?" "dir" "Wiki directory" "${SCRIPTS_DIR}/wiki"
-cmdarg "p?" "provider" "LLM provider (opencode, pi, claude)" "pi"
+cmdarg "p?" "provider" "LLM provider (opencode, pi, omp, claude)" "omp"
 cmdarg "m?" "model" "LLM model to use"
 cmdarg "f" "force" "Overwrite existing pages"
 cmdarg "v" "verbose" "Enable verbose output"
@@ -271,6 +271,10 @@ PROMPT
   pi)
     cd "${run_dir}" || exit
     pi ${MODEL:+--model "${MODEL}"} "$(full_prompt)"
+    ;;
+  omp)
+    cd "${run_dir}" || exit
+    omp ${MODEL:+--model "${MODEL}"} "$(full_prompt)"
     ;;
   claude)
     cd "${run_dir}" || exit

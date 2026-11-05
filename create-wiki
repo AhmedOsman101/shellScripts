@@ -34,13 +34,15 @@ cmdarg_info "header" "$(get-desc "$0")"
 cmdarg "d?" "dir" "Wiki directory" "${SCRIPTS_DIR}/wiki"
 cmdarg "f" "force" "Overwrite existing pages"
 cmdarg "a" "all" "Also generate pages for non-bash scripts using LLM"
-cmdarg "p?" "provider" "LLM provider (opencode, pi, claude)" "pi"
+cmdarg "p?" "provider" "LLM provider (opencode, pi, omp, claude)" "omp"
 cmdarg "m?" "model" "LLM model to use"
 cmdarg "v" "verbose" "Enable verbose output"
 cmdarg "j?" "jobs" "How many threads to use in parallel?" "$(nproc)"
+cmdarg "t" "trace" "Debugging mode"
 cmdarg_parse "$@"
 
 # --- Config --- #
+TRACE="${cmdarg_cfg['trace']}"
 WIKI_DIR="${cmdarg_cfg['dir']}"
 FORCE="${cmdarg_cfg['force']}"
 ALL="${cmdarg_cfg['all']}"
@@ -171,11 +173,11 @@ generateScriptPage() {
   origRelDir="$(dirname "${file}" | sed -e "s|^${SCRIPTS_DIR}||" -e " s|^/||")"
   relDir="${origRelDir}"
   case "${relDir}" in
-  "") relDir="bash" ;;
-  # Bash scripts: lib -> bash/lib/, rofi -> bash/rofi/, external -> bash/external/
-  lib | rofi | external) relDir="bash/${relDir}" ;;
-  # Other languages keep their dir: wiki/c/, wiki/cpp/, etc.
-  *) : ;;
+    "") relDir="bash" ;;
+    # Bash scripts: lib -> bash/lib/, rofi -> bash/rofi/, external -> bash/external/
+    lib | rofi | external) relDir="bash/${relDir}" ;;
+    # Other languages keep their dir: wiki/c/, wiki/cpp/, etc.
+    *) : ;;
   esac
 
   mkdir -p "${WIKI_DIR}/${relDir}"
@@ -309,6 +311,8 @@ mkdir -p "${WIKI_DIR}/bash"
 
 # Process script files (called by parallel)
 main() {
+  ${TRACE} && set -x
+
   local file
   # Reconstruct IGNORED_SCRIPTS array from serialized string
   local ignoredScripts=()
@@ -317,6 +321,7 @@ main() {
   done <<<"${IGNORED_SCRIPTS_LIST}"
 
   for file in "$@"; do
+    ${TRACE} && gum confirm "Proceed with ${file}?"
     [[ -f "${file}" ]] || continue
 
     # Skip non-script files
@@ -347,8 +352,8 @@ main() {
   done
 }
 
-export -f main logVerbose generateScriptPage generateLibPage usesCmdarg getHelpOutput parseCmdargFlags hasher shouldSkipIfUnchanged
-export WIKI_DIR FORCE VERBOSE SCRIPTS_DIR REPO_URL HELP_CACHE_DIR WIKI_CACHE_DIR
+export -f main logVerbose generateScriptPage generateLibPage usesCmdarg getHelpOutput parseCmdargFlags hasher input shouldSkipIfUnchanged
+export WIKI_DIR FORCE VERBOSE SCRIPTS_DIR REPO_URL HELP_CACHE_DIR WIKI_CACHE_DIR TRACE
 # Bash cannot export arrays through the environment — serialize to a plain string
 export IGNORED_SCRIPTS_LIST="$(printf '%s\n' "${IGNORED_SCRIPTS[@]}")"
 
@@ -402,7 +407,7 @@ if "${ALL}"; then
   document-with-llm -d "${WIKI_DIR}" -p "${PROVIDER}" ${MODEL:+-m "${MODEL}"} ${FORCE:+-f} ${VERBOSE:+-v}
 fi
 
-mdfmt "${WIKI_DIR}" &>/dev/null
+mdfmt "${WIKI_DIR}"
 
 echo ""
 log-success "Wiki generation complete!"
