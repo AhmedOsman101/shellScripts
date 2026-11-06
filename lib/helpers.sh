@@ -28,7 +28,7 @@ input() {
   local str
   if [[ $# -eq 0 || $1 == "-" ]]; then
     # read from stdin
-    str=$(cat)
+    str="$(cat)"
   else
     # read the passed arguments
     str="$*"
