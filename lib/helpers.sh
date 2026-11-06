@@ -202,16 +202,16 @@ yesNo() {
 
 # Hashes stdin, a string argument, or a file argument, printing
 # "<hash>  <name>" in coreutils format. Picks xxh3sum, then xxhsum -H3,
-# then sha1sum. Returns 1 on empty input.
+# then sha1sum.
+#
+# stdin is streamed straight into the hash command because bash variables
+# cannot hold NUL bytes; string/file arguments are captured normally.
+# Returns 1 when a string argument is empty.
 #   hasher "some text"
 #   hasher /path/to/file
 #   printf '%s' "some text" | hasher -
 hasher() {
   local str="" cmd=() isFile=false
-  str="$(input "$@")"
-
-  [[ -z "${str}" ]] && return 1
-  [[ -e "${str}" && -r "${str}" && ! -d "${str}" ]] && isFile=true
 
   if command -v xxh3sum &>/dev/null; then
     cmd+=(xxh3sum)
@@ -221,6 +221,16 @@ hasher() {
   else
     cmd+=(sha1sum)
   fi
+
+  # Stream stdin raw so NUL separators survive (a variable would drop them).
+  if [[ $# -eq 0 || $1 == "-" ]]; then
+    "${cmd[@]}"
+    return
+  fi
+
+  str="$*"
+  [[ -z "${str}" ]] && return 1
+  [[ -e "${str}" && -r "${str}" && ! -d "${str}" ]] && isFile=true
 
   if ${isFile}; then
     "${cmd[@]}" "${str}"

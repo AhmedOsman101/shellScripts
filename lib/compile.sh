@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#
+# shellcheck disable=SC2119
 # --- SCRIPT SIGNATURE --- #
 #
 #                                             ██     ▄▄▄▄                                    ▄▄
@@ -35,13 +35,12 @@ generate_cache_key() {
     compiler_ver="$("${_gen_key_cmd[0]}" --version 2>/dev/null | head -n1 || true)"
   fi
 
-  # Build a binary-safe stream for hashing. Use NULL separators to avoid ambiguity.
-  # Format:
-  #   <compiler-version>\0
+  # Build a binary-safe stream for hashing. NULL separators avoid ambiguity.
+  # Format (command first, because the compiler version may be empty):
   #   <cmd arg 0>\0<cmd arg 1>\0...\0
   #   for each file: <filename>\0<file-contents>\0
+  #   <compiler-version>\0
   {
-    printf '%s\0' "${compiler_ver}"
     for arg in "${_gen_key_cmd[@]}"; do
       printf '%s\0' "${arg}"
     done
@@ -56,6 +55,8 @@ generate_cache_key() {
         printf '\0'
       fi
     done
+
+    printf '%s\0' "${compiler_ver}"
   } | hasher | awk '{print $1}'
 }
 
