@@ -24,17 +24,18 @@
 source "$(include "lib/loggers.sh")"
 # ---  Main script logic --- #
 
+# Returns stdin (no arguments, or first argument "-") or the joined arguments.
+# Stdin is streamed unchanged so binary data such as NUL bytes survives;
+# callers that capture the output in "$(...)" still lose NULs, because bash
+# strings cannot contain them.
 input() {
-  local str
   if [[ $# -eq 0 || $1 == "-" ]]; then
-    # read from stdin
-    str="$(cat)"
+    # Stream instead of capturing: a variable would drop NUL bytes.
+    command cat
   else
-    # read the passed arguments
-    str="$*"
+    # Join the arguments and terminate with one newline.
+    printf '%s\n' "$*"
   fi
-
-  echo "${str}"
 }
 
 logDebug() {
