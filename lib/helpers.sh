@@ -34,7 +34,7 @@ input() {
     command cat
   else
     # Join the arguments and terminate with one newline.
-    printf '%s\n' "$*"
+    printf '%s' "$*"
   fi
 }
 
