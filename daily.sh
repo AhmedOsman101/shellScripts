@@ -12,9 +12,9 @@
 #                                           ███
 #
 # --- DESCRIPTION --- #
-# Creates daily Timeshift backup, exports installed packages, VS Code extensions, and unique pnpm global packages
+# Creates daily Snapper snapshot, exports installed packages, VS Code extensions, and unique pnpm global packages
 # --- DEPENDENCIES --- #
-# - timeshift
+# - snapper
 # - sudo
 # --- END SIGNATURE --- #
 
@@ -42,8 +42,13 @@ else
   device="pc"
 fi
 
-# ---- Timeshift ---- #
-# SUDO_ASKPASS="${SCRIPTS_DIR}/echopass" sudo -A timeshift --create --comments "Daily backup $(now)"
+# ---- Snapper ---- #
+# Creates a single snapshot in the `root` config. Cleanup is handled by snapper's
+# NUMBER_CLEANUP/NUMBER_LIMIT (see /etc/snapper/configs/root). ALLOW_USERS permits
+# this without sudo; falls back to sudo -A if DBus/auth requires it.
+if ! snapper -c root create --description "Daily backup $(now)" --cleanup-algorithm number 2>/dev/null; then
+  SUDO_ASKPASS="${SCRIPTS_DIR}/echopass" sudo -A snapper -c root create --description "Daily backup $(now)" --cleanup-algorithm number
+fi
 
 # --- Installed packages --- #
 pacman -Qqe >"${DOTFILES}/${device}_packages.txt"
@@ -56,4 +61,4 @@ pnpm-ls >>"${DOTFILES}/pnpm_global_packages.txt"
 
 no-dups --force "${DOTFILES}/pnpm_global_packages.txt"
 
-notify-send "Daily system backup finished!" &
+timeout 10 notify-send "Daily system backup finished!"
