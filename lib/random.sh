@@ -12,9 +12,9 @@
 #
 # --- DESCRIPTION --- #
 # Random generation helpers
-# - `randStr [length] [symbols]`  : alphanumeric string from /dev/urandom
-# - `randRange [min] [max]`       : unbiased integer, inclusive
-# - `randWords [count]`           : dictionary words, gibberish fallback
+# - `randStr [length:16] [symbols:false]`: alphanumeric string from /dev/urandom
+# - `randRange [min:1] [max:10]`: unbiased integer, inclusive
+# - `randWords [count:1]`: dictionary words, gibberish fallback
 #
 # The public generators print their result to stdout and return non-zero on
 # bad input. Optional arguments fall back to the defaults shown above.
