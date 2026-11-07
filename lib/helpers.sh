@@ -239,3 +239,9 @@ hasher() {
     "${cmd[@]}" - <<<"${str}"
   fi
 }
+
+__trim() {
+  local str="$(input "$@")"
+  [[ -z ${str} ]] && printf '' && exit 0
+  echo "${str}" | sed -e "s|^[[:space:]]*||" -e "s|[[:space:]]*$||"
+}

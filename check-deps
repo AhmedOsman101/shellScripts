@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#
+# shellcheck disable=SC2119
 # --- SCRIPT SIGNATURE --- #
 #
 #            ▄▄                            ▄▄                        ▄▄
@@ -19,13 +19,6 @@
 source "$(include "lib/helpers.sh")"
 # ---  Main script logic --- #
 
-# shellcheck disable=SC2120
-trim() {
-  local str="$(input "$@")"
-  [[ -z ${str} ]] && printf '' && exit 0
-  echo "${str}" | sed -e "s|^[[:space:]]*||" -e "s|[[:space:]]*$||"
-}
-
 checkDep() {
   local line exeName pkgName i
   line=$1
@@ -34,7 +27,7 @@ checkDep() {
 
   # Check for multi-packages enetries, if one is installed then skip
   while
-    exeName="$(awk -F "|" "{print \$${i}}" <<<"${line}" | trim | awk '{print $1}')"
+    exeName="$(awk -F "|" "{print \$${i}}" <<<"${line}" | __trim | awk '{print $1}')"
     [[ -n "${exeName}" ]]
   do
     command -v "${exeName}" &>/dev/null && return 0
@@ -42,7 +35,7 @@ checkDep() {
     ((i++))
   done
 
-  exeName="$(awk -F "|" '{print $1}' <<<"${line}" | trim | awk '{print $1}')"
+  exeName="$(awk -F "|" '{print $1}' <<<"${line}" | __trim | awk '{print $1}')"
   pkgName="$(sed -n 's/.*(\([^)]*\)).*/\1/p' <<<"${line}")"
 
   # Check if the line contains something inside parentheses
