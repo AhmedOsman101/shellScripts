@@ -22,11 +22,18 @@ trap 'exit 1' SIGUSR1
 
 # shellcheck source=lib/helpers.sh
 source "$(include "lib/helpers.sh")"
+# shellcheck source=lib/cmdarg.sh
+source "$(include "lib/cmdarg.sh")"
 # shellcheck source=check-deps
 source "$(include "check-deps")"
-
 checkDeps "$0"
+
+cmdarg_info "header" "$(get-desc "$0")"
 # ---  Main script logic --- #
+for arg in "$@"; do
+  [[ "${arg}" =~ ^(-h|--help)$ ]] && cmdarg_usage && exit 0
+done
+
 if [[ "$1" =~ ^-n$ ]]; then
   shift || true
   log.sh "DEBUG" -n "$(input "$@")"

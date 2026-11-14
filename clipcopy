@@ -30,9 +30,11 @@ source "$(include "check-deps")"
 checkDeps "$0"
 
 cmdarg_info "header" "$(get-desc "$0")"
-cmdarg_parse "$@"
 # ---  Main script logic --- #
-str="$(input "${argv[@]}" | ansifilter)"
+for arg in "$@"; do
+  [[ "${arg}" =~ ^(-h|--help)$ ]] && cmdarg_usage && exit 0
+done
+str="$(input "$@" | ansifilter)"
 
 [[ -z "${str}" ]] && log-error "No valid input was given"
 
