@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+#
+# --- SCRIPT SIGNATURE --- #
+#
+#               ██                            ▄▄▄▄      ██
+#               ▀▀                           ██▀▀▀      ▀▀
+#  ████▄██▄   ████      ▄█████▄            ███████    ████     ▀██  ██▀
+#  ██ ██ ██     ██     ██▀    ▀              ██         ██       ████
+#  ██ ██ ██     ██     ██         █████      ██         ██       ▄██▄
+#  ██ ██ ██  ▄▄▄██▄▄▄  ▀██▄▄▄▄█              ██      ▄▄▄██▄▄▄   ▄█▀▀█▄
+#  ▀▀ ▀▀ ▀▀  ▀▀▀▀▀▀▀▀    ▀▀▀▀▀               ▀▀      ▀▀▀▀▀▀▀▀  ▀▀▀  ▀▀▀
+#
+#
+# --- DESCRIPTION --- #
+# Fix the onboard (Realtek ALC897) microphone so it works in Discord.
+#
+# Fixes: silent mic in Discord, and the constant 50 Hz hum.
+#
+# What it changes (nothing else is touched):
+#   Capture Volume               -> 63 (+30 dB)   [--quiet: 23, 0 dB]
+#   Rear Mic Boost               -> 0 dB
+#   default PipeWire source vol  -> 0.32
+#
+#     mic-fix            restore a usable gain
+#     mic-fix --quiet    hum disappears, but your voice is ~30 dB quieter
+#     mic-fix --status   print current state, change nothing
+#
+# Still silent? The ONIKUMA boom is flip-to-mute - flip it DOWN.
+# In Discord: Voice & Video -> Input Device = 'Built-in Audio Analog Stereo'
+# (not 'AudioRelay Mic&Sink'); enable Noise Suppression (Krisp) for the hum.
+# --- DEPENDENCIES --- #
+# - amixer (alsa-utils)
+# - wpctl (wireplumber)
+# - pactl (libpulse)
+# --- END SIGNATURE --- #
+
+set -eo pipefail
+trap 'exit 1' SIGUSR1
+
+# shellcheck source=lib/cmdarg.sh
+source "$(include "lib/cmdarg.sh")"
+# shellcheck source=lib/helpers.sh
+source "$(include "lib/helpers.sh")"
+# shellcheck source=check-deps
+source "$(include "check-deps")"
+checkDeps "$0"
+
+# --- cmdarg setup --- #
+cmdarg_info "header" "$(get-desc "$0")"
+cmdarg "q" "quiet" "Like default but 0 dB capture: hum gone, voice ~30 dB quieter"
+cmdarg "s" "status" "Show current gain and apps recording the mic; change nothing"
+cmdarg_parse "$@"
+# ---  Main script logic --- #
+
+CAPTURE_VOL=22   # numid: 'Capture Volume'
+CAPTURE_SW=23    # numid: 'Capture Switch'
+REAR_BOOST=26    # numid: 'Rear Mic Boost Volume'
+
+isQuiet="${cmdarg_cfg['quiet']}"
+isStatus="${cmdarg_cfg['status']}"
+
+dumpState() {
+  log-info "ALSA capture state (card 0):"
+  amixer -c0 cget "numid=${CAPTURE_VOL}" | grep -E 'values=' | sed 's/^/  Capture Volume: /'
+  amixer -c0 cget "numid=${CAPTURE_SW}"  | grep -E 'values=' | sed 's/^/  Capture Switch: /'
+  amixer -c0 cget "numid=${REAR_BOOST}"  | grep -E 'values=' | sed 's/^/  Rear Mic Boost: /'
+  log-info "PipeWire default source volume: $(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | tail -1)"
+  log-info "Default source: $(pactl get-default-source)"
+  log-info "Active capture streams (application -> source):"
+  pactl list source-outputs | grep -E 'Source:|application.name' | sed 's/^[[:space:]]*/  /'
+}
+
+if [[ "${isStatus}" == "true" ]]; then
+  dumpState
+  exit 0
+fi
+
+log-info "Forcing 'Rear Mic Boost' to 0 dB"
+amixer -c0 cset "numid=${REAR_BOOST}" 0,0 >/dev/null
+
+if [[ "${isQuiet}" == "true" ]]; then
+  log-info "Setting 'Capture Volume' to 23 (0.00 dB); leaving the source volume untouched"
+  amixer -c0 cset "numid=${CAPTURE_VOL}" 23,23 >/dev/null
+else
+  log-info "Setting 'Capture Volume' to 63 (+30.00 dB)"
+  amixer -c0 cset "numid=${CAPTURE_VOL}" 63,63 >/dev/null
+  log-info "Setting default source volume to 0.32 (maps to boost 0)"
+  wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 0.32
+fi
+
+dumpState
+log-success "Mic gain restored. Keep the ONIKUMA boom flipped down; in Discord select 'Built-in Audio Analog Stereo' and enable Krisp."
