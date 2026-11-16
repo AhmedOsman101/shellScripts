@@ -6,19 +6,20 @@ Default: local extraction (pdfplumber + rapidocr for scanned PDFs).
 Optionally use LlamaParse cloud API for richer markdown extraction.
 
 Usage:
-  uv run pdfx.py file.pdf
-  uv run pdfx.py file.pdf > context.txt
-  uv run pdfx.py file.pdf --chunk 12000
-  uv run pdfx.py file.pdf --llamaparse
-  uv run pdfx.py file.pdf --llamaparse fast
-  uv run pdfx.py file.pdf --llamaparse agentic
-"""
+  pdfx file.pdf
+  pdfx file.pdf > context.txt
+  pdfx file.pdf --chunk 12000
+  pdfx file.pdf --llamaparse
+  pdfx file.pdf --llamaparse fast
+  pdfx file.pdf --llamaparse agentic
+  pdfx file.pdf --llamaparse-config cfg-...
+"""  # noqa: EXE001
 
-import os
-import sys
-import re
-import tempfile
 import argparse
+import os
+import re
+import sys
+import tempfile
 from pathlib import Path
 
 import fitz
@@ -36,17 +37,42 @@ def load_api_key() -> str | None:
   return os.environ.get("LLAMA_PARSE_API_KEY")
 
 
-def parse_with_llamaparse(pdf_path: Path, tier: str = "cost_effective") -> str | None:
+def extract_config_params(client, config_id: str, version: str) -> dict:
+  """Fetch a saved LlamaCloud configuration and return it as parse() kwargs.
+
+  A configuration's `parameters` (a ParseV2Parameters model) uses the same
+  field names that `client.parsing.parse()` accepts, so we can forward it
+  directly after dropping bookkeeping fields.
+  """
+  cfg = client.configurations.retrieve(config_id)
+  if cfg.product_type != "parse_v2":
+    raise ValueError(
+      f"configuration {config_id} is {cfg.product_type}, expected parse_v2"
+    )
+  params = cfg.parameters.model_dump(exclude_none=True)
+  params.pop("product_type", None)
+  # A pinned config still needs a version; default to whatever the caller asked for.
+  params.setdefault("version", version)
+  return params
+
+
+def parse_with_llamaparse(
+  pdf_path: Path,
+  tier: str = "cost_effective",
+  config_id: str | None = None,
+) -> str | None:
   """Upload PDF to LlamaParse and return markdown_full content.
 
-  `tier` maps user-facing names to API tier strings:
+  When `config_id` is given, the saved LlamaCloud configuration is fetched and
+  its parameters (tier, processing/output options, prompts, ...) are used
+  verbatim. Otherwise `tier` maps user-facing names to API tier strings:
     - "agentic"       → API "agentic" + cost optimizer ON
     - "agentic-full"  → API "agentic" + cost optimizer OFF
     - everything else → passed as-is to the API.
   """
   try:
-    from llama_cloud import LlamaCloud
     import llama_cloud
+    from llama_cloud import LlamaCloud
   except ImportError:
     return None
 
@@ -56,7 +82,7 @@ def parse_with_llamaparse(pdf_path: Path, tier: str = "cost_effective") -> str |
 
   client = LlamaCloud(api_key=api_key)
 
-  # Map user-facing names to API parameters
+  # Map user-facing names to API parameters (only when no config is supplied).
   if tier == "agentic-full":
     api_tier = "agentic"
     processing_opts: dict | None = None
@@ -70,29 +96,34 @@ def parse_with_llamaparse(pdf_path: Path, tier: str = "cost_effective") -> str |
   try:
     file_obj = client.files.create(file=pdf_path, purpose="parse")
 
-    kwargs: dict = dict(
-        file_id=file_obj.id,
-        tier=api_tier,
-        version="latest",
-        expand=["markdown_full"],
-    )
+    if config_id:
+      kwargs = extract_config_params(client, config_id, version="latest")
+      kwargs["file_id"] = file_obj.id
+      kwargs["expand"] = ["markdown_full"]
+    else:
+      kwargs = {
+        "file_id": file_obj.id,
+        "tier": api_tier,
+        "version": "latest",
+        "expand": ["markdown_full"],
+      }
 
-    if tier == "agentic" or tier == "agentic-full":
-      kwargs["output_options"] = {
+      if tier == "agentic" or tier == "agentic-full":
+        kwargs["output_options"] = {
           "markdown": {
-              "annotate_links": True,
-              "tables": {
-                  "output_tables_as_markdown": True,
-                  "merge_continued_tables": True,
-              },
-              "inline_images": True,
+            "annotate_links": True,
+            "tables": {
+              "output_tables_as_markdown": True,
+              "merge_continued_tables": True,
+            },
+            "inline_images": True,
           },
           "tables_as_spreadsheet": {"guess_sheet_name": True},
           "images_to_save": ["embedded"],
-      }
+        }
 
-    if processing_opts:
-      kwargs["processing_options"] = processing_opts
+      if processing_opts:
+        kwargs["processing_options"] = processing_opts
 
     result = client.parsing.parse(**kwargs)
     return result.markdown_full
@@ -101,7 +132,9 @@ def parse_with_llamaparse(pdf_path: Path, tier: str = "cost_effective") -> str |
     print(f"WARNING: LlamaParse bad request: {e}", file=sys.stderr)
     return None
   except llama_cloud.AuthenticationError:
-    print("WARNING: LlamaParse auth failed — check LLAMA_PARSE_API_KEY", file=sys.stderr)
+    print(
+      "WARNING: LlamaParse auth failed — check LLAMA_PARSE_API_KEY", file=sys.stderr
+    )
     return None
   except llama_cloud.RateLimitError:
     print("WARNING: LlamaParse rate limited — try again later", file=sys.stderr)
@@ -131,9 +164,9 @@ def ocr_with_rapidocr(pdf_path: Path, output_path: Path) -> bool:
     from rapidocr_onnxruntime import RapidOCR
   except ImportError:
     print(
-        "WARNING: rapidocr-onnxruntime not installed.\n"
-        "         Install: pip install rapidocr-onnxruntime",
-        file=sys.stderr,
+      "WARNING: rapidocr-onnxruntime not installed.\n"
+      "         Install: pip install rapidocr-onnxruntime",
+      file=sys.stderr,
     )
     return False
 
@@ -222,9 +255,7 @@ def is_valid_table(table: list[list[str]]) -> bool:
   if filled / max(len(cells), 1) < 0.5:
     return False
   joined = " ".join(cells)
-  if "----" in joined or "---" in joined:
-    return False
-  return True
+  return not ("----" in joined or "---" in joined)
 
 
 def table_overlaps_text(table, text: str) -> bool:
@@ -291,8 +322,8 @@ def format_table(table: list[list]) -> str:
 
   def render_row(row: list[str]) -> str:
     padded = [
-        row[i].ljust(widths[i]) if i < len(row) else " " * widths[i]
-        for i in range(col_count)
+      row[i].ljust(widths[i]) if i < len(row) else " " * widths[i]
+      for i in range(col_count)
     ]
     return "  | " + " | ".join(padded) + " |"
 
@@ -372,17 +403,20 @@ def format_page_text(text: str) -> str:
 
 
 def print_pages(
-    text_by_page,
-    tables,
-    links,
-    chunk_size,
+  text_by_page,
+  tables,
+  links,
+  chunk_size,
 ) -> None:
   buffer_len = 0
   chunk_index = 1
 
   for page_num in sorted(text_by_page):
-    text = format_page_text(text_by_page[page_num]
-                            ) if text_by_page[page_num] else "  (empty)"
+    text = (
+      format_page_text(text_by_page[page_num])
+      if text_by_page[page_num]
+      else "  (empty)"
+    )
     page_links = links.get(page_num, [])
 
     header = f"\n## Page {page_num}"
@@ -429,19 +463,23 @@ def print_pages(
 
 
 def process(
-    pdf_path: Path,
-    chunk_size: int | None = None,
-    llamaparse_tier: str | None = None,
+  pdf_path: Path,
+  chunk_size: int | None = None,
+  llamaparse_tier: str | None = None,
+  llamaparse_config: str | None = None,
 ) -> None:
-  # --- Try LlamaParse if tier specified ---
-  if llamaparse_tier:
-    print(f"LlamaParse ({llamaparse_tier})...", file=sys.stderr)
-    result = parse_with_llamaparse(pdf_path, tier=llamaparse_tier)
+  # --- Try LlamaParse if tier or config specified ---
+  if llamaparse_tier or llamaparse_config:
+    label = llamaparse_config or llamaparse_tier
+    print(f"LlamaParse ({label})...", file=sys.stderr)
+    result = parse_with_llamaparse(
+      pdf_path, tier=llamaparse_tier or "cost_effective", config_id=llamaparse_config
+    )
     if result is not None:
       print("LlamaParse succeeded.", file=sys.stderr)
       print(f"\n{'=' * 60}")
       print(f"PDF CONTEXT: {pdf_path}")
-      print(f"(parsed via LlamaParse — {llamaparse_tier})")
+      print(f"(parsed via LlamaParse — {label})")
       print(f"{'=' * 60}\n")
       print(result)
       return
@@ -508,33 +546,41 @@ def process(
 
 def main() -> None:
   parser = argparse.ArgumentParser(
-      prog="pdfx",
-      description="Extract full context from a PDF for coding agents.",
-      formatter_class=argparse.RawDescriptionHelpFormatter,
-      epilog=(
-          "Examples:\n"
-          "  uv run pdfx.py file.pdf\n"
-          "  uv run pdfx.py file.pdf > context.txt\n"
-          "  uv run pdfx.py file.pdf --chunk 12000\n"
-          "  uv run pdfx.py file.pdf --llamaparse\n"
-          "  uv run pdfx.py file.pdf --llamaparse agentic\n"
-      ),
+    prog="pdfx",
+    description="Extract full context from a PDF for coding agents.",
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    epilog=(
+      "Examples:\n"
+      "  pdfx file.pdf\n"
+      "  pdfx file.pdf > context.txt\n"
+      "  pdfx file.pdf --chunk 12000\n"
+      "  pdfx file.pdf --llamaparse\n"
+      "  pdfx file.pdf --llamaparse fast\n"
+      "  pdfx file.pdf --llamaparse agentic\n"
+      "  pdfx file.pdf --llamaparse-config cfg-...\n"
+    ),
   )
   parser.add_argument("file", type=Path, help="Path to the PDF file")
   parser.add_argument(
-      "--chunk",
-      type=int,
-      metavar="CHARS",
-      help="Insert chunk break markers every N characters",
+    "--chunk",
+    type=int,
+    metavar="CHARS",
+    help="Insert chunk break markers every N characters",
   )
   parser.add_argument(
-      "--llamaparse",
-      nargs="?",
-      const="cost_effective",
-      default=None,
-      metavar="TIER",
-      choices=["fast", "cost_effective", "agentic", "agentic-full", "agentic_plus"],
-      help="Use LlamaParse cloud API (tier: fast, cost_effective, agentic, agentic-full, agentic_plus; default: cost_effective)",
+    "--llamaparse",
+    nargs="?",
+    const="cost_effective",
+    default=None,
+    metavar="TIER",
+    choices=["fast", "cost_effective", "agentic", "agentic-full", "agentic_plus"],
+    help="Use LlamaParse cloud API (tier: fast, cost_effective, agentic, agentic-full, agentic_plus; default: cost_effective)",
+  )
+  parser.add_argument(
+    "--llamaparse-config",
+    default=None,
+    metavar="CONFIG_ID",
+    help="Use a saved LlamaCloud configuration (cfg-...) instead of a tier; implies --llamaparse",
   )
 
   args = parser.parse_args()
@@ -542,7 +588,7 @@ def main() -> None:
   if not args.file.exists():
     parser.error(f"file not found: {args.file}")
 
-  process(args.file, args.chunk, args.llamaparse)
+  process(args.file, args.chunk, args.llamaparse, args.llamaparse_config)
 
 
 if __name__ == "__main__":
