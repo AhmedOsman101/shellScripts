@@ -12,7 +12,6 @@ Usage:
   pdfx file.pdf --llamaparse
   pdfx file.pdf --llamaparse fast
   pdfx file.pdf --llamaparse agentic
-  pdfx file.pdf --llamaparse-config cfg-...
 """  # noqa: EXE001
 
 import argparse
@@ -28,6 +27,28 @@ from dotenv import load_dotenv
 
 # --- LlamaParse ---
 
+# Fallback when LLAMA_PARSE_CONFIG_ID is missing or cannot be fetched.
+# Mirrors the "agentic-full" saved config (agentic tier + cost optimizer).
+DEFAULT_CONFIG: dict = {
+  "tier": "agentic",
+  "version": "latest",
+  "output_options": {
+    "markdown": {
+      "annotate_links": True,
+      "tables": {
+        "output_tables_as_markdown": True,
+        "merge_continued_tables": True,
+      },
+      "inline_images": True,
+    },
+    "tables_as_spreadsheet": {"guess_sheet_name": True},
+    "images_to_save": ["embedded"],
+  },
+  "processing_options": {
+    "cost_optimizer": {"enable": True},
+  },
+}
+
 
 def load_api_key() -> str | None:
   """Load LLAMA_PARSE_API_KEY from .env file."""
@@ -35,6 +56,14 @@ def load_api_key() -> str | None:
   if env_path.exists():
     load_dotenv(env_path)
   return os.environ.get("LLAMA_PARSE_API_KEY")
+
+
+def load_config_id() -> str | None:
+  """Load LLAMA_PARSE_CONFIG_ID from .env file."""
+  env_path = Path(__file__).parent / ".env"
+  if env_path.exists():
+    load_dotenv(env_path)
+  return os.environ.get("LLAMA_PARSE_CONFIG_ID")
 
 
 def extract_config_params(client, config_id: str, version: str) -> dict:
@@ -51,24 +80,36 @@ def extract_config_params(client, config_id: str, version: str) -> dict:
     )
   params = cfg.parameters.model_dump(exclude_none=True)
   params.pop("product_type", None)
-  # A pinned config still needs a version; default to whatever the caller asked for.
   params.setdefault("version", version)
   return params
 
 
+def resolve_config_params(client, version: str) -> dict:
+  """Return parse params from LLAMA_PARSE_CONFIG_ID, or DEFAULT_CONFIG."""
+  config_id = load_config_id()
+  if config_id:
+    try:
+      return extract_config_params(client, config_id, version)
+    except Exception as e:
+      print(
+        f"WARNING: could not load LlamaParse config {config_id}: {e}. "
+        "Using default config.",
+        file=sys.stderr,
+      )
+  return dict(DEFAULT_CONFIG)
+
+
 def parse_with_llamaparse(
-  pdf_path: Path,
-  tier: str = "cost_effective",
-  config_id: str | None = None,
+    pdf_path: Path,
+    tier: str | None = None,
 ) -> str | None:
   """Upload PDF to LlamaParse and return markdown_full content.
 
-  When `config_id` is given, the saved LlamaCloud configuration is fetched and
-  its parameters (tier, processing/output options, prompts, ...) are used
-  verbatim. Otherwise `tier` maps user-facing names to API tier strings:
-    - "agentic"       → API "agentic" + cost optimizer ON
-    - "agentic-full"  → API "agentic" + cost optimizer OFF
-    - everything else → passed as-is to the API.
+  Params come from LLAMA_PARSE_CONFIG_ID (or DEFAULT_CONFIG when missing/
+  invalid). The user-supplied `tier` is respected:
+    - explicit tier given  → override the config's tier with it
+    - no tier given + config present  → keep the config's own tier
+    - no tier given + no config       → default to "cost_effective"
   """
   try:
     import llama_cloud
@@ -82,48 +123,20 @@ def parse_with_llamaparse(
 
   client = LlamaCloud(api_key=api_key)
 
-  # Map user-facing names to API parameters (only when no config is supplied).
-  if tier == "agentic-full":
-    api_tier = "agentic"
-    processing_opts: dict | None = None
-  elif tier == "agentic":
-    api_tier = "agentic"
-    processing_opts = {"cost_optimizer": {"enable": True}}
-  else:
-    api_tier = tier
-    processing_opts = None
-
   try:
     file_obj = client.files.create(file=pdf_path, purpose="parse")
 
-    if config_id:
-      kwargs = extract_config_params(client, config_id, version="latest")
-      kwargs["file_id"] = file_obj.id
-      kwargs["expand"] = ["markdown_full"]
-    else:
-      kwargs = {
-        "file_id": file_obj.id,
-        "tier": api_tier,
-        "version": "latest",
-        "expand": ["markdown_full"],
-      }
+    kwargs = resolve_config_params(client, version="latest")
+    kwargs["file_id"] = file_obj.id
+    kwargs["expand"] = ["markdown_full"]
 
-      if tier == "agentic" or tier == "agentic-full":
-        kwargs["output_options"] = {
-          "markdown": {
-            "annotate_links": True,
-            "tables": {
-              "output_tables_as_markdown": True,
-              "merge_continued_tables": True,
-            },
-            "inline_images": True,
-          },
-          "tables_as_spreadsheet": {"guess_sheet_name": True},
-          "images_to_save": ["embedded"],
-        }
-
-      if processing_opts:
-        kwargs["processing_options"] = processing_opts
+    if tier is not None:
+      # Explicit user tier wins over the config's tier.
+      kwargs["tier"] = tier
+    elif not load_config_id():
+      # No config and no explicit tier → honor the cost_effective default.
+      kwargs["tier"] = "cost_effective"
+    # else: config present, no explicit tier → keep the config's own tier.
 
     result = client.parsing.parse(**kwargs)
     return result.markdown_full
@@ -463,18 +476,16 @@ def print_pages(
 
 
 def process(
-  pdf_path: Path,
-  chunk_size: int | None = None,
-  llamaparse_tier: str | None = None,
-  llamaparse_config: str | None = None,
+    pdf_path: Path,
+    chunk_size: int | None = None,
+    use_llamaparse: bool = False,
+    llamaparse_tier: str | None = None,
 ) -> None:
-  # --- Try LlamaParse if tier or config specified ---
-  if llamaparse_tier or llamaparse_config:
-    label = llamaparse_config or llamaparse_tier
+  # --- Try LlamaParse if requested ---
+  if use_llamaparse:
+    label = llamaparse_tier or "config"
     print(f"LlamaParse ({label})...", file=sys.stderr)
-    result = parse_with_llamaparse(
-      pdf_path, tier=llamaparse_tier or "cost_effective", config_id=llamaparse_config
-    )
+    result = parse_with_llamaparse(pdf_path, tier=llamaparse_tier)
     if result is not None:
       print("LlamaParse succeeded.", file=sys.stderr)
       print(f"\n{'=' * 60}")
@@ -557,7 +568,6 @@ def main() -> None:
       "  pdfx file.pdf --llamaparse\n"
       "  pdfx file.pdf --llamaparse fast\n"
       "  pdfx file.pdf --llamaparse agentic\n"
-      "  pdfx file.pdf --llamaparse-config cfg-...\n"
     ),
   )
   parser.add_argument("file", type=Path, help="Path to the PDF file")
@@ -570,17 +580,11 @@ def main() -> None:
   parser.add_argument(
     "--llamaparse",
     nargs="?",
-    const="cost_effective",
+    const="__default__",
     default=None,
     metavar="TIER",
-    choices=["fast", "cost_effective", "agentic", "agentic-full", "agentic_plus"],
-    help="Use LlamaParse cloud API (tier: fast, cost_effective, agentic, agentic-full, agentic_plus; default: cost_effective)",
-  )
-  parser.add_argument(
-    "--llamaparse-config",
-    default=None,
-    metavar="CONFIG_ID",
-    help="Use a saved LlamaCloud configuration (cfg-...) instead of a tier; implies --llamaparse",
+    choices=["fast", "cost_effective", "agentic", "agentic-full", "agentic_plus", "__default__"],
+    help="Use LlamaParse cloud API (tier: fast, cost_effective, agentic, agentic-full, agentic_plus; default: config's tier if set, else cost_effective). Config params from LLAMA_PARSE_CONFIG_ID/.env are always applied.",
   )
 
   args = parser.parse_args()
@@ -588,7 +592,11 @@ def main() -> None:
   if not args.file.exists():
     parser.error(f"file not found: {args.file}")
 
-  process(args.file, args.chunk, args.llamaparse, args.llamaparse_config)
+  if args.llamaparse is not None:
+    tier = None if args.llamaparse == "__default__" else args.llamaparse
+    process(args.file, args.chunk, use_llamaparse=True, llamaparse_tier=tier)
+  else:
+    process(args.file, args.chunk)
 
 
 if __name__ == "__main__":
