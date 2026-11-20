@@ -142,6 +142,26 @@ for shellName in "${targetShells[@]}"; do
   grepPattern='hooks/path.sh'
   [[ "${shellName}" == fish ]] && grepPattern='hooks/path.fish'
 
+  # --- SCRIPTS_DIR must be exported in the config for the hook to work --- #
+  if [[ ! -f "${configFile}" ]] || ! grep -q 'SCRIPTS_DIR' "${configFile}"; then
+    case "${shellName}" in
+    bash | zsh) scriptsDirLine="export SCRIPTS_DIR=\"${SCRIPTS_DIR}\"" ;;
+    fish) scriptsDirLine="set -gx SCRIPTS_DIR \"${SCRIPTS_DIR}\"" ;;
+    *) logError "Unsupported shell in loop: ${shellName}" ;;
+    esac
+
+    logWarning "SCRIPTS_DIR is not set in ${friendlyConfigPath}; the hook will silently do nothing without it."
+    printf '\n  %s\n\n' "${scriptsDirLine}"
+    if yesNo "Add this line to ${friendlyConfigPath}?"; then
+      mkdir -p "$(dirname "${configFile}")"
+      printf '\n%s\n' "${scriptsDirLine}" >>"${configFile}"
+      logSuccess "Added SCRIPTS_DIR to ${friendlyConfigPath}"
+    else
+      logWarning "The hook will not work until SCRIPTS_DIR is exported in your shell."
+    fi
+  fi
+
+  # --- Hook source line --- #
   if [[ -f "${configFile}" ]] && grep -qF "${grepPattern}" "${configFile}"; then
     logInfo "Source line already present in ${friendlyConfigPath}"
     ((++skipped))
