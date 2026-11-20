@@ -62,8 +62,6 @@ EOF
 cmdarg_parse "$@"
 # ---  Main script logic --- #
 
-sourceLine='[[ -s "${SCRIPTS_DIR}/hooks/path.sh" ]] && source "${SCRIPTS_DIR}/hooks/path.sh"'
-
 : "${SCRIPTS_DIR:=${HOME}/scripts}"
 
 # --- Verify dependencies --- #
@@ -84,12 +82,16 @@ if ! command -v fd &>/dev/null; then
   fi
 fi
 
-hookFile="${SCRIPTS_DIR}/hooks/path.sh"
-if [[ ! -s "${hookFile}" ]]; then
-  logError "Hook file not found: ${hookFile}"
+for hookFile in "${SCRIPTS_DIR}/hooks/path.sh" "${SCRIPTS_DIR}/hooks/path.fish"; do
+  if [[ -s "${hookFile}" ]]; then
+    : # present
+  fi
+done
+if [[ ! -s "${SCRIPTS_DIR}/hooks/path.sh" ]] && [[ ! -s "${SCRIPTS_DIR}/hooks/path.fish" ]]; then
+  logError "No hook file found under ${SCRIPTS_DIR}/hooks/"
 fi
 
-logInfo "Verified: SCRIPTS_DIR, fd, and hook file all present"
+logInfo "Verified: SCRIPTS_DIR, fd, and hook files present"
 
 # --- Determine target shells --- #
 
@@ -97,15 +99,16 @@ declare -a targetShells
 if ((${#shells[@]})); then
   for s in "${shells[@]}"; do
     case "${s}" in
-    bash | zsh) targetShells+=("${s}") ;;
-    *) logError "Unsupported shell: ${s} (supported: bash, zsh)" ;;
+    bash | zsh | fish) targetShells+=("${s}") ;;
+    *) logError "Unsupported shell: ${s} (supported: bash, zsh, fish)" ;;
     esac
   done
 else
   case "$(basename "${SHELL}")" in
   bash) targetShells=(bash) ;;
   zsh) targetShells=(zsh) ;;
-  *) logError "Could not detect shell from \$SHELL=${SHELL}. Use -s bash or -s zsh." ;;
+  fish) targetShells=(fish) ;;
+  *) logError "Could not detect shell from \$SHELL=${SHELL}. Use -s bash, -s zsh, or -s fish." ;;
   esac
 fi
 
@@ -115,6 +118,7 @@ getShellConfig() {
   case "$1" in
   bash) echo "${HOME}/.bashrc" ;;
   zsh) echo "${ZDOTDIR:-${HOME}}/.zshrc" ;;
+  fish) echo "${XDG_CONFIG_HOME:-${HOME}/.config}/fish/config.fish" ;;
   *) : ;;
   esac
 }
@@ -129,7 +133,16 @@ for shellName in "${targetShells[@]}"; do
   configFile="$(getShellConfig "${shellName}")"
   friendlyConfigPath="$(collapseTilde "${configFile}")"
 
-  if [[ -f "${configFile}" ]] && grep -qF 'hooks/path.sh' "${configFile}"; then
+  case "${shellName}" in
+  bash | zsh) sourceLine='[[ -s "${SCRIPTS_DIR}/hooks/path.sh" ]] && source "${SCRIPTS_DIR}/hooks/path.sh"' ;;
+  fish) sourceLine='test -s "$SCRIPTS_DIR/hooks/path.fish"; and source "$SCRIPTS_DIR/hooks/path.fish"' ;;
+  *) logError "Unsupported shell in loop: ${shellName}" ;;
+  esac
+
+  grepPattern='hooks/path.sh'
+  [[ "${shellName}" == fish ]] && grepPattern='hooks/path.fish'
+
+  if [[ -f "${configFile}" ]] && grep -qF "${grepPattern}" "${configFile}"; then
     logInfo "Source line already present in ${friendlyConfigPath}"
     ((++skipped))
     continue
