@@ -12,7 +12,7 @@
 #
 #
 # --- DESCRIPTION --- #
-# Selects or specifies a configuration directory from TUCKR_DIR with interactive filtering
+# Selects or specifies a configuration directory from DOTFILES_DIR with interactive filtering
 # --- DEPENDENCIES --- #
 # - eza
 # - fzf
@@ -35,7 +35,7 @@ cmdarg_parse "$@"
 # ---  Main script logic --- #
 cancelled=false
 
-cd "${TUCKR_HOME}/dotfiles" || terminate
+cd "${DOTFILES_TARGET}/dotfiles" || terminate
 fzfPreview="$(
   cat <<'EOF'
 item="$(echo {} | cut -d " " -f 2-)"
@@ -79,7 +79,7 @@ if "${cancelled}"; then
   terminate "Nothing selected"
 fi
 
-fullpath="$(fd-by-depth "${app}" --hidden --type d --min-depth=2 --max-depth=4 "${TUCKR_DIR}/${app}" | tail -n 1)"
-[[ -z "${fullpath}" ]] && fullpath="${TUCKR_DIR}/${app}"
+fullpath="$(fd-by-depth "${app}" --hidden --type d --min-depth=2 --max-depth=4 "${DOTFILES_DIR}/${app}" | tail -n 1)"
+[[ -z "${fullpath}" ]] && fullpath="${DOTFILES_DIR}/${app}"
 
 echo "${fullpath}"

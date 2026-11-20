@@ -35,7 +35,7 @@ cmdarg_parse "$@"
 app="${argv[0]}"
 [[ -z ${app} ]] && app="$(gum input --placeholder "Enter app's name e.g. vim")"
 
-target="${TUCKR_DIR}/${app}/.config/${app}"
+target="${DOTFILES_DIR}/${app}/.config/${app}"
 
 source="${XDG_CONFIG_HOME:-"${HOME}/.config"}/${app}"
 
