@@ -52,7 +52,6 @@ manipulation. All port with `sh.lua` + `loggers.lua` alone.
 
 | Script                                                                | Lines   | Why trivial                                              |
 | --------------------------------------------------------------------- | ------- | -------------------------------------------------------- |
-| echopass                                                              | 3       | one `echo` wrapper                                       |
 | pdfx                                                                  | 3       | dispatcher to runpy                                      |
 | spotifyctl                                                            | 3       | dispatcher to runpy                                      |
 | yt-music-playlist                                                     | 3       | dispatcher to runpy                                      |

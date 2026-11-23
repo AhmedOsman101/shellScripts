@@ -1,7 +1,7 @@
 # Batch Review: 03 of 22
 
-**Scripts in this batch:** `android-specs`, `echopass`, `updateSpicetify`, `cpp/release.sh` (4 scripts)
-**Batch composition:** large+fillers — large standalone `android-specs` (320 lines) plus 3 tiny fillers as incidental line-budget fillers (`echopass` 3 lines, `updateSpicetify` 5 lines, `cpp/release.sh` 7 lines) — pairing is incidental, not a shared pattern. Budget 335 lines, cap 4 (large >150).
+**Scripts in this batch:** `android-specs`, `updateSpicetify`, `cpp/release.sh` (4 scripts)
+**Batch composition:** large+fillers — large standalone `android-specs` (320 lines) plus 3 tiny fillers as incidental line-budget fillers (`updateSpicetify` 5 lines, `cpp/release.sh` 7 lines) — pairing is incidental, not a shared pattern. Budget 335 lines, cap 4 (large >150).
 **Reviewer:** subagent-03
 **Date:** 2026-08-21
 
@@ -112,49 +112,6 @@ output="$(adb "${argv[@]}" shell "$(cmd)")" || log-error "adb failed — no devi
 - `# - adb (android-tools)` and `# - rg (ripgrep)` pipe-free single-exe with `(pkg-override)` is correct per `house-style-brief.md` §2; `checkDep` correctly extracts `adb`/`rg` and `android-tools`/`ripgrep` via `grep -oP '\(\K[^)]*(?=\))'` — not a syntax error.
 - `cmd() { cat <<'EOF' ... EOF }` quoted heredoc prevents host-side expansion of device-side `$`, `` ` ``, and `$(...)`; `adb "${argv[@]}" shell "$(cmd)"` correctly forwards positional argv as adb device selector (e.g. `android-specs -s -- -s SERIAL`) via `"${argv[@]}"`.
 - `source "$(include "...")"` indirection via `realpath -m` is intentional house-style path resolution, not fragile.
-
----
-
-### `echopass`
-
-**Path:** `/home/othman/scripts/echopass`
-**Declared purpose** (from `# --- DESCRIPTION --- #` block): none declared — file contains only `#!/usr/bin/env bash` + `echo "root"` (no signature block; `get-desc` would return empty, `get-deps` would return `x-none`)
-**Declared dependencies:** none declared (no `DEPENDENCIES` block; `checkDeps` would return 0 via `x-none`)
-**Verdict:** `Minor issues`
-
-#### Critical bugs
-
-None found.
-
-#### Design issues
-
-- **What happens:** hardcoded credential `echo "root"` is used as a password provider (likely for `SUDO_ASKPASS` / `getAskPass` testing).
-- **Where:**
-
-```bash
-# echopass:3
-echo "root"
-```
-
-- **Why it's wrong:** Committing a hardcoded password, even for a test askpass helper, is insecure and will be picked up by secret scanning; `check-deps:68-118` `getAskPass` already creates a proper `zenity`/`kdialog`/`whiptail` askpass that prompts the user, not a static echo. If `echopass` is intentionally a test stub, it should be documented or gated behind a test flag.
-- **Fix:** Either remove `echopass` and rely on `check-deps:106-118` `getAskPass` path that writes a real prompt to `askpass`, or guard with a comment and make it opt-in:
-
-```bash
-#!/usr/bin/env bash
-# test helper only — do not use as SUDO_ASKPASS in production
-echo "root"
-```
-
-Low severity if the repo owner intends this as a local test helper; escalate to confirm intent.
-
-#### Minor / style
-
-- No `set -eo pipefail` / `trap 'exit 1' SIGUSR1` / signature block, unlike `clangc` reference. This is acceptable for a 3-line `echo` shim — the shim delegates no error handling and `get-deps` correctly returns `x-none`, `checkDeps` would be a no-op. Adding a full header would add no signal, consistent with `batch-02`'s handling of 3-line `runpy` shims (verdict `Clean` despite missing header). Keep as-is or add minimal `set -eo pipefail` for consistency; not a bug.
-
-#### Confirmed correct (potential false positives)
-
-- Missing `# --- DESCRIPTION --- #` / `# --- DEPENDENCIES --- #` block is allowed per `house-style-brief.md` §6; `get-desc` tolerates either `DEPENDENCIES` or `END SIGNATURE` as terminator and `get-deps` prints `x-none` with `checkDeps` returning 0 — not missing deps.
-- No `source "$(include ...)"` / `checkDeps` is correct for a trivial echo stub; it has no external deps to verify (unlike `android-specs` which needs `adb`/`rg`).
 
 ---
 
@@ -289,14 +246,13 @@ mkdir -p "${SCRIPTS_DIR}/bin" &>/dev/null # c — correct
 
 - **Scripts reviewed:** 4 / 4
 - **Critical bugs:** `android-specs` — `--short` `rg "^(Model|Android|API|RAM|Storage|Resolution):"` matches only 3 of ~8 intended lines (drops `API Level:`, `Total RAM:`, `Available RAM:`, `Internal/Available Storage:`) and with `set -o pipefail` a zero-match `rg` exit 1 triggers `set -e` termination instead of empty filtered output.
-- **Design issues worth escalating:** `android-specs` — (1) `Max/Min Frequency` empty fallback vs `Unknown` for other getters, (2) 6+ redundant `dumpsys battery | grep` calls bypassing `getBatteryValue`, (3) no adb device-connected check (empty output silently continues); `cpp/release.sh` — missing `set -eo pipefail`/`trap` lets failed `cppc` still move stale `*.out`, `mkdir` without `-p` drifts from `c/release.sh`, unguarded `${SCRIPTS_DIR}`; `updateSpicetify` — missing `set -e` lets `restore` run after failed `update`, undeclared `spicetify` dep; `echopass` — hardcoded `echo "root"` credential helper should be documented as test-only or replaced by `check-deps:getAskPass` prompt.
+- **Design issues worth escalating:** `android-specs` — (1) `Max/Min Frequency` empty fallback vs `Unknown` for other getters, (2) 6+ redundant `dumpsys battery | grep` calls bypassing `getBatteryValue`, (3) no adb device-connected check (empty output silently continues); `cpp/release.sh` — missing `set -eo pipefail`/`trap` lets failed `cppc` still move stale `*.out`, `mkdir` without `-p` drifts from `c/release.sh`, unguarded `${SCRIPTS_DIR}`; `updateSpicetify` — missing `set -e` lets `restore` run after failed `update`, undeclared `spicetify` dep.
 - **Cross-cutting patterns observed in this batch** (same bug/pattern repeated across multiple scripts in this batch only; batch-level, not repo-wide):
-  - The three fillers (`echopass`, `updateSpicetify`, `cpp/release.sh`) are all sub-10-line scripts that intentionally omit `# --- DESCRIPTION --- #`/`# --- DEPENDENCIES --- #`/`set -eo pipefail`/`trap`/`cmdarg` — like `batch-02`'s `runpy` shims, the omission is intentional minimalism for trivial helpers, not a per-script oversight, but the batch shows inconsistent rigor within the same omission (e.g. `cpp/release.sh` needs `set -e` for correctness while `echopass` does not).
+  - The three fillers (`updateSpicetify`, `cpp/release.sh`) are all sub-10-line scripts that intentionally omit `# --- DESCRIPTION --- #`/`# --- DEPENDENCIES --- #`/`set -eo pipefail`/`trap`/`cmdarg` — like `batch-02`'s `runpy` shims, the omission is intentional minimalism for trivial helpers, not a per-script oversight, but the batch shows inconsistent rigor within the same omission.
   - Both `c/release.sh` and `cpp/release.sh` share the identical `fd.sh --no-ignore -e out --exec mv {} "${SCRIPTS_DIR}/bin/{/.}"` move pattern; `cpp` drifts by omitting `mkdir -p` (`mkdir` vs `mkdir -p`), showing copy-paste divergence within an otherwise identical release helper family.
   - No batch-wide `checkDep` pipe/parens misuse — `android-specs`'s `adb (android-tools)` and `rg (ripgrep)` correctly use the single-exe `(pkg-override)` form per house-style-brief §2, and the fillers correctly yield `x-none`; there is no repeated `checkDep` anti-pattern to fix at batch level.
 - **Open questions** (design intent unclear, needs the repo owner's input rather than a guess):
   - `android-specs --short` intended essentials: should the filter include `API Level`, `Total/Available RAM`, `Internal/Available Storage`, `ABI`, `Processor`, or is the current `Model|Android|API|RAM|Storage|Resolution` set intentional? The fix above assumes broader essentials — confirm the exact short-list.
-  - `echopass` hardcoded `root`: is this a local test stub that should be kept (and documented as `test helper — do not use as SUDO_ASKPASS in prod`) or should it be deleted in favor of `check-deps:getAskPass`'s `zenity`/`kdialog`/`whiptail` prompt?
   - `cpp/release.sh` vs `c/release.sh`: should both gain `set -eo pipefail` + `trap 'exit 1' SIGUSR1` + `: "${SCRIPTS_DIR:=${HOME}/scripts}"` + `mkdir -p`, or is the 7-line minimal form intentionally kept trap-free? Aligning them would be a one-line fix in `cpp`.
   - `updateSpicetify` dependency: is `spicetify` expected to be declared in `DEPENDENCIES` (`# - spicetify`) so `checkDeps` can auto-install, or is it intentionally left manual because it requires a custom install (e.g. `https://spicetify.app`)?
   - Device-side shell for `android-specs`: is `adb shell` guaranteed to be `bash`/`mksh` with `grep -m1`, `awk`, `getprop`, `dumpsys`, `wm` etc., or should the device script add `set -eu` and guard each `cat /sys/...` / `grep` with `2>/dev/null || echo Unknown` for older Android toybox builds?
@@ -307,7 +263,7 @@ mkdir -p "${SCRIPTS_DIR}/bin" &>/dev/null # c — correct
 
 - House style brief: `/home/othman/scripts/docs/code-reviews/house-style-brief.md:1-69`
 - Core files read: `include:1-26`, `lib/cmdarg.sh:1-462`, `lib/loggers.sh:1-341`, `lib/helpers.sh:1-420`, `check-deps:1-175`, `log.sh:1-66`, `get-desc:1-53`, `get-deps:1-39`, `init.sh:1-158`, `hooks/path.sh:1-86`, `clangc:1-67`
-- Batch scripts read: `android-specs:1-320`, `echopass:1-3`, `updateSpicetify:1-5`, `cpp/release.sh:1-7`
+- Batch scripts read: `android-specs:1-320`, `updateSpicetify:1-5`, `cpp/release.sh:1-7`
 - Supporting reads: `c/release.sh:1-7`, `fd.sh:1-43`, `docs/templates/batch-review.md:1-85`, `docs/code-reviews/batch-01.md:1-385`, `docs/code-reviews/batch-02.md:1-212`
 - Key verification: `rg "^(Model|Android|API|RAM|Storage|Resolution):"` tested against `Model:`, `Android:`, `API Level:`, `Total RAM:`, `Internal Storage:` — only 3 of 8 intended lines match; `mkdir "${SCRIPTS_DIR}/bin"` vs `mkdir -p` drift verified `cpp/release.sh:5` vs `c/release.sh:5` via `bash` `ls -la` and `cat`; `fd.sh` wrapper confirmed at `/home/othman/scripts/fd.sh:21` hardcodes `/usr/bin/fd` with `--hidden` + excludes.
 

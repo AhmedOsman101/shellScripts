@@ -98,7 +98,7 @@ Do not fix per-script in isolation; fix once and roll out.
 > One line per script + batch reference; full description + fix in batch files.
 
 - **Batch 01:** `log-info` missing `set -eo pipefail`/`trap` (invariant violation); `log-warning` stale `tput` dep; `log.sh` silent `LEVEL` fallback to purple; `ls-colors` fragile transitive `helpers` sourcing via `check-deps`, `cut -d' ' -f2-` assumes `export` prefix.
-- **Batch 03:** `cpp/release.sh` `mkdir -p` drift from `c/release.sh`; `updateSpicetify` `spicetify` undeclared + `sed` fragility; `echopass` hardcoded credential `echo hunter2`.
+- **Batch 03:** `cpp/release.sh` `mkdir -p` drift from `c/release.sh`; `updateSpicetify` `spicetify` undeclared + `sed` fragility.
 - **Batch 04:** `c/release.sh` `SCRIPTS_DIR` fallback `dirname` vs `$HOME/scripts` drift; `typescript/release.sh` word splitting + fallback mismatch (`deno`/`tsc`); `rofi-askpass` `dirname` PATH bug when sourced.
 - **Batch 05:** `fd-all` missing `fd|fdfind` fallback; `customvscode` unguarded `sudo chown -R`; `oc-manager` stale `isRunning` check, shared `/tmp` collision, stray `trim` vs `Trim`.
 - **Batch 06:** `fix-arabic-fonts` no guard + missing `helpers`/`checkDeps`; `print-args` manual `-q` bypasses `cmdarg`; `piper-say` missing `fd`/`gum` deps, `wc -l` fragile, `trim` casing.

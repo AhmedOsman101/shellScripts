@@ -10,7 +10,7 @@
 
 ## Background
 
-The `~/scripts` repo contains ~144 tracked executables (`fd -t x -E .git -x wc -l` -> 9904 lines) spread from 3-line one-liners (`echopass`, `pdfx`, `spotifyctl`, `yt-music-playlist`) to 300-400 line tools (`create-wiki` 401, `android-specs` 320, `document-with-llm` 316). Earlier isolated single-script reviews misdiagnosed repo-conventional patterns as bugs:
+The `~/scripts` repo contains ~144 tracked executables (`fd -t x -E .git -x wc -l` -> 9904 lines) spread from 3-line one-liners (`pdfx`, `spotifyctl`, `yt-music-playlist`) to 300-400 line tools (`create-wiki` 401, `android-specs` 320, `document-with-llm` 316). Earlier isolated single-script reviews misdiagnosed repo-conventional patterns as bugs:
 
 - `log-success` vs `logSuccess` naming,
 - `trap 'exit 1' SIGUSR1` without a local `kill`,
@@ -61,7 +61,7 @@ Lever: biggest false-positive reducer. Every subagent must restate it in its own
 
 Observed distribution (`fd -t x -E .git -x wc -l | sort -rn`):
 
-- 3 lines: `echopass`, `pdfx`, `spotifyctl`, `yt-music-playlist`
+- 3 lines: `pdfx`, `spotifyctl`, `yt-music-playlist`
 - 100-175 lines: `get-unique` 100, `vercel-status` 118, `spin.sh` 119, `benchmark` 127, `mkscript` 127, `get-package-manager` 142, `external/pipes` 156, `init.sh` 158, `switch-branch` 167, `check-deps` 175
 - 190-401 lines: `git-commit` 191, `ts-starter` 220, `readtime` 233, `piper-say` 234, `oc-manager` 245, `document-with-llm` 316, `android-specs` 320, `create-wiki` 401
 
