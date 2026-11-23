@@ -47,7 +47,7 @@ fi
 # NUMBER_CLEANUP/NUMBER_LIMIT (see /etc/snapper/configs/root). ALLOW_USERS permits
 # this without sudo; falls back to sudo -A if DBus/auth requires it.
 if ! snapper -c root create --description "Daily backup $(now)" --cleanup-algorithm number 2>/dev/null; then
-  SUDO_ASKPASS="${SCRIPTS_DIR}/echopass" sudo -A snapper -c root create --description "Daily backup $(now)" --cleanup-algorithm number
+  SUDO_ASKPASS="${SCRIPTS_DIR}/bin/echopass" sudo -A snapper -c root create --description "Daily backup $(now)" --cleanup-algorithm number
 fi
 
 # --- Installed packages --- #
