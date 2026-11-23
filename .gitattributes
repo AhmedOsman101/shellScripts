@@ -1,1 +1,3 @@
-echopass filter=git-crypt diff=git-crypt
+bin/echopass   filter=git-crypt diff=git-crypt
+c/echopass.c   filter=git-crypt diff=git-crypt
+**/*/echopass* filter=git-crypt diff=git-crypt
